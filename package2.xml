@@ -1,0 +1,82 @@
+<?xml version="1.0"?>
+<package packagerversion="1.4.0a2" version="2.0" xmlns="http://pear.php.net/dtd/package-2.0" xmlns:tasks="http://pear.php.net/dtd/tasks-1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+ <name>runkit</name>
+ <channel>pecl.php.net</channel>
+ <summary>For all those things you.... probably shouldn&apos;t have been doing anyway....</summary>
+ <description>Replace, rename, and remove user defined functions and classes.
+Define customized superglobal variables for general purpose use.
+Execute code in restricted environment (sandboxing).
+ </description>
+ <lead>
+  <name>Sara Golemon</name>
+  <user>pollita</user>
+  <email>pollita@php.net</email>
+  <active>yes</active>
+ </lead>
+ <date>2005-04-29</date>
+ <time>23:30:45</time>
+ <version>
+  <release>0.1.0</release>
+  <api>0.1.0</api>
+ </version>
+ <stability>
+  <release>beta</release>
+  <api>beta</api>
+ </stability>
+ <license uri="http://www.php.net/license/3_0.txt">PHP</license>
+ <notes>Initial Release
+ </notes>
+ <contents>
+  <dir name="/">
+   <dir name="tests">
+    <file name="runkit_class_adopt.phpt" role="test" />
+    <file name="runkit_class_emancipate.phpt" role="test" />
+    <file name="runkit_constant_add.phpt" role="test" />
+    <file name="runkit_constant_redefine.phpt" role="test" />
+    <file name="runkit_constant_remove.phpt" role="test" />
+    <file name="runkit_function_add.phpt" role="test" />
+    <file name="runkit_function_copy.phpt" role="test" />
+    <file name="runkit_function_redefine.phpt" role="test" />
+    <file name="runkit_function_remove.phpt" role="test" />
+    <file name="runkit_function_rename.phpt" role="test" />
+    <file name="runkit_lint.phpt" role="test" />
+    <file name="runkit_method_add.phpt" role="test" />
+    <file name="runkit_method_copy.phpt" role="test" />
+    <file name="runkit_method_redefine.phpt" role="test" />
+    <file name="runkit_method_remove.phpt" role="test" />
+    <file name="runkit_method_rename.phpt" role="test" />
+    <file name="Runkit_Sandbox__call.phpt" role="test" />
+    <file name="Runkit_Sandbox__disable_classes.phpt" role="test" />
+    <file name="Runkit_Sandbox__disable_functions.phpt" role="test" />
+    <file name="Runkit_Sandbox__eval.phpt" role="test" />
+    <file name="Runkit_Sandbox__get.phpt" role="test" />
+    <file name="Runkit_Sandbox__set.phpt" role="test" />
+   </dir> <!-- //tests -->
+   <file name="config.m4" role="src" />
+   <file name="config.w32" role="src" />
+   <file name="README" role="doc" />
+   <file name="runkit.c" role="src" />
+   <file name="runkit_classes.c" role="src" />
+   <file name="runkit_constants.c" role="src" />
+   <file name="runkit_functions.c" role="src" />
+   <file name="runkit_import.c" role="src" />
+   <file name="runkit_methods.c" role="src" />
+   <file name="runkit_sandbox.c" role="src" />
+   <file name="tsrm_5.0.diff" role="src" />
+  </dir> <!-- / -->
+ </contents>
+ <dependencies>
+  <required>
+   <php>
+    <min>4.0.0</min>
+    <max>6.0.0</max>
+   </php>
+   <pearinstaller>
+    <min>1.4.0a2</min>
+   </pearinstaller>
+  </required>
+ </dependencies>
+ <providesextension>runkit</providesextension>
+ <providesextension>classkit</providesextension>
+ <extsrcrelease />
+</package>
