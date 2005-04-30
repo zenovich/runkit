@@ -117,7 +117,7 @@ PHP_METHOD(Runkit_Sandbox,__construct)
 	php_runkit_sandbox_data *data;
 	void *prior_context;
 	zend_bool safe_mode = 0, use_open_basedir = 0, disallow_url_fopen = 0;
-	char open_basedir[PATH_MAX] = {0};
+	char open_basedir[MAXPATHLEN] = {0};
 	int open_basedir_len = 0, disable_functions_len = 0, disable_classes_len;
 	char *disable_functions = NULL, *disable_classes = NULL;
 
@@ -135,7 +135,7 @@ PHP_METHOD(Runkit_Sandbox,__construct)
 	if (options &&
 		zend_hash_find(Z_ARRVAL_P(options), "open_basedir", sizeof("open_basedir"), (void**)&tmpzval) == SUCCESS) {
 		zval copyval = **tmpzval;
-		char current_basedir[PATH_MAX] = {0}, *pcurrent_basedir = INI_STR("open_basedir");
+		char current_basedir[MAXPATHLEN] = {0}, *pcurrent_basedir = INI_STR("open_basedir");
 		int current_basedir_len = 0;
 
 		zval_copy_ctor(&copyval);
