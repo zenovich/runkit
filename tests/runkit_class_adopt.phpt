@@ -20,11 +20,19 @@ class ChildClass extends ParentClass {
 	}
 }
 
-var_dump(get_class_methods('ParentClass'));
-var_dump(get_class_methods('ChildClass'));
+$t = get_class_methods('ParentClass');
+sort($t);
+var_dump($t);
+$t = get_class_methods('ChildClass');
+sort($t);
+var_dump($t);
 runkit_class_adopt('ParentClass','Grandparent');
-var_dump(get_class_methods('ParentClass'));
-var_dump(get_class_methods('ChildClass'));
+$t = get_class_methods('ParentClass');
+sort($t);
+var_dump($t);
+$t = get_class_methods('ChildClass');
+sort($t);
+var_dump($t);
 ?>
 --EXPECT--
 array(1) {
@@ -39,15 +47,15 @@ array(2) {
 }
 array(2) {
   [0]=>
-  string(3) "two"
-  [1]=>
   string(3) "one"
+  [1]=>
+  string(3) "two"
 }
 array(3) {
   [0]=>
-  string(5) "three"
-  [1]=>
-  string(3) "two"
-  [2]=>
   string(3) "one"
+  [1]=>
+  string(5) "three"
+  [2]=>
+  string(3) "two"
 }
