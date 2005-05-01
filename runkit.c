@@ -196,9 +196,11 @@ PHP_RINIT_FUNCTION(runkit)
 		return SUCCESS;
 	}
 
+	s = estrdup(s);
 	p = strchr(s, ',');
 	while(p) {
 		if (p - s) {
+			*p = '\0';
 			php_runkit_register_auto_global(s, p - s TSRMLS_CC);
 		}
 		s = p + 1;
@@ -209,6 +211,7 @@ PHP_RINIT_FUNCTION(runkit)
 	if (len) {
 		php_runkit_register_auto_global(s, len TSRMLS_CC);
 	}
+	efree(s);
 
 	return SUCCESS;
 }
