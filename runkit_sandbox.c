@@ -108,6 +108,8 @@ static int php_runkit_sandbox_array_deep_copy(zval **value, int num_args, va_lis
  *		ADDITIONAL functions, on top of already disabled functions to disable
  * disable_classes = coma_separated,list_of,additional_classes
  *		ADDITIONAL classes, on top of already disabled classes to disable
+ * runkit.superglobals = coma_separated,list_of,superglobals
+ *		ADDITIONAL superglobals to define in the subinterpreter
  */
 PHP_METHOD(Runkit_Sandbox,__construct)
 {
@@ -118,8 +120,8 @@ PHP_METHOD(Runkit_Sandbox,__construct)
 	void *prior_context;
 	zend_bool safe_mode = 0, use_open_basedir = 0, disallow_url_fopen = 0;
 	char open_basedir[MAXPATHLEN] = {0};
-	int open_basedir_len = 0, disable_functions_len = 0, disable_classes_len;
-	char *disable_functions = NULL, *disable_classes = NULL;
+	int open_basedir_len = 0, disable_functions_len = 0, disable_classes_len, superglobals_len;
+	char *disable_functions = NULL, *disable_classes = NULL, *superglobals = NULL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|a", &options) == FAILURE) {
 		RETURN_NULL();
@@ -186,6 +188,14 @@ PHP_METHOD(Runkit_Sandbox,__construct)
 		disable_classes_len = Z_STRLEN_PP(tmpzval);
 	}
 
+	if (options &&
+		zend_hash_find(Z_ARRVAL_P(options), "runkit.superglobal", sizeof("runkit.superglobal"), (void**)&tmpzval) == SUCCESS &&
+		Z_TYPE_PP(tmpzval) == IS_STRING) {
+
+		superglobals = Z_STRVAL_PP(tmpzval);
+		superglobals_len = Z_STRLEN_PP(tmpzval);
+	}
+
 	data = emalloc(sizeof(php_runkit_sandbox_data));
 	data->context = tsrm_new_interpreter_context();
 	prior_context = tsrm_set_interpreter_context(data->context);
@@ -224,6 +234,23 @@ PHP_METHOD(Runkit_Sandbox,__construct)
 				s = p + 1;
 			}
 			zend_disable_class(s, strlen(s) TSRMLS_CC);
+		}
+		if (superglobals) {
+			char *p, *s = superglobals;
+			int len;
+
+			while ((p = strchr(s, ','))) {
+				if (p - s) {
+					*p = '\0';
+					zend_register_auto_global(s, p - s, NULL TSRMLS_CC);
+					zend_auto_global_disable_jit(s, p - s TSRMLS_CC);
+					*p = ',';
+				}
+				s = p + 1;
+			}
+			len = strlen(s);
+			zend_register_auto_global(s, len, NULL TSRMLS_CC);
+			zend_auto_global_disable_jit(s, len TSRMLS_CC);
 		}
 		SG(headers_sent) = 1;
 		SG(request_info).no_headers = 1;
