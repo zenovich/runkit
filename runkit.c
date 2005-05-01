@@ -178,9 +178,14 @@ static void php_runkit_register_auto_global(char *s, int len TSRMLS_DC)
 		return;
 	}
 
+#ifdef ZEND_ENGINE_2
 	if (zend_register_auto_global(s, len, NULL TSRMLS_CC) == SUCCESS) {
+
 		/* This shouldn't be necessary, but it is */
 		zend_auto_global_disable_jit(s, len TSRMLS_CC);
+#else
+	if (zend_register_auto_global(s, len TSRMLS_CC) == SUCCESS) {
+#endif
 
 		if (!RUNKIT_G(superglobals)) {
 			ALLOC_HASHTABLE(RUNKIT_G(superglobals));
