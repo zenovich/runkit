@@ -458,9 +458,9 @@ PHP_METHOD(Runkit_Sandbox,__call)
 }
 /* }}} */
 
-/* {{{ proto Runkit_Sandbox::eval(string phpcode)
-	Evaluate php code within the sandbox environment */
-PHP_METHOD(Runkit_Sandbox,eval)
+/* {{{ php_runkit_sandbox_include_or_eval
+ */
+static void php_runkit_sandbox_include_or_eval(INTERNAL_FUNCTION_PARAMETERS, int type, int once)
 {
 	int code_len;
 	php_runkit_sandbox_data *data;
@@ -483,9 +483,34 @@ PHP_METHOD(Runkit_Sandbox,eval)
 	{
 		TSRMLS_FETCH();
 		zend_first_try {
-			char *eval_desc = zend_make_compiled_string_description("Runkit_Sandbox Eval Code" TSRMLS_CC);
-			zend_op_array *op_array = compile_string(zcode, eval_desc TSRMLS_CC);
-			efree(eval_desc);
+			zend_op_array *op_array = NULL;
+
+			if (type == ZEND_EVAL) {
+				/* eval() */
+				char *eval_desc = zend_make_compiled_string_description("Runkit_Sandbox Eval Code" TSRMLS_CC);
+				op_array = compile_string(zcode, eval_desc TSRMLS_CC);
+				efree(eval_desc);
+			} else if (!once) {
+				/* include() & requre() */
+				op_array = compile_filename(type, zcode TSRMLS_CC);
+			} else {
+				/* include_once() & require_once() */
+				int dummy = 1;
+				zend_file_handle file_handle;
+
+				if (SUCCESS == zend_stream_open(Z_STRVAL_P(zcode), &file_handle TSRMLS_CC)) {
+					if (!file_handle.opened_path) {
+						file_handle.opened_path = estrndup(Z_STRVAL_P(zcode), Z_STRLEN_P(zcode));
+					}
+					if (zend_hash_add(&EG(included_files), file_handle.opened_path, strlen(file_handle.opened_path)+1, (void *)&dummy, sizeof(int), NULL)==SUCCESS) {
+						op_array = zend_compile_file(&file_handle, type TSRMLS_CC);
+						zend_destroy_file_handle(&file_handle TSRMLS_CC);
+					} else {
+						zend_file_handle_dtor(&file_handle);
+						RETVAL_TRUE;
+					}
+				}
+			}
 
 			if (op_array) {
 				EG(return_value_ptr_ptr) = &retval;
@@ -504,8 +529,7 @@ PHP_METHOD(Runkit_Sandbox,eval)
 			}
 		} zend_catch {
 			bailed_out = 1;
-		} zend_end_try() {
-		}
+		} zend_end_try();
 	}
 	tsrm_set_interpreter_context(prior_context);
 
@@ -522,6 +546,46 @@ PHP_METHOD(Runkit_Sandbox,eval)
 		zval_ptr_dtor(&retval);
 		tsrm_set_interpreter_context(prior_context);
 	}
+}
+/* }}} */
+
+/* {{{ proto Runkit_Sandbox::eval(string phpcode)
+	Evaluate php code within the sandbox environment */
+PHP_METHOD(Runkit_Sandbox,eval)
+{
+	php_runkit_sandbox_include_or_eval(INTERNAL_FUNCTION_PARAM_PASSTHRU, ZEND_EVAL, 0);
+}
+/* }}} */
+
+/* {{{ proto Runkit_Sandbox::include(string filename)
+	Evaluate php code from a file within the sandbox environment */
+PHP_METHOD(Runkit_Sandbox,include)
+{
+	php_runkit_sandbox_include_or_eval(INTERNAL_FUNCTION_PARAM_PASSTHRU, ZEND_INCLUDE, 0);
+}
+/* }}} */
+
+/* {{{ proto Runkit_Sandbox::include_once(string filename)
+	Evaluate php code from a file within the sandbox environment */
+PHP_METHOD(Runkit_Sandbox,include_once)
+{
+	php_runkit_sandbox_include_or_eval(INTERNAL_FUNCTION_PARAM_PASSTHRU, ZEND_INCLUDE, 1);
+}
+/* }}} */
+
+/* {{{ proto Runkit_Sandbox::require(string filename)
+	Evaluate php code from a file within the sandbox environment */
+PHP_METHOD(Runkit_Sandbox,require)
+{
+	php_runkit_sandbox_include_or_eval(INTERNAL_FUNCTION_PARAM_PASSTHRU, ZEND_REQUIRE, 0);
+}
+/* }}} */
+
+/* {{{ proto Runkit_Sandbox::require_once(string filename)
+	Evaluate php code from a file within the sandbox environment */
+PHP_METHOD(Runkit_Sandbox,require_once)
+{
+	php_runkit_sandbox_include_or_eval(INTERNAL_FUNCTION_PARAM_PASSTHRU, ZEND_REQUIRE, 1);
 }
 /* }}} */
 
@@ -545,7 +609,12 @@ static function_entry php_runkit_sandbox_functions[] = {
 	PHP_ME(Runkit_Sandbox,	__get,							php_runkit_require_one_arg,			ZEND_ACC_PUBLIC)
 	PHP_ME(Runkit_Sandbox,	__set,							php_runkit_require_two_args,		ZEND_ACC_PUBLIC)
 	PHP_ME(Runkit_Sandbox,	__call,							php_runkit_require_two_args,		ZEND_ACC_PUBLIC)
+	/* Language Constructs */
 	PHP_ME(Runkit_Sandbox,	eval,							NULL,								ZEND_ACC_PUBLIC)
+	PHP_ME(Runkit_Sandbox,	include,						NULL,								ZEND_ACC_PUBLIC)
+	PHP_ME(Runkit_Sandbox,	include_once,					NULL,								ZEND_ACC_PUBLIC)
+	PHP_ME(Runkit_Sandbox,	require,						NULL,								ZEND_ACC_PUBLIC)
+	PHP_ME(Runkit_Sandbox,	require_once,					NULL,								ZEND_ACC_PUBLIC)
 	{ NULL, NULL, NULL }
 };
 
