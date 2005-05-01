@@ -289,7 +289,7 @@ PHP_FUNCTION(runkit_function_rename)
 }
 /* }}} */
 
-/* {{{ proto bool runkit_function_redefine(string funcname, string arglist, string code[, string doccomments])
+/* {{{ proto bool runkit_function_redefine(string funcname, string arglist, string code)
  */
 PHP_FUNCTION(runkit_function_redefine)
 {
