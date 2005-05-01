@@ -19,6 +19,7 @@
 #include "php_runkit.h"
 ZEND_DECLARE_MODULE_GLOBALS(runkit)
 
+#ifdef PHP_RUNKIT_SUPERGLOBALS
 /* {{{ proto array runkit_superglobals(void)
 	Return numericly indexed array of registered superglobals */
 PHP_FUNCTION(runkit_superglobals)
@@ -39,6 +40,7 @@ PHP_FUNCTION(runkit_superglobals)
 	}
 }
 /* }}} */
+#endif /* PHP_RUNKIT_SUPERGLOBALS */
 
 /* {{{ runkit_functions[]
  */
@@ -47,7 +49,9 @@ function_entry runkit_functions[] = {
 	PHP_FE(runkit_class_adopt,										NULL)
 
 	PHP_FE(runkit_import,											NULL)
+#ifdef PHP_RUNKIT_SUPERGLOBALS
 	PHP_FE(runkit_superglobals,										NULL)
+#endif
 
 	PHP_FE(runkit_function_add,										NULL)
 	PHP_FE(runkit_function_remove,									NULL)
@@ -103,7 +107,9 @@ zend_module_entry runkit_module_entry = {
 /* }}} */
 
 PHP_INI_BEGIN()
+#ifdef PHP_RUNKIT_SUPERGLOBALS
 	PHP_INI_ENTRY("runkit.superglobal", "", PHP_INI_SYSTEM|PHP_INI_PERDIR, NULL)
+#endif
 PHP_INI_END()
 
 #ifdef COMPILE_DL_RUNKIT
@@ -162,6 +168,7 @@ PHP_MSHUTDOWN_FUNCTION(runkit)
 }
 /* }}} */
 
+#ifdef PHP_RUNKIT_SUPERGLOBALS
 /* {{{ php_runkit_register_auto_global
 	Register an autoglobal only if it's not already registered */
 static void php_runkit_register_auto_global(char *s, int len TSRMLS_DC)
@@ -183,11 +190,13 @@ static void php_runkit_register_auto_global(char *s, int len TSRMLS_DC)
 	}
 }
 /* }}} */
+#endif /* PHP_RUNKIT_SUPERGLOBALS */
 
 /* {{{ PHP_RINIT_FUNCTION
  */
 PHP_RINIT_FUNCTION(runkit)
 {
+#ifdef PHP_RUNKIT_SUPERGLOBALS
 	char *s = INI_STR("runkit.superglobal"), *p;
 	int len;
 
@@ -212,11 +221,13 @@ PHP_RINIT_FUNCTION(runkit)
 		php_runkit_register_auto_global(s, len TSRMLS_CC);
 	}
 	efree(s);
+#endif /* PHP_RUNKIT_SUPERGLOBALS */
 
 	return SUCCESS;
 }
 /* }}} */
 
+#ifdef PHP_RUNKIT_SUPERGLOBALS
 /* {{{ php_runkit_superglobal_dtor */
 static int php_runkit_superglobal_dtor(char *pDest TSRMLS_DC)
 {
@@ -225,17 +236,20 @@ static int php_runkit_superglobal_dtor(char *pDest TSRMLS_DC)
 	return ZEND_HASH_APPLY_REMOVE;
 }
 /* }}} */
+#endif /* PHP_RUNKIT_SUPERGLOBALS */
 
 /* {{{ PHP_RSHUTDOWN_FUNCTION
  */
 PHP_RSHUTDOWN_FUNCTION(runkit)
 {
+#ifdef PHP_RUNKIT_SUPERGLOBALS
 	if (RUNKIT_G(superglobals)) {
 		zend_hash_apply(RUNKIT_G(superglobals), php_runkit_superglobal_dtor TSRMLS_CC);
 
 		zend_hash_destroy(RUNKIT_G(superglobals));
 		FREE_HASHTABLE(RUNKIT_G(superglobals));
 	}
+#endif /* PHP_RUNKIT_SUPERGLOBALS */
 
 	return SUCCESS;
 }
@@ -248,9 +262,23 @@ PHP_MINFO_FUNCTION(runkit)
 	php_info_print_table_start();
 	php_info_print_table_header(2, "runkit support", "enabled");
 	php_info_print_table_header(2, "version", PHP_RUNKIT_VERSION);
+
 #ifdef PHP_RUNKIT_CLASSKIT_COMPAT
 	php_info_print_table_header(2, "classkit compatability", "enabled");
 #endif
+
+#ifdef PHP_RUNKIT_SUPERGLOBALS
+	php_info_print_table_header(2, "Custom Superglobal support", "enabled");
+#else
+	php_info_print_table_header(2, "Custom Superglobal support", "unavailable");
+#endif /* PHP_RUNKIT_SUPERGLOBALS */
+
+#ifdef PHP_RUNKIT_SANDBOX
+	php_info_print_table_header(2, "Sandbox Support", "enabled");
+#else
+	php_info_print_table_header(2, "Sandbox Support", "unavailable");
+#endif /* PHP_RUNKIT_SANDBOX */
+
 	php_info_print_table_end();
 
 }

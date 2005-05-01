@@ -49,6 +49,11 @@
 #define PHP_RUNKIT_SANDBOX
 #endif
 
+/* Superglobals don't exist until PHP 4.2 */
+#if PHP_MAJOR_VERSION > 4 || (PHP_MAJOR_VERSION == 4 && PHP_MINOR_VERSION > 1)
+#define PHP_RUNKIT_SUPERGLOBALS
+#endif
+
 extern zend_module_entry runkit_module_entry;
 #define phpext_runkit_ptr &runkit_module_entry
 
