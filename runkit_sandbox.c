@@ -23,6 +23,7 @@
 #include "SAPI.h"
 
 static int le_sandbox_state;
+static zend_object_handlers php_runkit_object_handlers;
 
 struct _php_runkit_sandbox_data {
 	void *context;
@@ -273,6 +274,9 @@ PHP_METHOD(Runkit_Sandbox,__construct)
 		RETURN_FALSE;
 	}
 	pefree(sandbox_name, 0);
+
+	/* Override standard handlers */
+	Z_OBJ_HT_P(this_ptr) = &php_runkit_object_handlers;
 
 	RETURN_TRUE;
 }
@@ -589,6 +593,82 @@ PHP_METHOD(Runkit_Sandbox,require_once)
 }
 /* }}} */
 
+/* *******************
+   * Object Handlers *
+   ******************* */
+
+#define PHP_RUNKIT_SANDBOX_FETCHBOX_HANDLER \
+{ \
+	char *sandbox_name; \
+	int sandbox_name_len; \
+	zval **resptr; \
+	PHP_RUNKIT_SANDBOX_PROP(&sandbox_name, &sandbox_name_len); \
+	if (zend_hash_find(Z_OBJPROP_P(object), sandbox_name, sandbox_name_len + 1, (void**)&resptr) == FAILURE) { \
+		data = NULL; \
+	} else { \
+		data = (php_runkit_sandbox_data*)zend_fetch_resource(resptr TSRMLS_CC, -1, PHP_RUNKIT_SANDBOX_RESNAME, NULL, 1, le_sandbox_state); \
+	} \
+	efree(sandbox_name); \
+}
+
+/* {{{ php_runkit_sandbox_has_property
+	has_property handler */
+static int php_runkit_sandbox_has_property(zval *object, zval *member, int has_set_exists TSRMLS_DC)
+{
+	php_runkit_sandbox_data* data;
+	void *prior_context;
+	zval member_copy;
+	int result;
+
+#if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 1
+	/* Map PHP 5.0 has_property flag to PHP 5.1+ flag */
+	has_set_exists = (has_set_exists == 0) ? 2 : 1;
+#endif
+
+	PHP_RUNKIT_SANDBOX_FETCHBOX_HANDLER;
+	if (!data) {
+		return 0;
+	}
+
+	if (Z_TYPE_P(member) != IS_STRING) {
+		member_copy = *member;
+		member = &member_copy;
+		zval_copy_ctor(member);
+		member->refcount = 1;
+		convert_to_string(member);
+	}
+
+	prior_context = tsrm_set_interpreter_context(data->context);
+	{
+		zval **tmpzval;
+		TSRMLS_FETCH();
+
+		if (zend_hash_find(&EG(symbol_table), Z_STRVAL_P(member), Z_STRLEN_P(member) + 1, (void**)&tmpzval) == SUCCESS) {
+			switch (has_set_exists) {
+				case 0:
+					result = (Z_TYPE_PP(tmpzval) != IS_NULL);
+					break;
+				case 1:
+					result = zend_is_true(*tmpzval);
+					break;
+				case 2:
+					result = 1;
+					break;
+			}
+		} else {
+			result = 0;
+		}
+	}
+	tsrm_set_interpreter_context(prior_context);
+
+	if (member == &member_copy) {
+		zval_dtor(member);
+	}
+
+	return result;
+}
+/* }}} */
+
 /* ********************
    * Class Definition *
    ******************** */
@@ -626,6 +706,10 @@ int php_runkit_init_sandbox(INIT_FUNC_ARGS)
 	php_runkit_sandbox_class_entry = zend_register_internal_class(&ce TSRMLS_CC);
 
 	le_sandbox_state = zend_register_list_destructors_ex(php_runkit_sandbox_state_dtor, NULL, PHP_RUNKIT_SANDBOX_RESNAME, module_number);
+
+	/* Make a new object handler struct with a couple minor changes */
+	memcpy(&php_runkit_object_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
+	php_runkit_object_handlers.has_property = php_runkit_sandbox_has_property;
 
 	return SUCCESS;
 }
