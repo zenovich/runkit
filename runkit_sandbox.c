@@ -669,6 +669,41 @@ static int php_runkit_sandbox_has_property(zval *object, zval *member, int has_s
 }
 /* }}} */
 
+/* {{{ php_runkit_sandbox_unset_property
+	unset_property handler */
+static void php_runkit_sandbox_unset_property(zval *object, zval *member TSRMLS_DC)
+{
+	php_runkit_sandbox_data* data;
+	void *prior_context;
+	zval member_copy;
+
+	PHP_RUNKIT_SANDBOX_FETCHBOX_HANDLER;
+	if (!data) {
+		return;
+	}
+
+	if (Z_TYPE_P(member) != IS_STRING) {
+		member_copy = *member;
+		member = &member_copy;
+		zval_copy_ctor(member);
+		member->refcount = 1;
+		convert_to_string(member);
+	}
+
+	prior_context = tsrm_set_interpreter_context(data->context);
+	{
+		TSRMLS_FETCH();
+
+		zend_hash_del(&EG(symbol_table), Z_STRVAL_P(member), Z_STRLEN_P(member) + 1);
+	}
+	tsrm_set_interpreter_context(prior_context);
+
+	if (member == &member_copy) {
+		zval_dtor(member);
+	}
+}
+/* }}} */
+
 /* ********************
    * Class Definition *
    ******************** */
@@ -709,7 +744,8 @@ int php_runkit_init_sandbox(INIT_FUNC_ARGS)
 
 	/* Make a new object handler struct with a couple minor changes */
 	memcpy(&php_runkit_object_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
-	php_runkit_object_handlers.has_property = php_runkit_sandbox_has_property;
+	php_runkit_object_handlers.has_property				= php_runkit_sandbox_has_property;
+	php_runkit_object_handlers.unset_property			= php_runkit_sandbox_unset_property;
 
 	return SUCCESS;
 }
