@@ -13,18 +13,22 @@ Execute code in restricted environment (sandboxing).
   <email>pollita@php.net</email>
   <active>yes</active>
  </lead>
- <date>2005-04-29</date>
- <time>23:30:45</time>
+ <date>2005-05-03</date>
+ <time>19:36:12</time>
  <version>
-  <release>0.1.0</release>
-  <api>0.1.0</api>
+  <release>0.2.0</release>
+  <api>0.2.0</api>
  </version>
  <stability>
   <release>beta</release>
   <api>beta</api>
  </stability>
  <license uri="http://www.php.net/license/3_0.txt">PHP</license>
- <notes>Initial Release
+ <notes>Numerous build fixes in older versions and Win32.
+Fix registration of more than one superglobal.
+Implement include(), require(), include_once(), require_once(), unset(), isset(), and empty() support in Runkit_Sandbox.
+Add runkit.superglobal as &quot;special&quot; ini supported by Runkit_Sandbox.
+Fix runkit_class_*.phpt regression tests to be version agnostic.
  </notes>
  <contents>
   <dir name="/">
@@ -68,7 +72,7 @@ Execute code in restricted environment (sandboxing).
  <dependencies>
   <required>
    <php>
-    <min>4.0.0</min>
+    <min>4.3.8-dev</min>
     <max>6.0.0</max>
    </php>
    <pearinstaller>
@@ -77,6 +81,21 @@ Execute code in restricted environment (sandboxing).
   </required>
  </dependencies>
  <providesextension>runkit</providesextension>
- <providesextension>classkit</providesextension>
  <extsrcrelease />
+ <changelog>
+  <release>
+   <version>
+    <release>0.1.0</release>
+    <api>0.1.0</api>
+   </version>
+   <stability>
+    <release>beta</release>
+    <api>beta</api>
+   </stability>
+   <date>2005-04-29</date>
+   <license uri="http://www.php.net/license/3_0.txt">PHP</license>
+   <notes>Initial Release
+   </notes>
+  </release>
+ </changelog>
 </package>

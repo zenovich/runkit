@@ -15,11 +15,24 @@ Execute code in restricted environment (sandboxing).</description>
   </maintainers>
 
    <release>
+    <version>0.2.0</version>
+    <state>beta</state>
+    <date>2005-05-03</date>
+    <notes>Numerous build fixes in older versions and Win32.
+Fix registration of more than one superglobal.
+Implement include(), require(), include_once(), require_once(), unset(), isset(), and empty() support in Runkit_Sandbox.
+Add runkit.superglobal as "special" ini supported by Runkit_Sandbox.
+Fix runkit_class_*.phpt regression tests to be version agnostic.</notes>
+   </release>
+
+  <changelog>
+   <release>
     <version>0.1.0</version>
     <state>beta</state>
     <date>2005-04-29</date>
     <notes>Initial Release</notes>
    </release>
+  </changelog>
 
   <filelist>
    <file role="src" name="config.m4"/>
