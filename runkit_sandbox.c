@@ -31,6 +31,7 @@ struct _php_runkit_sandbox_data {
 	char *disable_functions;
 	char *disable_classes;
 	zval *output_handler; /* points to function which lives in the parent_context */
+	unsigned char active; /* A bailout will set this to 0 */
 };
 
 #define PHP_RUNKIT_SANDBOX_PROP(sandbox_name, sandbox_name_len) \
@@ -292,6 +293,9 @@ PHP_METHOD(Runkit_Sandbox,__construct)
 	/* Override standard handlers */
 	Z_OBJ_HT_P(this_ptr) = &php_runkit_object_handlers;
 
+	/* Prime the sandbox to be played in */
+	data->active = 1;
+
 	RETURN_TRUE;
 }
 /* }}} */	
@@ -332,25 +336,35 @@ static void php_runkit_sandbox_state_dtor(zend_rsrc_list_entry *rsrc TSRMLS_DC)
 PHP_METHOD(Runkit_Sandbox,__get)
 {
 	char *prop;
-	int prop_len;
+	int prop_len, prop_found = 0;
 	php_runkit_sandbox_data *data;
-	zval **value;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &prop, &prop_len) == FAILURE) {
 		RETURN_NULL();
 	}
 
 	PHP_RUNKIT_SANDBOX_FETCHBOX(Z_OBJPROP_P(this_ptr));
+	/* It's okay to read the symbol table post bailout */
 
 	PHP_RUNKIT_SANDBOX_BEGIN(data);
-		if (zend_hash_find(&EG(symbol_table), prop, prop_len + 1, (void**)&value) == FAILURE) {
-			PHP_RUNKIT_SANDBOX_ABORT(data);
-			RETURN_NULL();
-		}
+		zend_try {
+			zval **value;
+
+			if (zend_hash_find(&EG(symbol_table), prop, prop_len + 1, (void**)&value) == SUCCESS) {
+				*return_value = **value;
+				prop_found = 1;
+			}
+		} zend_catch {
+			/* Almost certainly impossible... */
+			data->active = 0;
+		} zend_end_try();
 	PHP_RUNKIT_SANDBOX_END(data);
 
-	*return_value = **value;
-	PHP_SANDBOX_CROSS_SCOPE_ZVAL_COPY_CTOR(return_value);
+	if (prop_found) {
+		PHP_SANDBOX_CROSS_SCOPE_ZVAL_COPY_CTOR(return_value);
+	} else {
+		RETVAL_NULL();
+	}
 }
 /* }}} */
 
@@ -368,19 +382,27 @@ PHP_METHOD(Runkit_Sandbox,__set)
 	}
 
 	PHP_RUNKIT_SANDBOX_FETCHBOX(Z_OBJPROP_P(this_ptr));
+	if (!data->active) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Current sandbox is no longer active");
+		RETURN_NULL();
+	}
+
+	RETVAL_TRUE;
 
 	PHP_RUNKIT_SANDBOX_BEGIN(data);
-	{
-		zval *copyval;
+		zend_try {
+			zval *copyval;
 
-		MAKE_STD_ZVAL(copyval);
-		*copyval = *value;
-		PHP_SANDBOX_CROSS_SCOPE_ZVAL_COPY_CTOR(copyval);
-		ZEND_SET_SYMBOL(&EG(symbol_table), prop, copyval);
-	}
+			MAKE_STD_ZVAL(copyval);
+			*copyval = *value;
+			PHP_SANDBOX_CROSS_SCOPE_ZVAL_COPY_CTOR(copyval);
+			ZEND_SET_SYMBOL(&EG(symbol_table), prop, copyval);
+		} zend_catch {
+			/* An emalloc() could bailout */
+			data->active = 0;
+			RETVAL_FALSE;
+		} zend_end_try();
 	PHP_RUNKIT_SANDBOX_END(data);
-
-	RETURN_TRUE;
 }
 /* }}} */
 
@@ -397,6 +419,11 @@ PHP_METHOD(Runkit_Sandbox,__call)
 	}
 
 	PHP_RUNKIT_SANDBOX_FETCHBOX(Z_OBJPROP_P(this_ptr));
+	if (!data->active) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Current sandbox is no longer active");
+		RETURN_NULL();
+	}
+
 	argc = zend_hash_num_elements(Z_ARRVAL_P(args));
 
 	PHP_RUNKIT_SANDBOX_BEGIN(data);
@@ -410,7 +437,7 @@ PHP_METHOD(Runkit_Sandbox,__call)
 			zval **tmpzval;
 
 			if (!zend_is_callable(func_name, IS_CALLABLE_CHECK_NO_ACCESS, &name)) {
-				php_error_docref1(NULL TSRMLS_CC, name, E_WARNING, "First argument is expected to be a valid callback");
+				php_error_docref1(NULL TSRMLS_CC, name, E_WARNING, "Function not defined");
 				efree(name);
 				PHP_RUNKIT_SANDBOX_ABORT(data);
 				RETURN_FALSE;
@@ -451,6 +478,7 @@ PHP_METHOD(Runkit_Sandbox,__call)
 			efree(sandbox_args);
 		} zend_catch {
 			bailed_out = 1;
+			data->active = 0;
 		} zend_end_try();
 	}
 	PHP_RUNKIT_SANDBOX_END(data);
@@ -487,12 +515,17 @@ static void php_runkit_sandbox_include_or_eval(INTERNAL_FUNCTION_PARAMETERS, int
 	convert_to_string(zcode);
 
 	PHP_RUNKIT_SANDBOX_FETCHBOX(Z_OBJPROP_P(this_ptr));
+	if (!data->active) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Current sandbox is no longer active");
+		RETURN_NULL();
+	}
 
 	RETVAL_NULL();
 
 	PHP_RUNKIT_SANDBOX_BEGIN(data);
 		zend_first_try {
 			zend_op_array *op_array = NULL;
+			int already_included = 0;
 
 			if (type == ZEND_EVAL) {
 				/* eval() */
@@ -517,6 +550,7 @@ static void php_runkit_sandbox_include_or_eval(INTERNAL_FUNCTION_PARAMETERS, int
 					} else {
 						zend_file_handle_dtor(&file_handle);
 						RETVAL_TRUE;
+						already_included = 1;
 					}
 				}
 			}
@@ -535,8 +569,16 @@ static void php_runkit_sandbox_include_or_eval(INTERNAL_FUNCTION_PARAMETERS, int
 
 				destroy_op_array(op_array TSRMLS_CC);
 				efree(op_array);
+			} else if ((type != ZEND_INCLUDE) && !already_included) {
+				/* include can fail to parse peacefully,
+				 * require and eval should die on failure
+				 */
+				data->active = 0;
+				bailed_out = 1;
 			}
 		} zend_catch {
+            /* It's impossible to know what caused the failure, just deactive the sandbox now */
+			data->active = 0;
 			bailed_out = 1;
 		} zend_end_try();
 	PHP_RUNKIT_SANDBOX_END(data);
@@ -618,6 +660,10 @@ PHP_METHOD(Runkit_Sandbox,echo)
 	}
 
 	PHP_RUNKIT_SANDBOX_FETCHBOX(Z_OBJPROP_P(this_ptr));
+	if (!data->active) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Current sandbox is no longer active");
+		RETURN_NULL();
+	}
 
 	PHP_RUNKIT_SANDBOX_BEGIN(data);
 		zend_try {
@@ -625,6 +671,7 @@ PHP_METHOD(Runkit_Sandbox,echo)
 				PHPWRITE(Z_STRVAL_P(argv[i]),Z_STRLEN_P(argv[i]));
 			}
 		} zend_catch {
+			data->active = 0;
 		} zend_end_try();
 	PHP_RUNKIT_SANDBOX_END(data);	
 
@@ -647,15 +694,62 @@ PHP_METHOD(Runkit_Sandbox,print)
 	}
 
 	PHP_RUNKIT_SANDBOX_FETCHBOX(Z_OBJPROP_P(this_ptr));
+	if (!data->active) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Current sandbox is no longer active");
+		RETURN_NULL();
+	}
 
 	PHP_RUNKIT_SANDBOX_BEGIN(data);
 		zend_try {
 			PHPWRITE(str,len);
 		} zend_catch {
+			data->active = 0;
 		} zend_end_try();
 	PHP_RUNKIT_SANDBOX_END(data);	
 
 	RETURN_BOOL(len > 1 || (len == 1 && str[0] != '0'));
+}
+/* }}} */
+
+/* {{{ proto void Runkit_Sandbox::die(mixed message)
+	MALIAS(exit)
+	Terminate a sandbox instance */
+PHP_METHOD(Runkit_Sandbox,die)
+{
+	php_runkit_sandbox_data* data;
+	zval *message = NULL;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|z", &message) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	RETVAL_NULL();
+
+	if (message && Z_TYPE_P(message) != IS_LONG) {
+		convert_to_string(message);
+	}
+
+	PHP_RUNKIT_SANDBOX_FETCHBOX(Z_OBJPROP_P(this_ptr));
+	if (!data->active) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Current sandbox is no longer active");
+		return;
+	}
+
+	PHP_RUNKIT_SANDBOX_BEGIN(data);
+		zend_try {
+			if (message) {
+				if (Z_TYPE_P(message) == IS_LONG) {
+					EG(exit_status) = Z_LVAL_P(message);
+				} else {
+					PHPWRITE(Z_STRVAL_P(message), Z_STRLEN_P(message));
+				}
+			}
+			zend_bailout();
+		} zend_catch {
+			/* goes without saying doesn't it? */
+			data->active = 0;
+		} zend_end_try();
+	PHP_RUNKIT_SANDBOX_END(data);
 }
 /* }}} */
 
@@ -694,6 +788,7 @@ static int php_runkit_sandbox_has_property(zval *object, zval *member, int has_s
 	if (!data) {
 		return 0;
 	}
+	/* It's okay to read the symbol table post bailout */
 
 	if (Z_TYPE_P(member) != IS_STRING) {
 		member_copy = *member;
@@ -713,7 +808,27 @@ static int php_runkit_sandbox_has_property(zval *object, zval *member, int has_s
 					result = (Z_TYPE_PP(tmpzval) != IS_NULL);
 					break;
 				case 1:
-					result = zend_is_true(*tmpzval);
+					switch (Z_TYPE_PP(tmpzval)) {
+						case IS_BOOL: case IS_LONG: case IS_RESOURCE:
+							result = (Z_LVAL_PP(tmpzval) != 0);
+							break;
+						case IS_DOUBLE:
+							result = (Z_DVAL_PP(tmpzval) != 0);
+							break;
+						case IS_STRING:
+							result = (Z_STRLEN_PP(tmpzval) > 1 || (Z_STRLEN_PP(tmpzval) == 1 && Z_STRVAL_PP(tmpzval)[0] != '0'));
+							break;
+						case IS_ARRAY:
+							result = zend_hash_num_elements(Z_ARRVAL_PP(tmpzval)) > 0;
+							break;
+						case IS_OBJECT:
+							/* TODO: Use ZE2 logic for this rather than ZE1 logic */
+							result = zend_hash_num_elements(Z_OBJPROP_PP(tmpzval)) > 0;
+							break;
+						case IS_NULL:
+						default:
+							result = 0;
+					}
 					break;
 				case 2:
 					result = 1;
@@ -742,6 +857,10 @@ static void php_runkit_sandbox_unset_property(zval *object, zval *member TSRMLS_
 
 	PHP_RUNKIT_SANDBOX_FETCHBOX_HANDLER;
 	if (!data) {
+		return;
+	}
+	if (!data->active) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Current sandbox is no longer active");
 		return;
 	}
 
@@ -851,6 +970,10 @@ PHP_FUNCTION(runkit_sandbox_output_handler)
 	}
 
 	PHP_RUNKIT_SANDBOX_FETCHBOX(Z_OBJPROP_P(sandbox));	
+	if (!data->active) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Current sandbox is no longer active");
+		RETURN_NULL();
+	}
 
 	if (callback) {
 		zval callback_copy = *callback;
@@ -915,18 +1038,20 @@ ZEND_BEGIN_ARG_INFO_EX(php_runkit_require_two_args, 0, 0, 2)
 ZEND_END_ARG_INFO()
 
 static function_entry php_runkit_sandbox_functions[] = {
-	PHP_ME(Runkit_Sandbox,	__construct,					NULL,								ZEND_ACC_PUBLIC		| ZEND_ACC_CTOR)
-	PHP_ME(Runkit_Sandbox,	__get,							php_runkit_require_one_arg,			ZEND_ACC_PUBLIC)
-	PHP_ME(Runkit_Sandbox,	__set,							php_runkit_require_two_args,		ZEND_ACC_PUBLIC)
-	PHP_ME(Runkit_Sandbox,	__call,							php_runkit_require_two_args,		ZEND_ACC_PUBLIC)
+	PHP_ME(Runkit_Sandbox,		__construct,				NULL,								ZEND_ACC_PUBLIC		| ZEND_ACC_CTOR)
+	PHP_ME(Runkit_Sandbox,		__get,						php_runkit_require_one_arg,			ZEND_ACC_PUBLIC)
+	PHP_ME(Runkit_Sandbox,		__set,						php_runkit_require_two_args,		ZEND_ACC_PUBLIC)
+	PHP_ME(Runkit_Sandbox,		__call,						php_runkit_require_two_args,		ZEND_ACC_PUBLIC)
 	/* Language Constructs */
-	PHP_ME(Runkit_Sandbox,	eval,							NULL,								ZEND_ACC_PUBLIC)
-	PHP_ME(Runkit_Sandbox,	include,						NULL,								ZEND_ACC_PUBLIC)
-	PHP_ME(Runkit_Sandbox,	include_once,					NULL,								ZEND_ACC_PUBLIC)
-	PHP_ME(Runkit_Sandbox,	require,						NULL,								ZEND_ACC_PUBLIC)
-	PHP_ME(Runkit_Sandbox,	require_once,					NULL,								ZEND_ACC_PUBLIC)
-	PHP_ME(Runkit_Sandbox,	echo,							NULL,								ZEND_ACC_PUBLIC)
-	PHP_ME(Runkit_Sandbox,	print,							NULL,								ZEND_ACC_PUBLIC)
+	PHP_ME(Runkit_Sandbox,		eval,						NULL,								ZEND_ACC_PUBLIC)
+	PHP_ME(Runkit_Sandbox,		include,					NULL,								ZEND_ACC_PUBLIC)
+	PHP_ME(Runkit_Sandbox,		include_once,				NULL,								ZEND_ACC_PUBLIC)
+	PHP_ME(Runkit_Sandbox,		require,					NULL,								ZEND_ACC_PUBLIC)
+	PHP_ME(Runkit_Sandbox,		require_once,				NULL,								ZEND_ACC_PUBLIC)
+	PHP_ME(Runkit_Sandbox,		echo,						NULL,								ZEND_ACC_PUBLIC)
+	PHP_ME(Runkit_Sandbox,		print,						NULL,								ZEND_ACC_PUBLIC)
+	PHP_ME(Runkit_Sandbox,		die,						NULL,								ZEND_ACC_PUBLIC)
+	PHP_MALIAS(Runkit_Sandbox,	exit,	die,				NULL,								ZEND_ACC_PUBLIC)
 	{ NULL, NULL, NULL }
 };
 
