@@ -79,6 +79,7 @@ function_entry runkit_functions[] = {
 	PHP_FE(runkit_constant_add,										NULL)
 
 #ifdef PHP_RUNKIT_SANDBOX
+	PHP_FE(runkit_sandbox_output_handler,							NULL)
 	PHP_FE(runkit_lint,												NULL)
 	PHP_FE(runkit_lint_file,										NULL)
 #endif
@@ -164,7 +165,11 @@ PHP_MSHUTDOWN_FUNCTION(runkit)
 {
 	UNREGISTER_INI_ENTRIES();
 
+#ifdef PHP_RUNKIT_SANDBOX
+	return php_runkit_shutdown_sandbox(SHUTDOWN_FUNC_ARGS_PASSTHRU);
+#else
 	return SUCCESS;
+#endif
 }
 /* }}} */
 
@@ -227,6 +232,8 @@ PHP_RINIT_FUNCTION(runkit)
 	}
 	efree(s);
 #endif /* PHP_RUNKIT_SUPERGLOBALS */
+
+	RUNKIT_G(current_sandbox) = NULL;
 
 	return SUCCESS;
 }

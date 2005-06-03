@@ -33,6 +33,7 @@
 #define PHP_RUNKIT_VERSION					"0.1"
 #define PHP_RUNKIT_SANDBOX_CLASSNAME		"Runkit_Sandbox"
 #define PHP_RUNKIT_SANDBOX_PROPNAME			"__sandbox"
+#define PHP_RUNKIT_SANDBOX_OHPROPNAME		"__output_handler"
 #define PHP_RUNKIT_SANDBOX_RESNAME			"Runkit Sandbox State Information"
 
 #define PHP_RUNKIT_IMPORT_FUNCTIONS			0x0001
@@ -79,6 +80,7 @@ PHP_FUNCTION(runkit_class_emancipate);
 PHP_FUNCTION(runkit_class_adopt);
 PHP_FUNCTION(runkit_import);
 #ifdef PHP_RUNKIT_SANDBOX
+PHP_FUNCTION(runkit_sandbox_output_handler);
 PHP_FUNCTION(runkit_lint);
 PHP_FUNCTION(runkit_lint_file);
 #endif
@@ -87,6 +89,7 @@ typedef struct _php_runkit_sandbox_data php_runkit_sandbox_data;
 
 ZEND_BEGIN_MODULE_GLOBALS(runkit)
 	HashTable *superglobals;
+	php_runkit_sandbox_data *current_sandbox;
 ZEND_END_MODULE_GLOBALS(runkit)
 
 extern ZEND_DECLARE_MODULE_GLOBALS(runkit);
@@ -132,6 +135,7 @@ int php_runkit_update_children_consts(zend_class_entry *ce, int num_args, va_lis
 #ifdef PHP_RUNKIT_SANDBOX
 /* runkit_sandbox.c */
 int php_runkit_init_sandbox(INIT_FUNC_ARGS);
+int php_runkit_shutdown_sandbox(SHUTDOWN_FUNC_ARGS);
 #endif
 
 #define PHP_RUNKIT_SPLIT_PN(constname, constname_len, pnname, pnname_len) { \
