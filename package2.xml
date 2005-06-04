@@ -49,9 +49,12 @@ Fix runkit_class_*.phpt regression tests to be version agnostic.
     <file name="runkit_method_redefine.phpt" role="test" />
     <file name="runkit_method_remove.phpt" role="test" />
     <file name="runkit_method_rename.phpt" role="test" />
+    <file name="runkit_sandbox_output_handler.phpt" role="test" />
     <file name="Runkit_Sandbox__call.phpt" role="test" />
+    <file name="Runkit_Sandbox__die.phpt" role="test" />
     <file name="Runkit_Sandbox__disable_classes.phpt" role="test" />
     <file name="Runkit_Sandbox__disable_functions.phpt" role="test" />
+    <file name="Runkit_Sandbox__echo.phpt" role="test" />
     <file name="Runkit_Sandbox__eval.phpt" role="test" />
     <file name="Runkit_Sandbox__get.phpt" role="test" />
     <file name="Runkit_Sandbox__set.phpt" role="test" />
@@ -59,6 +62,7 @@ Fix runkit_class_*.phpt regression tests to be version agnostic.
    <file name="config.m4" role="src" />
    <file name="config.w32" role="src" />
    <file name="README" role="doc" />
+   <file name="php_runkit.h" role="src" />
    <file name="runkit.c" role="src" />
    <file name="runkit_classes.c" role="src" />
    <file name="runkit_constants.c" role="src" />
