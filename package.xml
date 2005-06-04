@@ -15,6 +15,16 @@ Execute code in restricted environment (sandboxing).</description>
   </maintainers>
 
    <release>
+    <version>0.3.0</version>
+    <state>beta</state>
+    <date>2005-06-03</date>
+    <notes>Put php_runkit.h back into the package.xml file. (pear install runkit-beta should work now).
+Implement die(), exit(), echo(), and print() and catch bailouts properly.
+Implement output capturing -- runkit_sandbox_output_handler().</notes>
+   </release>
+
+  <changelog>
+   <release>
     <version>0.2.0</version>
     <state>beta</state>
     <date>2005-05-03</date>
@@ -25,7 +35,6 @@ Add runkit.superglobal as "special" ini supported by Runkit_Sandbox.
 Fix runkit_class_*.phpt regression tests to be version agnostic.</notes>
    </release>
 
-  <changelog>
    <release>
     <version>0.1.0</version>
     <state>beta</state>

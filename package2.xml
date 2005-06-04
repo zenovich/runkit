@@ -13,23 +13,22 @@ Execute code in restricted environment (sandboxing).
   <email>pollita@php.net</email>
   <active>yes</active>
  </lead>
- <date>2005-05-03</date>
- <time>19:36:12</time>
+ <date>2005-06-03</date>
+ <time>17:08:00</time>
+
  <version>
-  <release>0.2.0</release>
-  <api>0.2.0</api>
+  <release>0.3.0</release>
+  <api>0.3.0</api>
  </version>
  <stability>
   <release>beta</release>
   <api>beta</api>
  </stability>
  <license uri="http://www.php.net/license/3_0.txt">PHP</license>
- <notes>Numerous build fixes in older versions and Win32.
-Fix registration of more than one superglobal.
-Implement include(), require(), include_once(), require_once(), unset(), isset(), and empty() support in Runkit_Sandbox.
-Add runkit.superglobal as &quot;special&quot; ini supported by Runkit_Sandbox.
-Fix runkit_class_*.phpt regression tests to be version agnostic.
- </notes>
+ <notes>Put php_runkit.h back into the package.xml file. (pear install runkit-beta should work now).
+Implement die(), exit(), echo(), and print() and catch bailouts properly.
+Implement output capturing -- runkit_sandbox_output_handler().</notes>
+
  <contents>
   <dir name="/">
    <dir name="tests">
@@ -98,8 +97,23 @@ Fix runkit_class_*.phpt regression tests to be version agnostic.
    </stability>
    <date>2005-04-29</date>
    <license uri="http://www.php.net/license/3_0.txt">PHP</license>
-   <notes>Initial Release
-   </notes>
+   <notes>Initial Release</notes>
+  </release>
+  <release>
+   <version>
+    <release>0.2.0</release>
+    <api>0.2.0</api>
+   </version>
+   <stability>
+    <release>beta</release>
+    <api>beta</api>
+   </stability>
+   <license uri="http://www.php.net/license/3_0.txt">PHP</license>
+   <notes>Numerous build fixes in older versions and Win32.
+Fix registration of more than one superglobal.
+Implement include(), require(), include_once(), require_once(), unset(), isset(), and empty() support in Runkit_Sandbox.
+Add runkit.superglobal as &quot;special&quot; ini supported by Runkit_Sandbox.
+Fix runkit_class_*.phpt regression tests to be version agnostic.</notes>
   </release>
  </changelog>
 </package>
