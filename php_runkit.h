@@ -138,7 +138,7 @@ int php_runkit_init_sandbox(INIT_FUNC_ARGS);
 int php_runkit_shutdown_sandbox(SHUTDOWN_FUNC_ARGS);
 #endif
 
-#define PHP_RUNKIT_SPLIT_PN(constname, constname_len, pnname, pnname_len) { \
+#define PHP_RUNKIT_SPLIT_PN(classname, classname_len, pnname, pnname_len) { \
 	char *colon; \
 \
 	if ((colon = memchr((pnname), ':', (pnname_len) - 2)) && (colon[1] == ':')) { \
