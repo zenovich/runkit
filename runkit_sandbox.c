@@ -965,7 +965,7 @@ PHP_FUNCTION(runkit_sandbox_output_handler)
 	char *name;
 	int callback_is_true = 0;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "Oz", &sandbox, php_runkit_sandbox_class_entry, &callback) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "O|z", &sandbox, php_runkit_sandbox_class_entry, &callback) == FAILURE) {
 		RETURN_NULL();
 	}
 
