@@ -113,10 +113,14 @@ static int php_runkit_sandbox_array_deep_copy(zval **value, int num_args, va_lis
    * Runkit_Sandbox *
    ****************** */
 
-/* {{{ proto void Runkit_Sandbox::__construct(array options)
- * Options:
+/* Special .ini options (normally PHP_INI_SYSTEM) which can be overridden within a sandbox in the direction of tighter security
+ *
  * safe_mode = true
  *		safe_mode can only be turned on for a sandbox, not off.  Doing so would tend to defeat safe_mode as applied to the calling script
+ * safe_mode_gid = false
+ *		safe_mode_gid can only be turned off as it allows a partial bypass of safe_mode restrictions when on
+ * safe_mode_include_dir = /path/to/includables
+ *		safe_mode_include_dir must be at or below the currently defined include_dir
  * open_basedir = /path/to/basedir
  *		open_basedir must be at or below the currently defined basedir for the same reason that safe_mode can only be turned on
  * allow_url_fopen = false
@@ -128,94 +132,200 @@ static int php_runkit_sandbox_array_deep_copy(zval **value, int num_args, va_lis
  * runkit.superglobals = coma_separated,list_of,superglobals
  *		ADDITIONAL superglobals to define in the subinterpreter
  */
+inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_data *data, HashTable *options TSRMLS_DC)
+{
+	zend_bool safe_mode, safe_mode_gid, allow_url_fopen;
+	char open_basedir[MAXPATHLEN] = {0}, safe_mode_include_dir[MAXPATHLEN] = {0};
+	zval **tmpzval;
+
+	/* Collect up parent values */
+	tsrm_set_interpreter_context(data->parent_context);
+	{
+		/* Check current settings in parent context */
+		TSRMLS_FETCH_FROM_CTX(data->parent_context);
+
+		safe_mode = PG(safe_mode);
+		safe_mode_gid = PG(safe_mode_gid);
+		if (PG(open_basedir) && *PG(open_basedir)) {
+			VCWD_REALPATH(PG(open_basedir), open_basedir);
+		}
+		if (PG(safe_mode_include_dir) && *PG(safe_mode_include_dir)) {
+			VCWD_REALPATH(PG(safe_mode_include_dir), safe_mode_include_dir);
+		}
+		allow_url_fopen = PG(allow_url_fopen);
+	}
+	tsrm_set_interpreter_context(data->context);
+
+	/* safe_mode only goes on */
+	if (!safe_mode &&
+		zend_hash_find(options, "safe_mode", sizeof("safe_mode"), (void**)&tmpzval) == SUCCESS) {
+		zval copyval = **tmpzval;
+
+		zval_copy_ctor(&copyval);
+		convert_to_boolean(&copyval);
+
+		if (Z_BVAL(copyval)) {
+			zend_alter_ini_entry("safe_mode", sizeof("safe_mode"), "1", 1, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
+		}
+	}
+
+	/* safe_mode_gid only goes off */
+	if (safe_mode_gid &&
+		zend_hash_find(options, "safe_mode_gid", sizeof("safe_mode_gid"), (void**)&tmpzval) == SUCCESS) {
+		zval copyval = **tmpzval;
+
+		zval_copy_ctor(&copyval);
+		convert_to_boolean(&copyval);
+
+		if (!Z_BVAL(copyval)) {
+			zend_alter_ini_entry("safe_mode_gid", sizeof("safe_mode_gid"), "0", 1, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
+		}
+	}
+
+	/* safe_mode_include_dir can go deeper, or be set to blank (which means nowhere is includable) */
+	if (zend_hash_find(options, "safe_mode_include_dir", sizeof("safe_mode_include_dir"), (void**)&tmpzval) == SUCCESS &&
+		Z_TYPE_PP(tmpzval) == IS_STRING) {
+
+		if (Z_STRLEN_PP(tmpzval) == 0) {
+			/* simplest case -- clearing safe_mode_include_dir -- maximum restriction */
+			zend_alter_ini_entry("safe_mode_include_dir", sizeof("safe_mode_include_dir"), NULL, 0, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
+		} else if (!*safe_mode_include_dir && safe_mode) {
+			/* 2nd simplest case -- Full security already with safe_mode preexisting -- leave it alone */
+		} else if (!*safe_mode_include_dir) {
+			/* 3rd simplest case -- include_dir not yet set, but safe_mode not on yet, assume we're turning on */
+			zend_alter_ini_entry("safe_mode_include_dir", sizeof("safe_mode_include_dir"), Z_STRVAL_PP(tmpzval), Z_STRLEN_PP(tmpzval), PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
+		} else {
+			/* Otherwise... */
+			int safe_mode_include_dir_len = strlen(safe_mode_include_dir);
+			char new_include_dir[MAXPATHLEN];
+			int new_include_dir_len;
+
+			VCWD_REALPATH(Z_STRVAL_PP(tmpzval), new_include_dir);
+
+			new_include_dir_len = strlen(new_include_dir);
+			if ((new_include_dir_len > safe_mode_include_dir_len) &&
+				(strncmp(safe_mode_include_dir, new_include_dir, safe_mode_include_dir_len) == 0) &&
+				(new_include_dir[safe_mode_include_dir_len] == '/')) {
+				/* Tightening up of existing security level */
+				zend_alter_ini_entry("safe_mode_include_dir", sizeof("safe_mode_include_dir"), new_include_dir, new_include_dir_len, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
+			}
+		}
+	}
+
+	/* open_basedir goes deeper only */
+	if (zend_hash_find(options, "open_basedir", sizeof("open_basedir"), (void**)&tmpzval) == SUCCESS &&
+		Z_TYPE_PP(tmpzval) == IS_STRING) {
+		char new_basedir[MAXPATHLEN];
+		int open_basedir_len = strlen(open_basedir);
+		int new_basedir_len;
+
+		VCWD_REALPATH(Z_STRVAL_PP(tmpzval), new_basedir);
+
+		new_basedir_len = strlen(new_basedir);
+		if (open_basedir_len == 0) {
+			/* simplest case -- no open basedir existed yet */
+			zend_alter_ini_entry("open_basedir", sizeof("open_basedir"), new_basedir, new_basedir_len, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
+		} else if ((new_basedir_len > open_basedir_len) &&
+					(strncmp(open_basedir, new_basedir, open_basedir_len) == 0) &&
+					(new_basedir[open_basedir_len] == '/')) {
+			/* Tightening up of existing security level */
+			zend_alter_ini_entry("open_basedir", sizeof("open_basedir"), new_basedir, new_basedir_len, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
+		}
+	}
+
+	/* allow_url_fopen goes off only */
+	if (allow_url_fopen &&
+		zend_hash_find(options, "allow_url_fopen", sizeof("allow_url_fopen"), (void**)&tmpzval) == SUCCESS) {
+		zval copyval = **tmpzval;
+
+		zval_copy_ctor(&copyval);
+		convert_to_bool(&copyval);
+
+		if (!Z_BVAL(copyval)) {
+			zend_alter_ini_entry("allow_url_fopen", sizeof("allow_url_fopen"), "0", 1, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
+		}
+	}
+
+	/* Can only disable additional functions */
+	if (zend_hash_find(options, "disable_functions", sizeof("disable_functions"), (void**)&tmpzval) == SUCCESS &&
+		Z_TYPE_PP(tmpzval) == IS_STRING) {
+		/* NOTE: disable_functions doesn't prevent $obj->function_name, it only blocks code inside $obj->eval() statements
+		 * This could be brought into consistency, but I actually think it's okay to leave those functions available to calling script
+		 */
+		/* This buffer needs to be around when the error message occurs since the underlying implementation in Zend expects it to be */
+		int disable_functions_len = Z_STRLEN_PP(tmpzval);
+		char *p, *s;
+
+		data->disable_functions = estrndup(Z_STRVAL_PP(tmpzval), disable_functions_len);
+
+		s = data->disable_functions;
+		while ((p = strchr(s, ','))) {
+			*p = '\0';
+			zend_disable_function(s, p - s TSRMLS_CC);
+			s = p + 1;
+		}
+		zend_disable_function(s, strlen(s) TSRMLS_CC);
+	}
+
+	/* Can only disable additional classes */
+	if (zend_hash_find(options, "disable_classes", sizeof("disable_classes"), (void**)&tmpzval) == SUCCESS &&
+		Z_TYPE_PP(tmpzval) == IS_STRING) {
+		/* This buffer needs to be around when the error message occurs since the underlying implementation in Zend expects it to be */
+		int disable_classes_len = Z_STRLEN_PP(tmpzval);
+		char *p, *s;
+
+		data->disable_classes = estrndup(Z_STRVAL_PP(tmpzval), disable_classes_len);
+
+		s = data->disable_classes;
+		while ((p = strchr(s, ','))) {
+			*p = '\0';
+			zend_disable_class(s, p - s TSRMLS_CC);
+			s = p + 1;
+		}
+		zend_disable_class(s, strlen(s) TSRMLS_CC);
+	}
+
+	/* Additional superglobals to define */
+	if (zend_hash_find(options, "runkit.superglobal", sizeof("runkit.superglobal"), (void**)&tmpzval) == SUCCESS &&
+		Z_TYPE_PP(tmpzval) == IS_STRING) {
+		char *p, *s = Z_STRVAL_PP(tmpzval);
+		int len;
+
+		while ((p = strchr(s, ','))) {
+			if (p - s) {
+				*p = '\0';
+				zend_register_auto_global(s, p - s, NULL TSRMLS_CC);
+				zend_auto_global_disable_jit(s, p - s TSRMLS_CC);
+				*p = ',';
+			}
+			s = p + 1;
+		}
+		len = strlen(s);
+		zend_register_auto_global(s, len, NULL TSRMLS_CC);
+		zend_auto_global_disable_jit(s, len TSRMLS_CC);
+	}
+
+}
+
+
+/* {{{ proto void Runkit_Sandbox::__construct(array options)
+ * Options: see php_runkit_sandbox_ini_override()
+ */
 PHP_METHOD(Runkit_Sandbox,__construct)
 {
 	zval *zsandbox, *options = NULL, **tmpzval;
 	char *sandbox_name;
 	int sandbox_name_len;
 	php_runkit_sandbox_data *data;
-	zend_bool safe_mode = 0, use_open_basedir = 0, disallow_url_fopen = 0;
-	char open_basedir[MAXPATHLEN] = {0};
-	int open_basedir_len = 0, disable_functions_len = 0, disable_classes_len, superglobals_len;
-	char *disable_functions = NULL, *disable_classes = NULL, *superglobals = NULL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|a", &options) == FAILURE) {
 		RETURN_NULL();
 	}
 
-	if (options &&
-		zend_hash_find(Z_ARRVAL_P(options), "safe_mode", sizeof("safe_mode"), (void**)&tmpzval) == SUCCESS &&
-		zval_is_true(*tmpzval)) {
-		/* Can be turned on from off, but not the other way around */
-		safe_mode = 1;
-	}
-
-	if (options &&
-		zend_hash_find(Z_ARRVAL_P(options), "open_basedir", sizeof("open_basedir"), (void**)&tmpzval) == SUCCESS) {
-		zval copyval = **tmpzval;
-		char current_basedir[MAXPATHLEN] = {0}, *pcurrent_basedir = INI_STR("open_basedir");
-		int current_basedir_len = 0;
-
-		zval_copy_ctor(&copyval);
-		copyval.refcount = 1;
-		copyval.is_ref = 0;
-		convert_to_string(&copyval);
-		realpath(Z_STRVAL(copyval), open_basedir);
-		open_basedir_len = strlen(open_basedir);
-		zval_dtor(&copyval);
-
-		if (!pcurrent_basedir) {
-			use_open_basedir = 1;
-		} else {
-			realpath(pcurrent_basedir, current_basedir);
-			current_basedir_len = strlen(current_basedir);
-			if (current_basedir_len == 0 || (
-				current_basedir_len < open_basedir_len &&
-				strncmp(current_basedir, open_basedir, current_basedir_len) == 0)) {
-				use_open_basedir = 1;
-			}
-		}
-	}
-
-	if (options &&
-		zend_hash_find(Z_ARRVAL_P(options), "allow_url_fopen", sizeof("allow_url_fopen"), (void**)&tmpzval) == SUCCESS &&
-		!zval_is_true(*tmpzval)) {
-		/* Can be turned off from on, but not the other way around */
-		disallow_url_fopen = 1;
-	}
-
-	if (options &&
-		zend_hash_find(Z_ARRVAL_P(options), "disable_functions", sizeof("disable_functions"), (void**)&tmpzval) == SUCCESS &&
-		Z_TYPE_PP(tmpzval) == IS_STRING) {
-		/* NOTE: disable_functions doesn't prevent $obj->function_name, it only blocks code inside $obj->eval() statements
-		 * This could be brought into consistency, but I actually think it's okay to leave those functions available to calling script
-		 */
-
-		/* This buffer needs to be around when the error message occurs since the underlying implementation in Zend expects it to be */
-		disable_functions = estrndup(Z_STRVAL_PP(tmpzval), Z_STRLEN_PP(tmpzval));
-		disable_functions_len = Z_STRLEN_PP(tmpzval);
-	}
-
-	if (options &&
-		zend_hash_find(Z_ARRVAL_P(options), "disable_classes", sizeof("disable_classes"), (void**)&tmpzval) == SUCCESS &&
-		Z_TYPE_PP(tmpzval) == IS_STRING) {
-
-		disable_classes = estrndup(Z_STRVAL_PP(tmpzval), Z_STRLEN_PP(tmpzval));
-		disable_classes_len = Z_STRLEN_PP(tmpzval);
-	}
-
-	if (options &&
-		zend_hash_find(Z_ARRVAL_P(options), "runkit.superglobal", sizeof("runkit.superglobal"), (void**)&tmpzval) == SUCCESS &&
-		Z_TYPE_PP(tmpzval) == IS_STRING) {
-
-		superglobals = Z_STRVAL_PP(tmpzval);
-		superglobals_len = Z_STRLEN_PP(tmpzval);
-	}
-
 	data = emalloc(sizeof(php_runkit_sandbox_data));
 	data->context = tsrm_new_interpreter_context();
-	data->disable_functions = disable_functions;
-	data->disable_classes = disable_classes;
+	data->disable_functions = NULL;
+	data->disable_classes = NULL;
 	data->output_handler = NULL;
 
 	PHP_RUNKIT_SANDBOX_BEGIN(data);
@@ -223,52 +333,11 @@ PHP_METHOD(Runkit_Sandbox,__construct)
 
 		zend_alter_ini_entry("implicit_flush", sizeof("implicit_flush") , "1", 1, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
 		zend_alter_ini_entry("max_execution_time", sizeof("max_execution_time") , "0", 1, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
-		if (safe_mode) {
-			zend_alter_ini_entry("safe_mode", sizeof("safe_mode"), "1", 1, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
+		if (options) {
+			/* Override a select subset of .ini options for increased restriction in the sandbox */
+			php_runkit_sandbox_ini_override(data, Z_ARRVAL_P(options) TSRMLS_CC);
 		}
-		if (use_open_basedir) {
-			zend_alter_ini_entry("open_basedir", sizeof("open_basedir"), open_basedir, open_basedir_len, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
-		}
-		if (disallow_url_fopen) {
-			zend_alter_ini_entry("allow_url_fopen", sizeof("allow_url_fopen"), "0", 1, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
-		}
-		if (disable_functions) {
-			char *p, *s = disable_functions;
 
-			while ((p = strchr(s, ','))) {
-				*p = '\0';
-				zend_disable_function(s, p - s TSRMLS_CC);
-				s = p + 1;
-			}
-			zend_disable_function(s, strlen(s) TSRMLS_CC);
-		}
-		if (disable_classes) {
-			char *p, *s = disable_classes;
-
-			while ((p = strchr(s, ','))) {
-				*p = '\0';
-				zend_disable_class(s, p - s TSRMLS_CC);
-				s = p + 1;
-			}
-			zend_disable_class(s, strlen(s) TSRMLS_CC);
-		}
-		if (superglobals) {
-			char *p, *s = superglobals;
-			int len;
-
-			while ((p = strchr(s, ','))) {
-				if (p - s) {
-					*p = '\0';
-					zend_register_auto_global(s, p - s, NULL TSRMLS_CC);
-					zend_auto_global_disable_jit(s, p - s TSRMLS_CC);
-					*p = ',';
-				}
-				s = p + 1;
-			}
-			len = strlen(s);
-			zend_register_auto_global(s, len, NULL TSRMLS_CC);
-			zend_auto_global_disable_jit(s, len TSRMLS_CC);
-		}
 		SG(headers_sent) = 1;
 		SG(request_info).no_headers = 1;
 		SG(server_context) = data;
