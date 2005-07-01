@@ -358,6 +358,7 @@ methodname_len);
 	}
 
 	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, methodname, fe);
+	RETURN_TRUE;
 }
 /* }}} */
 
@@ -456,6 +457,7 @@ PHP_FUNCTION(runkit_method_remove)
 	}
 
 	PHP_RUNKIT_DEL_MAGIC_METHOD(ce, fe);
+	RETURN_TRUE;
 }
 /* }}} */
 
@@ -519,6 +521,7 @@ methodname_len);
 	}
 
 	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, newname, fe);
+	RETURN_TRUE;
 }
 /* }}} */
 
