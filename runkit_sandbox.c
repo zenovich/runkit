@@ -239,7 +239,7 @@ inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_data *data, HashT
 		zval copyval = **tmpzval;
 
 		zval_copy_ctor(&copyval);
-		convert_to_bool(&copyval);
+		convert_to_boolean(&copyval);
 
 		if (!Z_BVAL(copyval)) {
 			zend_alter_ini_entry("allow_url_fopen", sizeof("allow_url_fopen"), "0", 1, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
