@@ -79,6 +79,9 @@ PHP_FUNCTION(runkit_constant_add);
 PHP_FUNCTION(runkit_class_emancipate);
 PHP_FUNCTION(runkit_class_adopt);
 PHP_FUNCTION(runkit_import);
+#ifdef ZEND_ENGINE_2
+PHP_FUNCTION(runkit_object_id);
+#endif
 #ifdef PHP_RUNKIT_SANDBOX
 PHP_FUNCTION(runkit_sandbox_output_handler);
 PHP_FUNCTION(runkit_lint);

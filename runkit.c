@@ -30,7 +30,6 @@ PHP_FUNCTION(runkit_superglobals)
 	long idx;
 
 	array_init(return_value);
-
 	for(zend_hash_internal_pointer_reset_ex(CG(auto_globals), &pos);
 		(type = zend_hash_get_current_key_ex(CG(auto_globals), &sg, &sg_len, &idx, 0, &pos)) != HASH_KEY_NON_EXISTANT;
 		zend_hash_move_forward_ex(CG(auto_globals), &pos)) {
@@ -47,6 +46,10 @@ PHP_FUNCTION(runkit_superglobals)
 function_entry runkit_functions[] = {
 	PHP_FE(runkit_class_emancipate,									NULL)
 	PHP_FE(runkit_class_adopt,										NULL)
+
+#ifdef ZEND_ENGINE_2
+	PHP_FE(runkit_object_id,										NULL)
+#endif
 
 	PHP_FE(runkit_import,											NULL)
 #ifdef PHP_RUNKIT_SUPERGLOBALS
