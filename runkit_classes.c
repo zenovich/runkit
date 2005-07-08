@@ -79,12 +79,18 @@ static int php_runkit_inherit_methods(zend_function *fe, zend_class_entry *ce TS
 	zend_hash_apply_with_arguments(EG(class_table), (apply_func_args_t)php_runkit_update_children_methods, 5, ancestor_class, ce, fe, function_name, function_name_len);
 
 	function_add_ref(fe);
+
+	/* method name keys must be lower case */
+	function_name = estrndup(function_name, function_name_len);
+	php_strtolower(function_name, function_name_len);
 	if (zend_hash_add_or_update(&ce->function_table, function_name, function_name_len + 1, fe, sizeof(zend_function), NULL, HASH_ADD) == FAILURE) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error inheriting parent methods");
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error inheriting parent method: %s()", fe->common.function_name);
+		efree(function_name);
 		return ZEND_HASH_APPLY_KEEP;
 	}
+	efree(function_name);
 
-	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, function_name, fe);
+	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, fe->common.function_name, fe);
 
 	return ZEND_HASH_APPLY_KEEP;
 }
