@@ -15,6 +15,19 @@ Execute code in restricted environment (sandboxing).</description>
   </maintainers>
 
    <release>
+    <version>0.4</version>
+    <state>beta</state>
+    <date>2005-07-08</date>
+    <notes>Added runkit_object_id() -- Fetch object handle identifier
+Fixed runkit_import() -- Fold case when adding method keys to ce->function_table
+Fixed runkit_method_*() to properly return TRUE on success
+Refactored INI overrides in Runkit_Sandbox for readability
+Added INI overrides in Runkit_Sandbox (safe_mode_gid,safe_mode_include_dir)
+Fixed callback parameter to runkit_sandbox_output_handler() to be optional.</notes>
+   </release>
+
+  <changelog>
+   <release>
     <version>0.3.0</version>
     <state>beta</state>
     <date>2005-06-03</date>
@@ -23,7 +36,6 @@ Implement die(), exit(), echo(), and print() and catch bailouts properly.
 Implement output capturing -- runkit_sandbox_output_handler().</notes>
    </release>
 
-  <changelog>
    <release>
     <version>0.2.0</version>
     <state>beta</state>

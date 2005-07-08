@@ -13,21 +13,23 @@ Execute code in restricted environment (sandboxing).
   <email>pollita@php.net</email>
   <active>yes</active>
  </lead>
- <date>2005-06-03</date>
- <time>17:08:00</time>
 
+ <date>2005-07-08</date>
  <version>
-  <release>0.3.0</release>
-  <api>0.3.0</api>
+  <release>0.4</release>
+  <api>0.4</api>
  </version>
  <stability>
   <release>beta</release>
   <api>beta</api>
  </stability>
  <license uri="http://www.php.net/license/3_0.txt">PHP</license>
- <notes>Put php_runkit.h back into the package.xml file. (pear install runkit-beta should work now).
-Implement die(), exit(), echo(), and print() and catch bailouts properly.
-Implement output capturing -- runkit_sandbox_output_handler().</notes>
+ <notes>Added runkit_object_id() -- Fetch object handle identifier
+Fixed runkit_import() -- Fold case when adding method keys to ce->function_table
+Fixed runkit_method_*() to properly return TRUE on success
+Refactored INI overrides in Runkit_Sandbox for readability
+Added INI overrides in Runkit_Sandbox (safe_mode_gid,safe_mode_include_dir)
+Fixed callback parameter to runkit_sandbox_output_handler() to be optional.</notes>
 
  <contents>
   <dir name="/">
@@ -114,6 +116,21 @@ Fix registration of more than one superglobal.
 Implement include(), require(), include_once(), require_once(), unset(), isset(), and empty() support in Runkit_Sandbox.
 Add runkit.superglobal as &quot;special&quot; ini supported by Runkit_Sandbox.
 Fix runkit_class_*.phpt regression tests to be version agnostic.</notes>
+  </release>
+  <release>
+   <date>2005-06-03</date>
+   <version>
+    <release>0.3.0</release>
+    <api>0.3.0</api>
+   </version>
+   <stability>
+    <release>beta</release>
+    <api>beta</api>
+   </stability>
+   <license uri="http://www.php.net/license/3_0.txt">PHP</license>
+   <notes>Put php_runkit.h back into the package.xml file. (pear install runkit-beta should work now).
+Implement die(), exit(), echo(), and print() and catch bailouts properly.
+Implement output capturing -- runkit_sandbox_output_handler().</notes>
   </release>
  </changelog>
 </package>
