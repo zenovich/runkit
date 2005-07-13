@@ -58,6 +58,7 @@ Fix runkit_class_*.phpt regression tests to be version agnostic.</notes>
   <filelist>
    <file role="src" name="config.m4"/>
    <file role="src" name="config.w32"/>
+   <file role="src" name="runkit.dsp"/>
    <file role="src" name="php_runkit.h"/>
    <file role="src" name="runkit.c"/>
    <file role="src" name="runkit_classes.c"/>

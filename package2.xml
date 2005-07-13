@@ -62,6 +62,7 @@ Fixed callback parameter to runkit_sandbox_output_handler() to be optional.</not
    </dir> <!-- //tests -->
    <file name="config.m4" role="src" />
    <file name="config.w32" role="src" />
+   <file name="runkit.dsp" role="src" />
    <file name="README" role="doc" />
    <file name="php_runkit.h" role="src" />
    <file name="runkit.c" role="src" />
