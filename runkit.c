@@ -120,12 +120,19 @@ PHP_INI_END()
 ZEND_GET_MODULE(runkit)
 #endif
 
+static void php_runkit_globals_ctor(zend_runkit_globals *runkit_global)
+{
+	runkit_global->current_sandbox = NULL;
+}
+
 /* {{{ PHP_MINIT_FUNCTION
  */
 PHP_MINIT_FUNCTION(runkit)
 {
 #ifdef ZTS
-	ts_allocate_id(&runkit_globals_id, sizeof(zend_runkit_globals), NULL, NULL);
+	ts_allocate_id(&runkit_globals_id, sizeof(zend_runkit_globals), php_runkit_globals_ctor, NULL);
+#else
+	php_runkit_globals_ctor(&runkit_globals);
 #endif
 
 	REGISTER_INI_ENTRIES();
