@@ -87,6 +87,7 @@ PHP_FUNCTION(runkit_sandbox_output_handler);
 PHP_FUNCTION(runkit_lint);
 PHP_FUNCTION(runkit_lint_file);
 #endif
+PHP_FUNCTION(runkit_filter);
 
 typedef struct _php_runkit_sandbox_data php_runkit_sandbox_data;
 
@@ -179,6 +180,48 @@ int php_runkit_shutdown_sandbox(SHUTDOWN_FUNC_ARGS);
 #define PHP_RUNKIT_DEL_MAGIC_METHOD(ce, fe)
 #endif
 
+/* Expects: void
+ * If a typecast is possible, convert, if not: default */
+#define PHP_RUNKIT_FILTER_NULL				0x0001
+#define PHP_RUNKIT_FILTER_BOOL				0x0002
+#define PHP_RUNKIT_FILTER_INT				0x0003
+#define PHP_RUNKIT_FILTER_FLOAT				0x0004
+#define PHP_RUNKIT_FILTER_STRING			0x0005
+#define PHP_RUNKIT_FILTER_ARRAY				0x0006
+#define PHP_RUNKIT_FILTER_OBJECT			0x0007
+#define PHP_RUNKIT_FILTER_RESOURCE			0x0008
+
+/* Expects: classname */
+#define PHP_RUNKIT_FILTER_INSTANCE			0x000F
+
+/* Expects: void */
+#define PHP_RUNKIT_FILTER_NONEMPTY			0x0010
+#define PHP_RUNKIT_FILTER_ALPHA				0x0011
+#define PHP_RUNKIT_FILTER_DIGIT				0x0012
+#define PHP_RUNKIT_FILTER_NUMERIC			0x0013
+#define PHP_RUNKIT_FILTER_ALNUM				0x0014
+#define PHP_RUNKIT_FILTER_GPC_ON			0x0015
+#define PHP_RUNKIT_FILTER_GPC_OFF			0x0016
+#define PHP_RUNKIT_FILTER_IPV4				0x0017
+#define PHP_RUNKIT_FILTER_IPV6				0x0018
+#define PHP_RUNKIT_FILTER_IP				0x0019
+#define PHP_RUNKIT_FILTER_HOSTNAME			0x001A
+#define PHP_RUNKIT_FILTER_SCHEME_FILE		0x001B
+#define PHP_RUNKIT_FILTER_SCHEME_ANY		0x001C
+#define PHP_RUNKIT_FILTER_SCHEME_NETWORK	0x001D
+#define PHP_RUNKIT_FILTER_SCHEME_LOCAL		0x001E
+
+/* Expects: string wrappernames (coma separated list of acceptable) */
+#define PHP_RUNKIT_FILTER_SCHEME			0x001F
+/* Expects: callback (callback returns bool) */
+#define PHP_RUNKIT_FILTER_USER				0x0020
+/* Expects: callback (callback returns result) */
+#define PHP_RUNKIT_FILTER_INLINE			0x0021
+
+/* Expects: string pattern */
+#define PHP_RUNKIT_FILTER_EREG				0x0022
+#define PHP_RUNKIT_FILTER_EREGI				0x0023
+#define PHP_RUNKIT_FILTER_PREG				0x0024
 
 #endif	/* PHP_RUNKIT_H */
 
