@@ -180,6 +180,10 @@ int php_runkit_shutdown_sandbox(SHUTDOWN_FUNC_ARGS);
 #define PHP_RUNKIT_DEL_MAGIC_METHOD(ce, fe)
 #endif
 
+#if PHP_MAJOR_VERSION > 4 || (PHP_MAJOR_VERSION == 4 && PHP_MINOR_VERSION >= 3)
+extern php_stream_wrapper *php_runkit_plainfiles_wrapper_ptr;
+#endif
+
 /* Expects: void
  * If a typecast is possible, convert, if not: default */
 #define PHP_RUNKIT_FILTER_NULL				0x0001

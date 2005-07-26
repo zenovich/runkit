@@ -194,6 +194,11 @@ PHP_MINIT_FUNCTION(runkit)
 	REGISTER_LONG_CONSTANT("RUNKIT_FILTER_EREGI",			PHP_RUNKIT_FILTER_EREGI,			CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("RUNKIT_FILTER_PREG",			PHP_RUNKIT_FILTER_PREG,				CONST_CS | CONST_PERSISTENT);
 
+#if PHP_MAJOR_VERSION > 4 || (PHP_MAJOR_VERSION == 4 && PHP_MINOR_VERSION >= 3)
+	/* plain files wrapper isn't exported, get it the hard way */
+	php_runkit_plainfiles_wrapper_ptr = php_stream_locate_url_wrapper("file://", NULL, IGNORE_URL TSRMLS_CC);
+#endif
+
 #ifdef PHP_RUNKIT_SANDBOX
 	return php_runkit_init_sandbox(INIT_FUNC_ARGS_PASSTHRU);
 #else

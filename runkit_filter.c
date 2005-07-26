@@ -40,7 +40,7 @@
 #endif
 
 #if PHP_MAJOR_VERSION > 4 || (PHP_MAJOR_VERSION == 4 && PHP_MINOR_VERSION >= 3)
-extern php_stream_wrapper php_plain_files_wrapper;
+php_stream_wrapper *php_runkit_plainfiles_wrapper_ptr;
 #endif
 
 static int php_runkit_filter_parse_parameters(int argc TSRMLS_DC, HashTable **symtable, char **variable, int *variable_len, zval **def, zval ****filters)
@@ -323,7 +323,7 @@ PHP_FUNCTION(runkit_filter)
 				}
 
 				wrapper = php_stream_locate_url_wrapper(Z_STRVAL_P(var), NULL, 0 TSRMLS_CC);
-				if (!wrapper || wrapper == &php_plain_files_wrapper) {
+				if (!wrapper || wrapper == php_runkit_plainfiles_wrapper_ptr) {
 					goto use_default;
 				}
 				break;
