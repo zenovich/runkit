@@ -1131,10 +1131,18 @@ int php_runkit_init_sandbox(INIT_FUNC_ARGS)
 	php_runkit_object_handlers.has_property				= php_runkit_sandbox_has_property;
 	php_runkit_object_handlers.unset_property			= php_runkit_sandbox_unset_property;
 
-	php_runkit_object_handlers.read_dimension			= NULL; /* No current behavior for ArrayAccess */
+	/* No current behavior for ArrayAccess */
+	php_runkit_object_handlers.read_dimension			= NULL;
 	php_runkit_object_handlers.write_dimension			= NULL;
 	php_runkit_object_handlers.has_dimension			= NULL;
 	php_runkit_object_handlers.unset_dimension			= NULL;
+
+	/* No properties table exists (as such) */
+	php_runkit_object_handlers.get_properties			= NULL;
+	php_runkit_object_handlers.count_elements			= NULL;
+
+	/* ZE has no concept of modifying properties in place via zval** across contexts */
+	php_runkit_object_handlers.get_property_ptr_ptr		= NULL;
 
 	php_runkit_sandbox_sapi_ub_write = sapi_module.ub_write;
 	sapi_module.ub_write = php_runkit_sandbox_body_write;
