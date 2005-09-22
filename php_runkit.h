@@ -89,11 +89,11 @@ PHP_FUNCTION(runkit_lint_file);
 #endif
 PHP_FUNCTION(runkit_filter);
 
-typedef struct _php_runkit_sandbox_data php_runkit_sandbox_data;
+typedef struct _php_runkit_sandbox_object php_runkit_sandbox_object;
 
 ZEND_BEGIN_MODULE_GLOBALS(runkit)
 	HashTable *superglobals;
-	php_runkit_sandbox_data *current_sandbox;
+	php_runkit_sandbox_object *current_sandbox;
 ZEND_END_MODULE_GLOBALS(runkit)
 
 extern ZEND_DECLARE_MODULE_GLOBALS(runkit);
