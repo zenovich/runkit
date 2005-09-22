@@ -256,6 +256,7 @@ PHP_RINIT_FUNCTION(runkit)
 {
 #ifdef PHP_RUNKIT_SUPERGLOBALS
 	char *s = INI_STR("runkit.superglobal"), *p;
+	char *dup;
 	int len;
 
 	RUNKIT_G(superglobals) = NULL;
@@ -263,7 +264,7 @@ PHP_RINIT_FUNCTION(runkit)
 		return SUCCESS;
 	}
 
-	s = estrdup(s);
+	s = dup = estrdup(s);
 	p = strchr(s, ',');
 	while(p) {
 		if (p - s) {
@@ -278,7 +279,7 @@ PHP_RINIT_FUNCTION(runkit)
 	if (len) {
 		php_runkit_register_auto_global(s, len TSRMLS_CC);
 	}
-	efree(s);
+	efree(dup);
 #endif /* PHP_RUNKIT_SUPERGLOBALS */
 
 	RUNKIT_G(current_sandbox) = NULL;
