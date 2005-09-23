@@ -687,9 +687,9 @@ PHP_METHOD(Runkit_Sandbox,die)
 }
 /* }}} */
 
-/* *******************
-   * Object Handlers *
-   ******************* */
+/* *********************
+   * Property Handlers *
+   ********************* */
 
 /* {{{ php_runkit_sandbox_read_property
 	read_property handler */
@@ -902,9 +902,9 @@ static void php_runkit_sandbox_unset_property(zval *object, zval *member TSRMLS_
 }
 /* }}} */
 
-/* ******************
-   * Object Support *
-   ****************** */
+/* ********************
+   * Output Buffering *
+   ******************** */
 
 /* Original write function */
 static int (*php_runkit_sandbox_sapi_ub_write)(const char *str, uint str_length TSRMLS_DC);
@@ -975,7 +975,9 @@ static int php_runkit_sandbox_body_write(const char *str, uint str_length TSRMLS
 	If no callback is passed, the current output handler is not changed
 	If a non-true output handler is passed(NULL,false,0,0.0,'',array()), output handling is turned off
 
-	If an error occurs (such as callback is not callable), NULL is returned */
+	If an error occurs (such as callback is not callable), NULL is returned
+
+	DEPRECATED!  THIS WILL BE REMOVED PRIOR TO THE RELEASE OF RUNKIT VERSION 1.0!!! */
 PHP_FUNCTION(runkit_sandbox_output_handler)
 {
 	zval *sandbox;
@@ -987,6 +989,7 @@ PHP_FUNCTION(runkit_sandbox_output_handler)
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "O|z", &sandbox, php_runkit_sandbox_class_entry, &callback) == FAILURE) {
 		RETURN_NULL();
 	}
+	php_error_docref(NULL TSRMLS_CC, E_NOTICE, "Use of runkit_sandbox_output_handler() is deprecated.  Use $sandbox['output_handler'] instead.");
 
 	objval = PHP_RUNKIT_SANDBOX_FETCHBOX(sandbox);	
 	if (!objval->active) {
@@ -1047,6 +1050,177 @@ PHP_FUNCTION(runkit_sandbox_output_handler)
 		objval->output_handler = cb;
 	}
 }
+/* }}} */
+
+/* **********************
+   * Dimension Handlers *
+   ********************** */
+
+#define PHP_RUNKIT_SANDBOX_SETTING_ENTRY(name, get, set)	{ #name, sizeof(#name) - 1, get, set },
+#define PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RW(name)			{ #name, sizeof(#name) - 1, php_runkit_sandbox_ ## name ## _getter, php_runkit_sandbox_ ## name ## _setter },
+#define PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RO(name)	{ #name, sizeof(#name) - 1, php_runkit_sandbox_ ## name ## _getter, NULL },
+#define PHP_RUNKIT_SANDBOX_SETTING_ENTRY_WO(name)	{ #name, sizeof(#name) - 1, NULL, php_runkit_sandbox_ ## name ## _setter },
+#define PHP_RUNKIT_SANDBOX_SETTING_SETTER(name)		static void php_runkit_sandbox_ ## name ## _setter(php_runkit_sandbox_object *objval, zval *value TSRMLS_DC)
+#define PHP_RUNKIT_SANDBOX_SETTING_GETTER(name)		static zval* php_runkit_sandbox_ ## name ## _getter(php_runkit_sandbox_object *objval TSRMLS_DC)
+
+PHP_RUNKIT_SANDBOX_SETTING_GETTER(output_handler)
+{
+	if (!objval->output_handler) {
+		return EG(uninitialized_zval_ptr);
+	}
+
+	return objval->output_handler;
+}
+
+PHP_RUNKIT_SANDBOX_SETTING_SETTER(output_handler)
+{
+	if (!zend_is_callable(value, IS_CALLABLE_CHECK_NO_ACCESS, NULL)) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "output_handler is not a value callback is expected to be a valid callback");
+	}
+
+	if (objval->output_handler) {
+		zval_ptr_dtor(&objval->output_handler);
+	}
+
+	value->refcount++;
+	objval->output_handler = value;
+}
+
+struct _php_runkit_sandbox_settings {
+	char *name;
+	int name_len;
+	zval *(*getter)(php_runkit_sandbox_object *objval TSRMLS_DC);
+	int (*setter)(php_runkit_sandbox_object *objval, zval *value TSRMLS_DC);
+};
+
+struct _php_runkit_sandbox_settings php_runkit_sandbox_settings[] = {
+	PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RW(output_handler)
+	{ NULL , 0, NULL, NULL }
+};
+
+static int php_runkit_sandbox_setting_lookup(char *setting, int setting_len) {
+	struct _php_runkit_sandbox_settings *s = php_runkit_sandbox_settings;
+	int i;
+
+	for(i = 0; s[i].name; i++) {
+		if (s[i].name_len == setting_len) {
+			if (strncmp(s[i].name, setting, setting_len) == 0) {
+				return i;
+			}
+		}
+	}
+
+	return -1;
+}
+
+/* {{{ php_runkit_sandbox_read_dimension
+	read_dimension Handler */
+static zval *php_runkit_sandbox_read_dimension(zval *object, zval *member, int type TSRMLS_DC)
+{
+	php_runkit_sandbox_object *objval;
+	zval member_copy;
+	int setting_id;
+
+	objval = PHP_RUNKIT_SANDBOX_FETCHBOX(object);
+	if (!objval) {
+		return EG(uninitialized_zval_ptr);
+	}
+
+	if (Z_TYPE_P(member) != IS_STRING) {
+		member_copy = *member;
+		member = &member_copy;
+		zval_copy_ctor(member);
+		member->refcount = 1;
+		convert_to_string(member);
+	}
+
+	setting_id = php_runkit_sandbox_setting_lookup(Z_STRVAL_P(member), Z_STRLEN_P(member));
+
+	if (member == &member_copy) {
+		zval_dtor(member);
+	}
+
+	if (setting_id < 0 || !php_runkit_sandbox_settings[setting_id].getter) {
+		/* No such setting */
+		return EG(uninitialized_zval_ptr);
+	}
+
+	return php_runkit_sandbox_settings[setting_id].getter(objval TSRMLS_CC);
+}
+/* }}} */
+
+/* {{{ php_runkit_sandbox_write_dimension
+	write_dimension Handler */
+static void php_runkit_sandbox_write_dimension(zval *object, zval *member, zval *value TSRMLS_DC)
+{
+	php_runkit_sandbox_object *objval;
+	zval member_copy;
+	int setting_id;
+
+	objval = PHP_RUNKIT_SANDBOX_FETCHBOX(object);
+	if (!objval) {
+		return;
+	}
+
+	if (Z_TYPE_P(member) != IS_STRING) {
+		member_copy = *member;
+		member = &member_copy;
+		zval_copy_ctor(member);
+		member->refcount = 1;
+		convert_to_string(member);
+	}
+
+	setting_id = php_runkit_sandbox_setting_lookup(Z_STRVAL_P(member), Z_STRLEN_P(member));
+
+	if (member == &member_copy) {
+		zval_dtor(member);
+	}
+
+	if (setting_id < 0 || !php_runkit_sandbox_settings[setting_id].setter) {
+		/* No such setting */
+		return;
+	}
+
+	php_runkit_sandbox_settings[setting_id].setter(objval, value TSRMLS_CC);
+}
+/* }}} */
+
+/* {{{ php_runkit_sandbox_has_dimension
+	has_dimension Handler */
+static int php_runkit_sandbox_has_dimension(zval *object, zval *member, int check_empty TSRMLS_DC)
+{
+	php_runkit_sandbox_object *objval;
+	zval member_copy;
+	int setting_id;
+
+	objval = PHP_RUNKIT_SANDBOX_FETCHBOX(object);
+	if (!objval) {
+		return 0;
+	}
+
+	if (Z_TYPE_P(member) != IS_STRING) {
+		member_copy = *member;
+		member = &member_copy;
+		zval_copy_ctor(member);
+		member->refcount = 1;
+		convert_to_string(member);
+	}
+
+	setting_id = php_runkit_sandbox_setting_lookup(Z_STRVAL_P(member), Z_STRLEN_P(member));
+
+	if (member == &member_copy) {
+		zval_dtor(member);
+	}
+
+	if (setting_id < 0) {
+		/* No such setting */
+		return 0;
+	}
+
+	/* write only offsets are considered non-existent */
+	return php_runkit_sandbox_settings[setting_id].getter ? 1 : 0;
+}
+/* }}} */
 
 /* ********************
    * Class Definition *
@@ -1131,10 +1305,10 @@ int php_runkit_init_sandbox(INIT_FUNC_ARGS)
 	php_runkit_object_handlers.has_property				= php_runkit_sandbox_has_property;
 	php_runkit_object_handlers.unset_property			= php_runkit_sandbox_unset_property;
 
-	/* No current behavior for ArrayAccess */
-	php_runkit_object_handlers.read_dimension			= NULL;
-	php_runkit_object_handlers.write_dimension			= NULL;
-	php_runkit_object_handlers.has_dimension			= NULL;
+	/* Dimension access allow introspection and run-time tweaking */
+	php_runkit_object_handlers.read_dimension			= php_runkit_sandbox_read_dimension;
+	php_runkit_object_handlers.write_dimension			= php_runkit_sandbox_write_dimension;
+	php_runkit_object_handlers.has_dimension			= php_runkit_sandbox_has_dimension;
 	php_runkit_object_handlers.unset_dimension			= NULL;
 
 	/* No properties table exists (as such) */

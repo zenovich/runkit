@@ -1,5 +1,5 @@
 --TEST--
-runkit_sandbox_output_handler() function
+Runkit_Sandbox['output_handler'] setting
 --SKIPIF--
 <?php if(!extension_loaded("runkit")) print "skip"; 
       /* May not be available due to lack of TSRM interpreter support */
@@ -7,10 +7,11 @@ runkit_sandbox_output_handler() function
 --FILE--
 <?php
 $php = new Runkit_Sandbox();
-runkit_sandbox_output_handler($php, 'test_handler');
+$php['output_handler'] = 'test_handler';
 $php->echo("foo\n");
 $php->echo("Barish\n");
 $php->echo("BAZimbly\n");
+var_dump($php['output_handler']);
 
 function test_handler($str) {
   /* Echoing and returning have the same effect here, both go to parent's output chain */
@@ -18,11 +19,11 @@ function test_handler($str) {
 
   return strtoupper($str);
 }
---EXPECTF--
-Notice: runkit_sandbox_output_handler(): Use of runkit_sandbox_output_handler() is deprecated.  Use $sandbox['output_handler'] instead. in %s on line %d
+--EXPECT--
 Received string from sandbox: 4 bytes long.
 FOO
 Received string from sandbox: 7 bytes long.
 BARISH
 Received string from sandbox: 9 bytes long.
 BAZIMBLY
+string(12) "test_handler"
