@@ -1086,6 +1086,17 @@ PHP_RUNKIT_SANDBOX_SETTING_SETTER(output_handler)
 	objval->output_handler = value;
 }
 
+PHP_RUNKIT_SANDBOX_SETTING_GETTER(active)
+{
+	zval *retval;
+
+	MAKE_STD_ZVAL(retval);
+	ZVAL_BOOL(retval, objval->active);
+	retval->refcount = 0; /* Noone else owns this value */
+
+	return retval;
+}
+
 struct _php_runkit_sandbox_settings {
 	char *name;
 	int name_len;
@@ -1095,6 +1106,7 @@ struct _php_runkit_sandbox_settings {
 
 struct _php_runkit_sandbox_settings php_runkit_sandbox_settings[] = {
 	PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RW(output_handler)
+	PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RO(active)
 	{ NULL , 0, NULL, NULL }
 };
 
