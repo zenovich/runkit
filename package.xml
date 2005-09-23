@@ -15,6 +15,21 @@ Execute code in restricted environment (sandboxing).</description>
   </maintainers>
 
    <release>
+    <version>0.5</version>
+    <state>beta</state>
+    <date>2005-09-23</date>
+    <notes>NOTICE: This release demotes runkit_sandbox_output_handler() to DEPRECATED.
+Use $sandbox['output_handler'] = $handler; rather than
+runkit_sandbox_output_handler($sandbox, $handler);
+The procedural version will be removed prior to a 1.0-stable release.
+Other changes include:
+- Major refactor of Runkit_Sandbox OOP Model.
+- Addition of $sandbox['active'] R/O status indicator.
+- Fixed crash when multiple autoglobals are specified</notes>
+   </release>
+
+  <changelog>
+   <release>
     <version>0.4</version>
     <state>beta</state>
     <date>2005-07-08</date>
@@ -26,7 +41,6 @@ Added INI overrides in Runkit_Sandbox (safe_mode_gid,safe_mode_include_dir)
 Fixed callback parameter to runkit_sandbox_output_handler() to be optional.</notes>
    </release>
 
-  <changelog>
    <release>
     <version>0.3.0</version>
     <state>beta</state>

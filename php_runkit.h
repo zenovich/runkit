@@ -30,7 +30,7 @@
 #include "ext/standard/info.h"
 #include "ext/standard/php_string.h"
 
-#define PHP_RUNKIT_VERSION					"0.4"
+#define PHP_RUNKIT_VERSION					"0.5"
 #define PHP_RUNKIT_SANDBOX_CLASSNAME		"Runkit_Sandbox"
 
 #define PHP_RUNKIT_IMPORT_FUNCTIONS			0x0001
