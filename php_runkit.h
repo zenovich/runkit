@@ -32,9 +32,6 @@
 
 #define PHP_RUNKIT_VERSION					"0.4"
 #define PHP_RUNKIT_SANDBOX_CLASSNAME		"Runkit_Sandbox"
-#define PHP_RUNKIT_SANDBOX_PROPNAME			"__sandbox"
-#define PHP_RUNKIT_SANDBOX_OHPROPNAME		"__output_handler"
-#define PHP_RUNKIT_SANDBOX_RESNAME			"Runkit Sandbox State Information"
 
 #define PHP_RUNKIT_IMPORT_FUNCTIONS			0x0001
 #define PHP_RUNKIT_IMPORT_CLASS_METHODS		0x0002
