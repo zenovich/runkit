@@ -1286,6 +1286,9 @@ static void php_runkit_sandbox_dtor(php_runkit_sandbox_object *objval TSRMLS_DC)
 		zval_ptr_dtor(&objval->output_handler);
 	}
 
+	zend_hash_destroy(objval->obj.properties);
+	FREE_HASHTABLE(objval->obj.properties);
+
 	efree(objval);
 }
 
@@ -1296,6 +1299,9 @@ static zend_object_value php_runkit_sandbox_ctor(zend_class_entry *ce TSRMLS_DC)
 
 	objval = ecalloc(1, sizeof(php_runkit_sandbox_object));
 	objval->obj.ce = ce;
+	ALLOC_HASHTABLE(objval->obj.properties);
+	zend_hash_init(objval->obj.properties, 0, NULL, ZVAL_PTR_DTOR, 0);
+
 	retval.handle = zend_objects_store_put(objval, NULL, (zend_objects_free_object_storage_t)php_runkit_sandbox_dtor, NULL TSRMLS_CC);
 	retval.handlers = &php_runkit_object_handlers;
 
@@ -1322,10 +1328,6 @@ int php_runkit_init_sandbox(INIT_FUNC_ARGS)
 	php_runkit_object_handlers.write_dimension			= php_runkit_sandbox_write_dimension;
 	php_runkit_object_handlers.has_dimension			= php_runkit_sandbox_has_dimension;
 	php_runkit_object_handlers.unset_dimension			= NULL;
-
-	/* No properties table exists (as such) */
-	php_runkit_object_handlers.get_properties			= NULL;
-	php_runkit_object_handlers.count_elements			= NULL;
 
 	/* ZE has no concept of modifying properties in place via zval** across contexts */
 	php_runkit_object_handlers.get_property_ptr_ptr		= NULL;
