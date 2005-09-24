@@ -38,12 +38,10 @@ struct _php_runkit_sandbox_object {
 #define PHP_RUNKIT_SANDBOX_BEGIN(objval) \
 { \
 	void *prior_context = tsrm_set_interpreter_context(objval->context); \
-	TSRMLS_FETCH(); \
-	RUNKIT_G(current_sandbox) = objval;
+	TSRMLS_FETCH();
 
 #define PHP_RUNKIT_SANDBOX_ABORT(objval) \
 { \
-	RUNKIT_G(current_sandbox) = NULL; \
 	tsrm_set_interpreter_context(prior_context); \
 }
 
@@ -327,6 +325,7 @@ PHP_METHOD(Runkit_Sandbox,__construct)
 		SG(server_context) = objval;
 		SG(options) = SAPI_OPTION_NO_CHDIR;
 		php_request_startup(TSRMLS_C);
+		RUNKIT_G(current_sandbox) = objval;
 		PG(during_request_startup) = 0;
 	PHP_RUNKIT_SANDBOX_END(objval);
 
@@ -1075,7 +1074,7 @@ PHP_RUNKIT_SANDBOX_SETTING_GETTER(output_handler)
 PHP_RUNKIT_SANDBOX_SETTING_SETTER(output_handler)
 {
 	if (!zend_is_callable(value, IS_CALLABLE_CHECK_NO_ACCESS, NULL)) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "output_handler is not a value callback is expected to be a valid callback");
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "output_handler is not a valid callback is expected to be a valid callback");
 	}
 
 	if (objval->output_handler) {
