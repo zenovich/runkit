@@ -103,6 +103,7 @@ Fix runkit_class_*.phpt regression tests to be version agnostic.</notes>
     <file role="test" name="runkit_sandbox_output_handler.phpt"/>
     <file role="test" name="Runkit_Sandbox_.output_handler.phpt"/>
     <file role="test" name="Runkit_Sandbox_.active.phpt"/>
+    <file rolw="test" name="Runkit_Sandbox__grandchild.phpt"/>
     <file role="test" name="Runkit_Sandbox__call.phpt"/>
     <file role="test" name="Runkit_Sandbox__die.phpt"/>
     <file role="test" name="Runkit_Sandbox__disable_functions.phpt"/>
