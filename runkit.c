@@ -34,7 +34,7 @@ PHP_FUNCTION(runkit_superglobals)
 		(type = zend_hash_get_current_key_ex(CG(auto_globals), &sg, &sg_len, &idx, 0, &pos)) != HASH_KEY_NON_EXISTANT;
 		zend_hash_move_forward_ex(CG(auto_globals), &pos)) {
 		if (type == HASH_KEY_IS_STRING) {
-			add_next_index_stringl(return_value, sg, sg_len, 1);
+			add_next_index_stringl(return_value, sg, sg_len - 1, 1);
 		}
 	}
 }
@@ -234,7 +234,7 @@ PHP_RINIT_FUNCTION(runkit)
 			*p = '\0';
 			php_runkit_register_auto_global(s, p - s TSRMLS_CC);
 		}
-		s = p + 1;
+		s = ++p;
 		p = strchr(p, ',');
 	}
 
