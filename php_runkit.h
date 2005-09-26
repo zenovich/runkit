@@ -32,6 +32,7 @@
 
 #define PHP_RUNKIT_VERSION					"0.5"
 #define PHP_RUNKIT_SANDBOX_CLASSNAME		"Runkit_Sandbox"
+#define PHP_RUNKIT_SANDBOX_PARENT_CLASSNAME	"Runkit_Sandbox_Parent"
 
 #define PHP_RUNKIT_IMPORT_FUNCTIONS			0x0001
 #define PHP_RUNKIT_IMPORT_CLASS_METHODS		0x0002
@@ -90,14 +91,19 @@ typedef struct _php_runkit_sandbox_object php_runkit_sandbox_object;
 ZEND_BEGIN_MODULE_GLOBALS(runkit)
 	HashTable *superglobals;
 	php_runkit_sandbox_object *current_sandbox;
+	HashTable *misplaced_internal_functions;
+	HashTable *replaced_internal_functions;
+	zend_bool internal_override;
 ZEND_END_MODULE_GLOBALS(runkit)
 
 extern ZEND_DECLARE_MODULE_GLOBALS(runkit);
 
 #ifdef ZTS
 #define		RUNKIT_G(v)		TSRMG(runkit_globals_id, zend_runkit_globals *, v)
+#define RUNKIT_TSRMLS_C		TSRMLS_C
 #else
 #define		RUNKIT_G(v)		(runkit_globals.v)
+#define RUNKIT_TSRMLS_C		NULL
 #endif
 
 #if defined(ZEND_ENGINE_2) && !defined(zend_hash_add_or_update)
@@ -111,6 +117,8 @@ extern ZEND_DECLARE_MODULE_GLOBALS(runkit);
 int php_runkit_check_call_stack(zend_op_array *op_array TSRMLS_DC);
 void php_runkit_function_copy_ctor(zend_function *fe, char *newname);
 int php_runkit_generate_lambda_method(char *arguments, int arguments_len, char *phpcode, int phpcode_len, zend_function **pfe TSRMLS_DC);
+int php_runkit_destroy_misplaced_functions(zend_hash_key *hash_key TSRMLS_DC);
+int php_runkit_restore_internal_functions(zend_internal_function *fe, int num_args, va_list args, zend_hash_key *hash_key);
 
 /* runkit_methods.c */
 int php_runkit_fetch_class(char *classname, int classname_len, zend_class_entry **pce TSRMLS_DC);

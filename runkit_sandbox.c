@@ -116,6 +116,8 @@ static int php_runkit_sandbox_array_deep_copy(zval **value, int num_args, va_lis
  *		ADDITIONAL classes, on top of already disabled classes to disable
  * runkit.superglobals = coma_separated,list_of,superglobals
  *		ADDITIONAL superglobals to define in the subinterpreter
+ * runkit.internal_override = false
+ *		runkit.internal_override may be disabled (but not re-enabled) within sandboxes
  */
 inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_object *objval, HashTable *options TSRMLS_DC)
 {
@@ -290,6 +292,17 @@ inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_object *objval, H
 		zend_auto_global_disable_jit(s, len TSRMLS_CC);
 	}
 
+	/* May only turn off */
+	if (zend_hash_find(options, "runkit.internal_override", sizeof("runkit.internal_override"), (void**)&tmpzval) == SUCCESS) {
+		zval copyval = **tmpzval;
+
+		zval_copy_ctor(&copyval);
+		convert_to_boolean(&copyval);
+
+		if (!Z_BVAL(copyval)) {
+			zend_alter_ini_entry("runkit.internal_override", sizeof("runkit.internal_override"), "0", 1, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
+		}
+	}
 }
 
 

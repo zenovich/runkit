@@ -37,9 +37,19 @@ int php_runkit_check_call_stack(zend_op_array *op_array TSRMLS_DC)
 }
 /* }}} */
 
+static void php_runkit_hash_key_dtor(zend_hash_key *hash_key)
+{
+	efree(hash_key->arKey);
+}
+
+/* Maintain order */
+#define PHP_RUNKIT_FETCH_FUNCTION_INSPECT	0
+#define PHP_RUNKIT_FETCH_FUNCTION_REMOVE	1
+#define PHP_RUNKIT_FETCH_FUNCTION_RENAME	2
+
 /* {{{ php_runkit_fetch_function
  */
-static int php_runkit_fetch_function(char *fname, int fname_len, zend_function **pfe TSRMLS_DC)
+static int php_runkit_fetch_function(char *fname, int fname_len, zend_function **pfe, int flag TSRMLS_DC)
 {
 	zend_function *fe;
 
@@ -50,13 +60,40 @@ static int php_runkit_fetch_function(char *fname, int fname_len, zend_function *
 		return FAILURE;
 	}
 
-	if (fe->type != ZEND_USER_FUNCTION) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s() is not a user function", fname);
+	if (fe->type == ZEND_INTERNAL_FUNCTION &&
+		!RUNKIT_G(internal_override)) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s() is an internal function and runkit.internal_override is disabled", fname);
+		return FAILURE;
+	}
+
+	if (fe->type != ZEND_USER_FUNCTION &&
+		fe->type != ZEND_INTERNAL_FUNCTION) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s() is not a user or normal internal function", fname);
 		return FAILURE;
 	}
 
 	if (pfe) {
 		*pfe = fe;
+	}
+
+	if (fe->type == ZEND_INTERNAL_FUNCTION &&
+		flag >= PHP_RUNKIT_FETCH_FUNCTION_REMOVE) {
+		if (!RUNKIT_G(replaced_internal_functions)) {
+			ALLOC_HASHTABLE(RUNKIT_G(replaced_internal_functions));
+			zend_hash_init(RUNKIT_G(replaced_internal_functions), 4, NULL, NULL, 0);
+		}
+		zend_hash_add(RUNKIT_G(replaced_internal_functions), fname, fname_len + 1, (void*)fe, sizeof(zend_function), NULL);
+		if (flag >= PHP_RUNKIT_FETCH_FUNCTION_RENAME) {
+			zend_hash_key hash_key;
+
+			if (!RUNKIT_G(misplaced_internal_functions)) {
+				ALLOC_HASHTABLE(RUNKIT_G(misplaced_internal_functions));
+				zend_hash_init(RUNKIT_G(misplaced_internal_functions), 4, NULL, php_runkit_hash_key_dtor, 0);
+			}
+			hash_key.nKeyLength = fname_len + 1;
+			hash_key.arKey = estrndup(fname, hash_key.nKeyLength);
+			zend_hash_next_index_insert(RUNKIT_G(misplaced_internal_functions), (void*)&hash_key, sizeof(zend_hash_key), NULL);
+		}
 	}
 
 	return SUCCESS;
@@ -183,6 +220,39 @@ int php_runkit_generate_lambda_method(char *arguments, int arguments_len, char *
 }
 /* }}} */
 
+/* {{{ php_runkit_destroy_misplaced_functions
+	Wipe old internal functions that were renamed to new targets
+	They'll get replaced soon enough */
+int php_runkit_destroy_misplaced_functions(zend_hash_key *hash_key TSRMLS_DC)
+{
+	if (!hash_key->nKeyLength) {
+		/* Nonsense, skip it */
+		return ZEND_HASH_APPLY_REMOVE;
+	}
+
+	zend_hash_del(EG(function_table), hash_key->arKey, hash_key->nKeyLength);
+
+	return ZEND_HASH_APPLY_REMOVE;
+}
+/* }}} */
+
+/* {{{ php_runkit_restore_internal_functions
+	Cleanup after modifications to internal functions */
+int php_runkit_restore_internal_functions(zend_internal_function *fe, int num_args, va_list args, zend_hash_key *hash_key)
+{
+	void ***tsrm_ls = va_arg(args, void***); /* NULL when !defined(ZTS) */
+
+	if (!hash_key->nKeyLength) {
+		/* Nonsense, skip it */
+		return ZEND_HASH_APPLY_REMOVE;
+	}
+
+	zend_hash_update(EG(function_table), hash_key->arKey, hash_key->nKeyLength, (void*)fe, sizeof(zend_function), NULL);
+
+	return ZEND_HASH_APPLY_REMOVE;
+}
+/* }}} */
+
 /* *****************
    * Functions API *
    ***************** */
@@ -234,7 +304,7 @@ PHP_FUNCTION(runkit_function_remove)
 		RETURN_FALSE;
 	}
 
-	if (php_runkit_fetch_function(funcname, funcname_len, NULL TSRMLS_CC) == FAILURE) {
+	if (php_runkit_fetch_function(funcname, funcname_len, NULL, PHP_RUNKIT_FETCH_FUNCTION_REMOVE TSRMLS_CC) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -262,13 +332,14 @@ PHP_FUNCTION(runkit_function_rename)
 		RETURN_FALSE;
 	}
 
-	if (php_runkit_fetch_function(sfunc, sfunc_len, &fe TSRMLS_CC) == FAILURE) {
+	if (php_runkit_fetch_function(sfunc, sfunc_len, &fe, PHP_RUNKIT_FETCH_FUNCTION_RENAME TSRMLS_CC) == FAILURE) {
 		RETURN_FALSE;
 	}
 
-	func = *fe;
-
-	function_add_ref(&func);
+	if (fe->type == ZEND_USER_FUNCTION) {
+		func = *fe;
+		function_add_ref(&func);
+	}
 
 	if (zend_hash_del(EG(function_table), sfunc, sfunc_len + 1) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error removing reference to old function name %s()", sfunc);
@@ -276,8 +347,10 @@ PHP_FUNCTION(runkit_function_rename)
 		RETURN_FALSE;
 	}
 
-	efree(func.common.function_name);
-	func.common.function_name = estrndup(dfunc, dfunc_len);
+	if (func.type == ZEND_USER_FUNCTION) {
+		efree(func.common.function_name);
+		func.common.function_name = estrndup(dfunc, dfunc_len);
+	}
 
 	if (zend_hash_add(EG(function_table), dfunc, dfunc_len + 1, &func, sizeof(zend_function), NULL) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to add refernce to new function name %s()", dfunc);
@@ -302,7 +375,7 @@ PHP_FUNCTION(runkit_function_redefine)
 		RETURN_FALSE;
 	}
 
-	if (php_runkit_fetch_function(funcname, funcname_len, NULL TSRMLS_CC) == FAILURE) {
+	if (php_runkit_fetch_function(funcname, funcname_len, NULL, PHP_RUNKIT_FETCH_FUNCTION_REMOVE TSRMLS_CC) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -346,11 +419,24 @@ PHP_FUNCTION(runkit_function_copy)
 		RETURN_FALSE;
 	}
 
-	if (php_runkit_fetch_function(sfunc, sfunc_len, &fe TSRMLS_CC) == FAILURE) {
+	if (php_runkit_fetch_function(sfunc, sfunc_len, &fe, PHP_RUNKIT_FETCH_FUNCTION_INSPECT TSRMLS_CC) == FAILURE) {
 		RETURN_FALSE;
 	}
 
-	function_add_ref(fe);
+	if (fe->type == ZEND_USER_FUNCTION) {
+		function_add_ref(fe);
+	} else {
+		zend_hash_key hash_key;
+
+		hash_key.nKeyLength = dfunc_len + 1;
+		hash_key.arKey = estrndup(dfunc, hash_key.nKeyLength);
+		if (!RUNKIT_G(misplaced_internal_functions)) {
+			ALLOC_HASHTABLE(RUNKIT_G(misplaced_internal_functions));
+			zend_hash_init(RUNKIT_G(misplaced_internal_functions), 4, NULL, php_runkit_hash_key_dtor, 0);
+		}
+		zend_hash_next_index_insert(RUNKIT_G(misplaced_internal_functions), (void*)&hash_key, sizeof(zend_hash_key), NULL);
+	}
+
 	if (zend_hash_add(EG(function_table), dfunc, dfunc_len + 1, fe, sizeof(zend_function), NULL) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to add refernce to new function name %s()", dfunc);
 		zend_function_dtor(fe);
