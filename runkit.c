@@ -121,7 +121,7 @@ PHP_INI_END()
 ZEND_GET_MODULE(runkit)
 #endif
 
-static void php_runkit_globals_ctor(zend_runkit_globals *runkit_global)
+static void php_runkit_globals_ctor(zend_runkit_globals *runkit_global TSRMLS_DC)
 {
 	runkit_global->current_sandbox = NULL;
 }
