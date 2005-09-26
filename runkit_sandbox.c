@@ -22,7 +22,7 @@
 #ifdef PHP_RUNKIT_SANDBOX
 #include "SAPI.h"
 
-static zend_object_handlers php_runkit_object_handlers;
+static zend_object_handlers php_runkit_sandbox_object_handlers;
 static zend_class_entry *php_runkit_sandbox_class_entry;
 
 struct _php_runkit_sandbox_object {
@@ -1315,7 +1315,7 @@ static zend_object_value php_runkit_sandbox_ctor(zend_class_entry *ce TSRMLS_DC)
 	zend_hash_init(objval->obj.properties, 0, NULL, ZVAL_PTR_DTOR, 0);
 
 	retval.handle = zend_objects_store_put(objval, NULL, (zend_objects_free_object_storage_t)php_runkit_sandbox_dtor, NULL TSRMLS_CC);
-	retval.handlers = &php_runkit_object_handlers;
+	retval.handlers = &php_runkit_sandbox_object_handlers;
 
 	return retval;
 }
@@ -1329,20 +1329,20 @@ int php_runkit_init_sandbox(INIT_FUNC_ARGS)
 	php_runkit_sandbox_class_entry->create_object = php_runkit_sandbox_ctor;
 
 	/* Make a new object handler struct with a couple minor changes */
-	memcpy(&php_runkit_object_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
-	php_runkit_object_handlers.read_property			= php_runkit_sandbox_read_property;
-	php_runkit_object_handlers.write_property			= php_runkit_sandbox_write_property;
-	php_runkit_object_handlers.has_property				= php_runkit_sandbox_has_property;
-	php_runkit_object_handlers.unset_property			= php_runkit_sandbox_unset_property;
+	memcpy(&php_runkit_sandbox_object_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
+	php_runkit_sandbox_object_handlers.read_property			= php_runkit_sandbox_read_property;
+	php_runkit_sandbox_object_handlers.write_property			= php_runkit_sandbox_write_property;
+	php_runkit_sandbox_object_handlers.has_property				= php_runkit_sandbox_has_property;
+	php_runkit_sandbox_object_handlers.unset_property			= php_runkit_sandbox_unset_property;
 
 	/* Dimension access allow introspection and run-time tweaking */
-	php_runkit_object_handlers.read_dimension			= php_runkit_sandbox_read_dimension;
-	php_runkit_object_handlers.write_dimension			= php_runkit_sandbox_write_dimension;
-	php_runkit_object_handlers.has_dimension			= php_runkit_sandbox_has_dimension;
-	php_runkit_object_handlers.unset_dimension			= NULL;
+	php_runkit_sandbox_object_handlers.read_dimension			= php_runkit_sandbox_read_dimension;
+	php_runkit_sandbox_object_handlers.write_dimension			= php_runkit_sandbox_write_dimension;
+	php_runkit_sandbox_object_handlers.has_dimension			= php_runkit_sandbox_has_dimension;
+	php_runkit_sandbox_object_handlers.unset_dimension			= NULL;
 
 	/* ZE has no concept of modifying properties in place via zval** across contexts */
-	php_runkit_object_handlers.get_property_ptr_ptr		= NULL;
+	php_runkit_sandbox_object_handlers.get_property_ptr_ptr		= NULL;
 
 	php_runkit_sandbox_sapi_ub_write = sapi_module.ub_write;
 	sapi_module.ub_write = php_runkit_sandbox_body_write;
