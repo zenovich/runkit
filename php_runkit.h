@@ -158,6 +158,9 @@ struct _php_runkit_sandbox_object {
 	char *disable_functions;
 	char *disable_classes;
 	zval *output_handler;					/* points to function which lives in the parent_context */
+
+	unsigned char bailed_out_in_eval;		/* Patricide is an ugly thing.  Especially when it leaves bailout address mis-set */
+
 	unsigned char active;					/* A bailout will set this to 0 */
 	unsigned char parent_access;			/* May Runkit_Sandbox_Parent be instantiated/used? */
 	unsigned char parent_read;				/* May parent vars be read? */

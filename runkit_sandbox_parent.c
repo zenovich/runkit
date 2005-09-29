@@ -34,7 +34,8 @@ typedef struct _php_runkit_sandbox_parent_object {
 #define PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval) \
 { \
 	void *prior_context = tsrm_set_interpreter_context(objval->self->parent_context); \
-	TSRMLS_FETCH();
+	TSRMLS_FETCH(); \
+	zend_try {
 
 #define PHP_RUNKIT_SANDBOX_PARENT_ABORT(objval) \
 { \
@@ -42,7 +43,14 @@ typedef struct _php_runkit_sandbox_parent_object {
 }
 
 #define PHP_RUNKIT_SANDBOX_PARENT_END(objval) \
+	} zend_catch { \
+		objval->self->bailed_out_in_eval = 1; \
+	} zend_end_try(); \
 	PHP_RUNKIT_SANDBOX_PARENT_ABORT(objval); \
+	if (objval->self->bailed_out_in_eval) { \
+		/* If the parent is dying, so are we */ \
+		zend_bailout(); \
+	} \
 }
 
 #define PHP_RUNKIT_SANDBOX_PARENT_FETCHBOX(zval_p) (php_runkit_sandbox_parent_object*)zend_objects_get_address(zval_p TSRMLS_CC)
@@ -91,7 +99,7 @@ PHP_METHOD(Runkit_Sandbox_Parent,__call)
 {
 	zval *func_name, *args, *retval = NULL;
 	php_runkit_sandbox_parent_object *objval;
-	int bailed_out = 0, argc;
+	int argc;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "za", &func_name, &args) == FAILURE) {
 		RETURN_NULL();
@@ -500,7 +508,7 @@ static void php_runkit_sandbox_parent_write_property(zval *object, zval *member,
 	}
 	if (!objval->self->parent_access || !objval->self->parent_write) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Access to modify parent's symbol table is disallowed");
-		return EG(uninitialized_zval_ptr);
+		return;
 	}
 
 	if (Z_TYPE_P(member) != IS_STRING) {
@@ -618,7 +626,7 @@ static void php_runkit_sandbox_parent_unset_property(zval *object, zval *member 
 	}
 	if (!objval->self->parent_access || !objval->self->parent_write) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Access to modify parent's symbol table is disallowed");
-		return EG(uninitialized_zval_ptr);
+		return;
 	}
 
 	if (Z_TYPE_P(member) != IS_STRING) {

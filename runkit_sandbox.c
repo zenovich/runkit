@@ -37,6 +37,10 @@ static zend_class_entry *php_runkit_sandbox_class_entry;
 
 #define PHP_RUNKIT_SANDBOX_END(objval) \
 	PHP_RUNKIT_SANDBOX_ABORT(objval); \
+	if (objval->bailed_out_in_eval) { \
+		/* We're actually in bailout mode, but the child's bailout address had to resolve first */ \
+		zend_bailout(); \
+	} \
 }
 
 #define PHP_RUNKIT_SANDBOX_FETCHBOX(zval_p) (php_runkit_sandbox_object*)zend_objects_get_address(zval_p TSRMLS_CC)
