@@ -163,11 +163,12 @@ PHP_MINIT_FUNCTION(runkit)
 	REGISTER_LONG_CONSTANT("CLASSKIT_AGGREGATE_OVERRIDE",	PHP_RUNKIT_IMPORT_OVERRIDE,			CONST_CS | CONST_PERSISTENT);
 #endif
 
+	return (1)
 #ifdef PHP_RUNKIT_SANDBOX
-	return php_runkit_init_sandbox(INIT_FUNC_ARGS_PASSTHRU);
-#else
-	return SUCCESS;
+		&& (php_runkit_init_sandbox(INIT_FUNC_ARGS_PASSTHRU) == SUCCESS)
+		&& (php_runkit_init_sandbox_parent(INIT_FUNC_ARGS_PASSTHRU) == SUCCESS)
 #endif
+				? SUCCESS : FAILURE;
 }
 /* }}} */
 
@@ -177,11 +178,12 @@ PHP_MSHUTDOWN_FUNCTION(runkit)
 {
 	UNREGISTER_INI_ENTRIES();
 
+	return (1)
 #ifdef PHP_RUNKIT_SANDBOX
-	return php_runkit_shutdown_sandbox(SHUTDOWN_FUNC_ARGS_PASSTHRU);
-#else
-	return SUCCESS;
+		&& (php_runkit_shutdown_sandbox(SHUTDOWN_FUNC_ARGS_PASSTHRU) == SUCCESS)
+		&& (php_runkit_shutdown_sandbox_parent(SHUTDOWN_FUNC_ARGS_PASSTHRU) == SUCCESS)
 #endif
+				? SUCCESS : FAILURE;
 }
 /* }}} */
 

@@ -15,6 +15,30 @@ Execute code in restricted environment (sandboxing).</description>
   </maintainers>
 
    <release>
+    <version>0.6</version>
+    <state>beta</state>
+    <date>2005-09-28</date>
+    <notes>Implement Runkit_Sandbox_Parent to give child access to parent's scope
+Parent must enable $sandbox['parent_access'] at minimum.
+Additional boolean settings include:
+parent_read - Can read properties in parent_scope
+parent_write - Can modify properties in parent_scope
+parent_call - Can call parent's functions
+parent_eval - Can eval arbitrary code in parent scope
+parent_include - Can include/require code in parent scope
+parent_echo - Can echo/print data (bypass output_handler)
+patricide_enabled - Can kill parent (commiting suicide in the process)
+A special parent_scope setting modified the active symbol table of the parent
+as seen from the child according to:
+0 = Global Scope
+1 = Current active symbol table
+2 = Previously active symbol table
+3 = The one before that...etc...
+</notes>
+   </release>
+
+  <changelog>
+   <release>
     <version>0.5</version>
     <state>beta</state>
     <date>2005-09-23</date>
@@ -28,7 +52,6 @@ Other changes include:
 - Fixed crash when multiple autoglobals are specified</notes>
    </release>
 
-  <changelog>
    <release>
     <version>0.4</version>
     <state>beta</state>
@@ -81,6 +104,7 @@ Fix runkit_class_*.phpt regression tests to be version agnostic.</notes>
    <file role="src" name="runkit_import.c"/>
    <file role="src" name="runkit_methods.c"/>
    <file role="src" name="runkit_sandbox.c"/>
+   <file role="src" name="runkit_sandbox_parent.c"/>
    <file role="doc" name="README"/>
    <file role="src" name="tsrm_5.0.diff"/>
    <dir role="test" name="tests">
@@ -112,6 +136,14 @@ Fix runkit_class_*.phpt regression tests to be version agnostic.</notes>
     <file role="test" name="Runkit_Sandbox__eval.phpt"/>
     <file role="test" name="Runkit_Sandbox__get.phpt"/>
     <file role="test" name="Runkit_Sandbox__set.phpt"/>
+    <file role="test" name="Runkit_Sandbox_Parent1.phpt"/>
+    <file role="test" name="Runkit_Sandbox_Parent2.phpt"/>
+    <file role="test" name="Runkit_Sandbox_Parent__.call.access.phpt"/>
+    <file role="test" name="Runkit_Sandbox_Parent__.call.phpt"/>
+    <file role="test" name="Runkit_Sandbox_Parent__.read.access.phpt"/>
+    <file role="test" name="Runkit_Sandbox_Parent__.read.phpt"/>
+    <file role="test" name="Runkit_Sandbox_Parent__.write.access.phpt"/>
+    <file role="test" name="Runkit_Sandbox_Parent__.write.phpt"/>
    </dir>
   </filelist>
 

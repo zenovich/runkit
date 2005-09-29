@@ -144,6 +144,54 @@ int php_runkit_update_children_consts(zend_class_entry *ce, int num_args, va_lis
 /* runkit_sandbox.c */
 int php_runkit_init_sandbox(INIT_FUNC_ARGS);
 int php_runkit_shutdown_sandbox(SHUTDOWN_FUNC_ARGS);
+
+/* runkit_sandbox_parent.c */
+int php_runkit_init_sandbox_parent(INIT_FUNC_ARGS);
+int php_runkit_shutdown_sandbox_parent(SHUTDOWN_FUNC_ARGS);
+int php_runkit_sandbox_array_deep_copy(zval **value, int num_args, va_list args, zend_hash_key *hash_key);
+
+struct _php_runkit_sandbox_object {
+	zend_object obj;
+
+	void *context, *parent_context;
+
+	char *disable_functions;
+	char *disable_classes;
+	zval *output_handler;					/* points to function which lives in the parent_context */
+	unsigned char active;					/* A bailout will set this to 0 */
+	unsigned char parent_access;			/* May Runkit_Sandbox_Parent be instantiated/used? */
+	unsigned char parent_read;				/* May parent vars be read? */
+	unsigned char parent_write;				/* May parent vars be written to? */
+	unsigned char parent_eval;				/* May arbitrary code be run in the parent? */
+	unsigned char parent_include;			/* May arbitrary code be included in the parent? (includes require(), and *_once()) */
+	unsigned char parent_echo;				/* May content be echoed from the parent scope? */
+	unsigned char parent_call;				/* May functions in the parent scope be called? */
+	unsigned char patricide_enabled;		/* Are $PARENT->die() / $PARENT->exit() enabled? */
+	unsigned long parent_scope;				/* 0 == Global, 1 == Active, 2 == Active->prior, 3 == Active->prior->prior, etc... */
+};
+
+/* TODO: It'd be nice if objects and resources could make it across... */
+#define PHP_SANDBOX_CROSS_SCOPE_ZVAL_COPY_CTOR(pzv) \
+{ \
+	switch (Z_TYPE_P(pzv)) { \
+		case IS_RESOURCE: \
+		case IS_OBJECT: \
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to translate resource, or object variable to current context."); \
+			ZVAL_NULL(pzv); \
+			break; \
+		case IS_ARRAY: \
+		{ \
+			HashTable *original_hashtable = Z_ARRVAL_P(pzv); \
+			array_init(pzv); \
+			zend_hash_apply_with_arguments(original_hashtable, (apply_func_args_t)php_runkit_sandbox_array_deep_copy, 1, Z_ARRVAL_P(pzv) TSRMLS_CC); \
+			break; \
+		} \
+		default: \
+			zval_copy_ctor(pzv); \
+	} \
+	(pzv)->refcount = 1; \
+	(pzv)->is_ref = 0; \
+}
 #endif
 
 #define PHP_RUNKIT_SPLIT_PN(classname, classname_len, pnname, pnname_len) { \

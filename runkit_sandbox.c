@@ -25,16 +25,6 @@
 static zend_object_handlers php_runkit_sandbox_object_handlers;
 static zend_class_entry *php_runkit_sandbox_class_entry;
 
-struct _php_runkit_sandbox_object {
-	zend_object obj;
-
-	void *context, *parent_context;
-	char *disable_functions;
-	char *disable_classes;
-	zval *output_handler; /* points to function which lives in the parent_context */
-	unsigned char active; /* A bailout will set this to 0 */
-};
-
 #define PHP_RUNKIT_SANDBOX_BEGIN(objval) \
 { \
 	void *prior_context = tsrm_set_interpreter_context(objval->context); \
@@ -51,30 +41,7 @@ struct _php_runkit_sandbox_object {
 
 #define PHP_RUNKIT_SANDBOX_FETCHBOX(zval_p) (php_runkit_sandbox_object*)zend_objects_get_address(zval_p TSRMLS_CC)
 
-/* TODO: It'd be nice if objects and resources could make it across... */
-#define PHP_SANDBOX_CROSS_SCOPE_ZVAL_COPY_CTOR(pzv) \
-{ \
-	switch (Z_TYPE_P(pzv)) { \
-		case IS_RESOURCE: \
-		case IS_OBJECT: \
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to translate resource, or object variable to current context."); \
-			ZVAL_NULL(pzv); \
-			break; \
-		case IS_ARRAY: \
-		{ \
-			HashTable *original_hashtable = Z_ARRVAL_P(pzv); \
-			array_init(pzv); \
-			zend_hash_apply_with_arguments(original_hashtable, (apply_func_args_t)php_runkit_sandbox_array_deep_copy, 1, Z_ARRVAL_P(pzv) TSRMLS_CC); \
-			break; \
-		} \
-		default: \
-			zval_copy_ctor(pzv); \
-	} \
-	(pzv)->refcount = 1; \
-	(pzv)->is_ref = 0; \
-}
-
-static int php_runkit_sandbox_array_deep_copy(zval **value, int num_args, va_list args, zend_hash_key *hash_key)
+int php_runkit_sandbox_array_deep_copy(zval **value, int num_args, va_list args, zend_hash_key *hash_key)
 {
 	HashTable *target_hashtable = va_arg(args, HashTable*);
 	TSRMLS_D = va_arg(args, void***);
@@ -1070,10 +1037,36 @@ PHP_FUNCTION(runkit_sandbox_output_handler)
 
 #define PHP_RUNKIT_SANDBOX_SETTING_ENTRY(name, get, set)	{ #name, sizeof(#name) - 1, get, set },
 #define PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RW(name)			{ #name, sizeof(#name) - 1, php_runkit_sandbox_ ## name ## _getter, php_runkit_sandbox_ ## name ## _setter },
-#define PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RO(name)	{ #name, sizeof(#name) - 1, php_runkit_sandbox_ ## name ## _getter, NULL },
-#define PHP_RUNKIT_SANDBOX_SETTING_ENTRY_WO(name)	{ #name, sizeof(#name) - 1, NULL, php_runkit_sandbox_ ## name ## _setter },
+#define PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RD(name)	{ #name, sizeof(#name) - 1, php_runkit_sandbox_ ## name ## _getter, NULL },
+#define PHP_RUNKIT_SANDBOX_SETTING_ENTRY_WR(name)	{ #name, sizeof(#name) - 1, NULL, php_runkit_sandbox_ ## name ## _setter },
 #define PHP_RUNKIT_SANDBOX_SETTING_SETTER(name)		static void php_runkit_sandbox_ ## name ## _setter(php_runkit_sandbox_object *objval, zval *value TSRMLS_DC)
 #define PHP_RUNKIT_SANDBOX_SETTING_GETTER(name)		static zval* php_runkit_sandbox_ ## name ## _getter(php_runkit_sandbox_object *objval TSRMLS_DC)
+
+#define PHP_RUNKIT_SANDBOX_SETTING_BOOL_WR(name) \
+PHP_RUNKIT_SANDBOX_SETTING_SETTER(name) \
+{ \
+	zval copyval = *value; \
+\
+	zval_copy_ctor(&copyval); \
+	convert_to_boolean(&copyval); \
+	objval->name = Z_BVAL(copyval) ? 1 : 0; \
+}
+#define PHP_RUNKIT_SANDBOX_SETTING_BOOL_RD(name) \
+PHP_RUNKIT_SANDBOX_SETTING_GETTER(name) \
+{ \
+	zval *retval; \
+\
+	ALLOC_ZVAL(retval); \
+	Z_TYPE_P(retval) = IS_BOOL; \
+	Z_BVAL_P(retval) = objval->name; \
+	retval->refcount = 0; \
+	retval->is_ref = 0; \
+\
+	return retval; \
+}
+#define PHP_RUNKIT_SANDBOX_SETTING_BOOL_RW(name) \
+PHP_RUNKIT_SANDBOX_SETTING_BOOL_WR(name) \
+PHP_RUNKIT_SANDBOX_SETTING_BOOL_RD(name)
 
 PHP_RUNKIT_SANDBOX_SETTING_GETTER(output_handler)
 {
@@ -1098,16 +1091,45 @@ PHP_RUNKIT_SANDBOX_SETTING_SETTER(output_handler)
 	objval->output_handler = value;
 }
 
-PHP_RUNKIT_SANDBOX_SETTING_GETTER(active)
+PHP_RUNKIT_SANDBOX_SETTING_GETTER(parent_scope)
 {
 	zval *retval;
 
 	MAKE_STD_ZVAL(retval);
-	ZVAL_BOOL(retval, objval->active);
-	retval->refcount = 0; /* Noone else owns this value */
+	ZVAL_LONG(retval, objval->parent_scope);
+	retval->refcount = 0;
 
 	return retval;
 }
+
+PHP_RUNKIT_SANDBOX_SETTING_SETTER(parent_scope)
+{
+	zval copyval = *value;
+
+	zval_copy_ctor(&copyval);
+	convert_to_long(&copyval);
+	if (Z_LVAL(copyval) < 0) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid scope, assuming 0");
+		objval->parent_scope = 0;
+		return;
+	}
+
+	/* Assumes that such a deep scope *will* exist when a var is resolved
+	 * If the scopes don't go that deep, var will be grabbed from the global scoep
+	 */
+	objval->parent_scope = Z_LVAL(copyval);
+}
+
+/* Boolean declarations */
+PHP_RUNKIT_SANDBOX_SETTING_BOOL_RD(active)
+PHP_RUNKIT_SANDBOX_SETTING_BOOL_RW(parent_access)
+PHP_RUNKIT_SANDBOX_SETTING_BOOL_RW(parent_read)
+PHP_RUNKIT_SANDBOX_SETTING_BOOL_RW(parent_write)
+PHP_RUNKIT_SANDBOX_SETTING_BOOL_RW(parent_eval)
+PHP_RUNKIT_SANDBOX_SETTING_BOOL_RW(parent_include)
+PHP_RUNKIT_SANDBOX_SETTING_BOOL_RW(parent_echo)
+PHP_RUNKIT_SANDBOX_SETTING_BOOL_RW(parent_call)
+PHP_RUNKIT_SANDBOX_SETTING_BOOL_RW(patricide_enabled)
 
 struct _php_runkit_sandbox_settings {
 	char *name;
@@ -1118,7 +1140,17 @@ struct _php_runkit_sandbox_settings {
 
 struct _php_runkit_sandbox_settings php_runkit_sandbox_settings[] = {
 	PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RW(output_handler)
-	PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RO(active)
+	/* Boolean settings */
+	PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RD(active)
+	PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RW(parent_access)
+	PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RW(parent_read)
+	PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RW(parent_write)
+	PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RW(parent_eval)
+	PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RW(parent_include)
+	PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RW(parent_echo)
+	PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RW(parent_call)
+	PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RW(parent_scope)
+	PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RW(patricide_enabled)
 	{ NULL , 0, NULL, NULL }
 };
 
@@ -1127,10 +1159,9 @@ static int php_runkit_sandbox_setting_lookup(char *setting, int setting_len) {
 	int i;
 
 	for(i = 0; s[i].name; i++) {
-		if (s[i].name_len == setting_len) {
-			if (strncmp(s[i].name, setting, setting_len) == 0) {
-				return i;
-			}
+		if (s[i].name_len == setting_len &&
+			memcmp(s[i].name, setting, setting_len) == 0) {
+			return i;
 		}
 	}
 
@@ -1250,10 +1281,11 @@ static int php_runkit_sandbox_has_dimension(zval *object, zval *member, int chec
    * Class Definition *
    ******************** */
 
-ZEND_BEGIN_ARG_INFO_EX(php_runkit_require_two_args, 0, 0, 2)
-	ZEND_ARG_PASS_INFO(0)
-	ZEND_ARG_PASS_INFO(0)
-ZEND_END_ARG_INFO()
+static
+	ZEND_BEGIN_ARG_INFO_EX(php_runkit_require_two_args, 0, 0, 2)
+		ZEND_ARG_PASS_INFO(0)
+		ZEND_ARG_PASS_INFO(0)
+	ZEND_END_ARG_INFO()
 
 static function_entry php_runkit_sandbox_functions[] = {
 	PHP_ME(Runkit_Sandbox,		__construct,				NULL,								ZEND_ACC_PUBLIC		| ZEND_ACC_CTOR)
