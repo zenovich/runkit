@@ -148,7 +148,7 @@ Fix runkit_class_*.phpt regression tests to be version agnostic.</notes>
     <file role="test" name="Runkit_Sandbox_Parent__.eval.phpt"/>
     <file role="test" name="Runkit_Sandbox_Parent__.read.access.phpt"/>
     <file role="test" name="Runkit_Sandbox_Parent__.read.phpt"/>
-    <file role="test" name="Runkit_Sandbox_Parent__.scopes.phpt"/>
+    <file role="test" name="Runkit_Sandbox_Parent__.scope.phpt"/>
     <file role="test" name="Runkit_Sandbox_Parent__.write.access.phpt"/>
     <file role="test" name="Runkit_Sandbox_Parent__.write.phpt"/>
    </dir>
