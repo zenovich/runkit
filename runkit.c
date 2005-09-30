@@ -125,6 +125,8 @@ ZEND_GET_MODULE(runkit)
 static void php_runkit_globals_ctor(zend_runkit_globals *runkit_global TSRMLS_DC)
 {
 	runkit_global->current_sandbox = NULL;
+	runkit_global->replaced_internal_functions = NULL;
+	runkit_global->misplaced_internal_functions = NULL;
 }
 
 /* {{{ PHP_MINIT_FUNCTION
