@@ -169,7 +169,7 @@ struct _php_runkit_sandbox_object {
 	unsigned char parent_include;			/* May arbitrary code be included in the parent? (includes require(), and *_once()) */
 	unsigned char parent_echo;				/* May content be echoed from the parent scope? */
 	unsigned char parent_call;				/* May functions in the parent scope be called? */
-	unsigned char patricide_enabled;		/* Are $PARENT->die() / $PARENT->exit() enabled? */
+	unsigned char parent_die;				/* Are $PARENT->die() / $PARENT->exit() enabled? */
 	unsigned long parent_scope;				/* 0 == Global, 1 == Active, 2 == Active->prior, 3 == Active->prior->prior, etc... */
 };
 

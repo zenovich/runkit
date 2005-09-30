@@ -410,7 +410,7 @@ PHP_METHOD(Runkit_Sandbox_Parent,die)
 	}
 
 	PHP_RUNKIT_SANDBOX_PARENT_FETCHBOX_VERIFY_ACCESS(objval, this_ptr);
-	if (!objval->self->patricide_enabled) {
+	if (!objval->self->parent_die) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Patricide is disabled.  Shame on you Oedipus.");
 		/* Sent as a warning, but we'll really implement it as an E_ERROR */
 		objval->self->active = 0;

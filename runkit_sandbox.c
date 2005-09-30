@@ -1133,7 +1133,7 @@ PHP_RUNKIT_SANDBOX_SETTING_BOOL_RW(parent_eval)
 PHP_RUNKIT_SANDBOX_SETTING_BOOL_RW(parent_include)
 PHP_RUNKIT_SANDBOX_SETTING_BOOL_RW(parent_echo)
 PHP_RUNKIT_SANDBOX_SETTING_BOOL_RW(parent_call)
-PHP_RUNKIT_SANDBOX_SETTING_BOOL_RW(patricide_enabled)
+PHP_RUNKIT_SANDBOX_SETTING_BOOL_RW(parent_die)
 
 struct _php_runkit_sandbox_settings {
 	char *name;
@@ -1154,7 +1154,7 @@ struct _php_runkit_sandbox_settings php_runkit_sandbox_settings[] = {
 	PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RW(parent_echo)
 	PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RW(parent_call)
 	PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RW(parent_scope)
-	PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RW(patricide_enabled)
+	PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RW(parent_die)
 	{ NULL , 0, NULL, NULL }
 };
 
