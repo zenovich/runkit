@@ -8,7 +8,7 @@ Runkit_Sandbox_Parent Class -- Patricide
 <?php
 $php = new Runkit_Sandbox();
 $php['parent_access'] = true;
-$php['patricide_enabled'] = true;
+$php['parent_die'] = true;
 $php->ini_set('html_errors',false);
 $php->ini_set('display_errors',true);
 $php->error_reporting(E_ALL);
