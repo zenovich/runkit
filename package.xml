@@ -17,9 +17,13 @@ Execute code in restricted environment (sandboxing).</description>
    <release>
     <version>0.6</version>
     <state>beta</state>
-    <date>2005-09-28</date>
-    <notes>Implement Runkit_Sandbox_Parent to give child access to parent's scope
+    <date>2005-09-30</date>
+    <notes>Add ability to modify/rename/remove internal functions.
+Requires PHP_INI_SYSTEM setting runkit.internal_override to be enabled.
+
+Implement Runkit_Sandbox_Parent to give child access to parent's scope
 Parent must enable $sandbox['parent_access'] at minimum.
+
 Additional boolean settings include:
 parent_read - Can read properties in parent_scope
 parent_write - Can modify properties in parent_scope
@@ -27,8 +31,9 @@ parent_call - Can call parent's functions
 parent_eval - Can eval arbitrary code in parent scope
 parent_include - Can include/require code in parent scope
 parent_echo - Can echo/print data (bypass output_handler)
-patricide_enabled - Can kill parent (commiting suicide in the process)
-A special parent_scope setting modified the active symbol table of the parent
+parent_die - Can kill parent (commiting suicide in the process)
+
+A special parent_scope setting modifies the active symbol table of the parent
 as seen from the child according to:
 0 = Global Scope
 1 = Current active symbol table
