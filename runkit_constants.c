@@ -184,7 +184,7 @@ static int php_runkit_constant_add(char *classname, int classname_len, char *con
 		c.module_number = PHP_USER_CONSTANT;
 #else
 		c.module_number = 0;
-#endif;
+#endif
 		return zend_register_constant(&c TSRMLS_CC);
 	}
 
