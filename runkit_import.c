@@ -219,10 +219,11 @@ static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry
  */
 static int php_runkit_import_classes(int original_num_classes, long flags TSRMLS_DC)
 {
+	HashPosition pos;
 	int i;
 
 	/* Pop the "new" classes off the class table */
-	zend_hash_internal_pointer_end(EG(class_table));
+	zend_hash_internal_pointer_end_ex(EG(class_table), &pos);
 	for(i = zend_hash_num_elements(EG(class_table));
 		i > original_num_classes; i--) {
 		zend_class_entry *ce = NULL;
@@ -230,7 +231,7 @@ static int php_runkit_import_classes(int original_num_classes, long flags TSRMLS
 		int key_len, type;
 		long idx;
 
-		zend_hash_get_current_data(EG(class_table), (void**)&ce);
+		zend_hash_get_current_data_ex(EG(class_table), (void**)&ce, &pos);
 #ifdef ZEND_ENGINE_2
 		if (ce) {
 			ce = *((zend_class_entry**)ce);
@@ -241,7 +242,7 @@ static int php_runkit_import_classes(int original_num_classes, long flags TSRMLS
 			return FAILURE;
 		}
 
-		if (((type = zend_hash_get_current_key_ex(EG(class_table), &key, &key_len, &idx, 0, NULL)) != HASH_KEY_NON_EXISTANT) && 
+		if (((type = zend_hash_get_current_key_ex(EG(class_table), &key, &key_len, &idx, 0, &pos)) != HASH_KEY_NON_EXISTANT) && 
 			ce && ce->type == ZEND_USER_CLASS) {
 			zend_class_entry *dce;
 
@@ -275,6 +276,8 @@ static int php_runkit_import_classes(int original_num_classes, long flags TSRMLS
 				php_runkit_import_class_props(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE) TSRMLS_CC);
 			}
 
+			zend_hash_move_backwards_ex(EG(class_table), &pos);
+
 			if (type == HASH_KEY_IS_STRING) {
 				if (zend_hash_del(EG(class_table), key, key_len) == FAILURE) {
 					php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to remove temporary version of class %s", ce->name);
@@ -290,7 +293,6 @@ static int php_runkit_import_classes(int original_num_classes, long flags TSRMLS
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Can not find class definition in class table");
 			return FAILURE;
 		}
-		zend_hash_move_backwards(EG(class_table));
 	}
 
 	return SUCCESS;
