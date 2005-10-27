@@ -299,6 +299,63 @@ static int php_runkit_import_classes(int original_num_classes, long flags TSRMLS
 }
 /* }}} */
 
+/* {{{ php_runkit_compile_filename
+ * Duplicate of Zend's compile_filename which explicitly calls the internal compile_file() implementation.
+ *
+ * This is only used when an accelerator has replaced zend_compile_file() with an alternate method
+ * which has been known to cause issues with overly-optimistic early binding.
+ *
+ * It would be clener to temporarily set zend_compile_file back to compile_file, but that wouldn't be
+ * particularly thread-safe so.... */
+static zend_op_array *php_runkit_compile_filename(int type, zval *filename TSRMLS_DC)
+{
+	zend_file_handle file_handle;
+	zval tmp;
+	zend_op_array *retval;
+	char *opened_path = NULL;
+
+	if (filename->type != IS_STRING) {
+		tmp = *filename;
+		zval_copy_ctor(&tmp);
+		convert_to_string(&tmp);
+		filename = &tmp;
+	}
+	file_handle.filename = filename->value.str.val;
+	file_handle.free_filename = 0;
+	file_handle.type = ZEND_HANDLE_FILENAME;
+	file_handle.opened_path = NULL;
+#if PHP_MAJOR_VERSION > 5 || (PHP_MINOR_VERSION == 5 && PHP_MINOR_VERSION > 0)
+	file_handle.handle.fp = NULL;
+#endif
+
+	/* Use builtin compiler only -- bypass accelerators and whatnot */
+	retval = compile_file(&file_handle, type TSRMLS_CC);
+#ifdef ZEND_ENGINE_2
+	if (retval && file_handle.handle.stream.handle) {
+#else /* ZEND ENGINE 1 */
+	if (retval && ZEND_IS_VALID_FILE_HANDLE(&file_handle)) {
+#endif
+		int dummy = 1;
+
+		if (!file_handle.opened_path) {
+			file_handle.opened_path = opened_path = estrndup(filename->value.str.val, filename->value.str.len);
+		}
+
+		zend_hash_add(&EG(included_files), file_handle.opened_path, strlen(file_handle.opened_path)+1, (void *)&dummy, sizeof(int), NULL);
+
+		if (opened_path) {
+			efree(opened_path);
+		}
+	}
+	zend_destroy_file_handle(&file_handle TSRMLS_CC);
+
+	if (filename==&tmp) {
+		zval_dtor(&tmp);
+	}
+	return retval;
+}
+/* }}} */
+
 /* {{{ array runkit_import(string filename[, long flags])
 	Import functions and class definitions from a file 
 	Similar to include(), but doesn't execute root op_array, and allows pre-existing functions/methods to be overridden */
@@ -309,13 +366,20 @@ PHP_FUNCTION(runkit_import)
 	zend_op_array *new_op_array;
 	zval *filename;
 	long flags = PHP_RUNKIT_IMPORT_CLASS_METHODS;
+	zend_op_array *(*local_compile_filename)(int type, zval *filename TSRMLS_DC) = compile_filename;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z|l", &filename, &flags) == FAILURE) {
 		RETURN_FALSE;
 	}
 	convert_to_string(filename);
 
-	new_op_array = compile_filename(ZEND_INCLUDE, filename TSRMLS_CC);
+	if (compile_file != zend_compile_file) {
+		/* An accellerator or other dark force is at work
+		 * Use the wrapper method to force the builtin compiler
+		 * to be used */
+		local_compile_filename = php_runkit_compile_filename;
+	}
+	new_op_array = local_compile_filename(ZEND_INCLUDE, filename TSRMLS_CC);
 	if (!new_op_array) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Import Failure");
 		RETURN_FALSE;
