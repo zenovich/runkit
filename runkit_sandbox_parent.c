@@ -46,7 +46,7 @@ typedef struct _php_runkit_sandbox_parent_object {
 	} zend_catch { \
 		objval->self->bailed_out_in_eval = 1; \
 	} zend_end_try(); \
-	PHP_RUNKIT_SANDBOX_PARENT_ABORT(objval); \
+	PHP_RUNKIT_SANDBOX_PARENT_ABORT(objval) \
 	if (objval->self->bailed_out_in_eval) { \
 		/* If the parent is dying, so are we */ \
 		zend_bailout(); \
@@ -113,7 +113,7 @@ PHP_METHOD(Runkit_Sandbox_Parent,__call)
 
 	argc = zend_hash_num_elements(Z_ARRVAL_P(args));
 
-	PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval);
+	PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval)
 	{
 		HashPosition pos;
 		zval **tmpzval, ***sandbox_args;
@@ -126,7 +126,7 @@ PHP_METHOD(Runkit_Sandbox_Parent,__call)
 			if (name) {
 				efree(name);
 			}
-			PHP_RUNKIT_SANDBOX_PARENT_ABORT(objval);
+			PHP_RUNKIT_SANDBOX_PARENT_ABORT(objval)
 			RETURN_FALSE;
 		}
 
@@ -166,14 +166,14 @@ PHP_METHOD(Runkit_Sandbox_Parent,__call)
 		}
 		efree(sandbox_args);
 	}
-	PHP_RUNKIT_SANDBOX_PARENT_END(objval);
+	PHP_RUNKIT_SANDBOX_PARENT_END(objval)
 
 	PHP_SANDBOX_CROSS_SCOPE_ZVAL_COPY_CTOR(return_value);
 
 	if (retval) {
-		PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval);
+		PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval)
 		zval_ptr_dtor(&retval);
-		PHP_RUNKIT_SANDBOX_PARENT_END(objval);
+		PHP_RUNKIT_SANDBOX_PARENT_END(objval)
 	}
 }
 /* }}} */
@@ -206,7 +206,7 @@ static void php_runkit_sandbox_parent_include_or_eval(INTERNAL_FUNCTION_PARAMETE
 
 	RETVAL_NULL();
 
-	PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval);
+	PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval)
 		zend_op_array *op_array = NULL;
 		int already_included = 0;
 
@@ -267,24 +267,24 @@ static void php_runkit_sandbox_parent_include_or_eval(INTERNAL_FUNCTION_PARAMETE
 			 */
 			bailed_out = 1;
 		}
-	PHP_RUNKIT_SANDBOX_PARENT_END(objval);
+	PHP_RUNKIT_SANDBOX_PARENT_END(objval)
 
 	if (bailed_out) {
 		CG(unclean_shutdown) = 1;
 		CG(in_compilation) = EG(in_execution) = 0;
 		EG(current_execute_data) = NULL;
-		PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval);
+		PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval)
 			zend_bailout();
-		PHP_RUNKIT_SANDBOX_PARENT_END(objval);
+		PHP_RUNKIT_SANDBOX_PARENT_END(objval)
 	}
 
 	PHP_SANDBOX_CROSS_SCOPE_ZVAL_COPY_CTOR(return_value);
 
 	/* Don't confuse the memory manager */
 	if (retval) {
-		PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval);
+		PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval)
 		zval_ptr_dtor(&retval);
-		PHP_RUNKIT_SANDBOX_PARENT_END(objval);
+		PHP_RUNKIT_SANDBOX_PARENT_END(objval)
 	}
 }
 /* }}} */
@@ -354,11 +354,11 @@ PHP_METHOD(Runkit_Sandbox_Parent,echo)
 		RETURN_FALSE;
 	}
 
-	PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval);
+	PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval)
 		for(i = 0; i < argc; i++) {
 			PHPWRITE(Z_STRVAL_P(argv[i]),Z_STRLEN_P(argv[i]));
 		}
-	PHP_RUNKIT_SANDBOX_PARENT_END(objval);	
+	PHP_RUNKIT_SANDBOX_PARENT_END(objval)
 
 	RETURN_NULL();
 }
@@ -383,9 +383,9 @@ PHP_METHOD(Runkit_Sandbox_Parent,print)
 		RETURN_FALSE;
 	}
 
-	PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval);
+	PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval)
 		PHPWRITE(str,len);
-	PHP_RUNKIT_SANDBOX_PARENT_END(objval);
+	PHP_RUNKIT_SANDBOX_PARENT_END(objval)
 
 	RETURN_BOOL(len > 1 || (len == 1 && str[0] != '0'));
 }
@@ -421,7 +421,7 @@ PHP_METHOD(Runkit_Sandbox_Parent,die)
 	CG(in_compilation) = EG(in_execution) = 0;
 	EG(current_execute_data) = NULL;
 
-	PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval);
+	PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval)
 		if (message) {
 			if (Z_TYPE_P(message) == IS_LONG) {
 				EG(exit_status) = Z_LVAL_P(message);
@@ -431,7 +431,7 @@ PHP_METHOD(Runkit_Sandbox_Parent,die)
 		}
 		zend_bailout();
 		/* More of a murder-suicide really... */
-	PHP_RUNKIT_SANDBOX_PARENT_END(objval);
+	PHP_RUNKIT_SANDBOX_PARENT_END(objval)
 }
 /* }}} */
 
@@ -465,14 +465,14 @@ static zval *php_runkit_sandbox_parent_read_property(zval *object, zval *member,
 		member = tmp_member;
 	}
 
-	PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval);
+	PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval)
 		zval **value;
 
 		if (zend_hash_find(php_runkit_sandbox_parent_resolve_symbol_table(objval TSRMLS_CC), Z_STRVAL_P(member), Z_STRLEN_P(member) + 1, (void**)&value) == SUCCESS) {
 			retval = **value;
 			prop_found = 1;				
 		}
-	PHP_RUNKIT_SANDBOX_PARENT_END(objval);
+	PHP_RUNKIT_SANDBOX_PARENT_END(objval)
 
 	if (tmp_member) {
 		zval_ptr_dtor(&tmp_member);
@@ -520,14 +520,14 @@ static void php_runkit_sandbox_parent_write_property(zval *object, zval *member,
 		member = tmp_member;
 	}
 
-	PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval);
+	PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval)
 		zval *copyval;
 
 		MAKE_STD_ZVAL(copyval);
 		*copyval = *value;
 		PHP_SANDBOX_CROSS_SCOPE_ZVAL_COPY_CTOR(copyval);
 		ZEND_SET_SYMBOL(&EG(symbol_table), Z_STRVAL_P(member), copyval);
-	PHP_RUNKIT_SANDBOX_PARENT_END(objval);
+	PHP_RUNKIT_SANDBOX_PARENT_END(objval)
 
 	if (tmp_member) {
 		zval_ptr_dtor(&tmp_member);
@@ -553,7 +553,7 @@ static int php_runkit_sandbox_parent_has_property(zval *object, zval *member, in
 	}
 	if (!objval->self->parent_access || !objval->self->parent_read) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Access to read parent's symbol table is disallowed");
-		return EG(uninitialized_zval_ptr);
+		return 0;
 	}
 
 	if (Z_TYPE_P(member) != IS_STRING) {
@@ -564,7 +564,7 @@ static int php_runkit_sandbox_parent_has_property(zval *object, zval *member, in
 		convert_to_string(member);
 	}
 
-	PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval);
+	PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval)
 	{
 		zval **tmpzval;
 
@@ -604,7 +604,7 @@ static int php_runkit_sandbox_parent_has_property(zval *object, zval *member, in
 			result = 0;
 		}
 	}
-	PHP_RUNKIT_SANDBOX_PARENT_END(objval);
+	PHP_RUNKIT_SANDBOX_PARENT_END(objval)
 
 	if (member == &member_copy) {
 		zval_dtor(member);
@@ -637,12 +637,12 @@ static void php_runkit_sandbox_parent_unset_property(zval *object, zval *member 
 		convert_to_string(member);
 	}
 
-	PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval);
+	PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval)
 		if (zend_hash_exists(&EG(symbol_table), Z_STRVAL_P(member), Z_STRLEN_P(member) + 1)) {
 			/* Simply removing the zval* causes weirdness with CVs */
 			zend_hash_update(&EG(symbol_table), Z_STRVAL_P(member), Z_STRLEN_P(member) + 1, (void*)&EG(uninitialized_zval_ptr), sizeof(zval*), NULL);
 		}
-	PHP_RUNKIT_SANDBOX_PARENT_END(objval);
+	PHP_RUNKIT_SANDBOX_PARENT_END(objval)
 
 	if (member == &member_copy) {
 		zval_dtor(member);

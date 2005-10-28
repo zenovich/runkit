@@ -36,7 +36,7 @@ static zend_class_entry *php_runkit_sandbox_class_entry;
 }
 
 #define PHP_RUNKIT_SANDBOX_END(objval) \
-	PHP_RUNKIT_SANDBOX_ABORT(objval); \
+	PHP_RUNKIT_SANDBOX_ABORT(objval) \
 	if (objval->bailed_out_in_eval) { \
 		/* We're actually in bailout mode, but the child's bailout address had to resolve first */ \
 		zend_bailout(); \
@@ -294,7 +294,7 @@ PHP_METHOD(Runkit_Sandbox,__construct)
 	objval->disable_classes = NULL;
 	objval->output_handler = NULL;
 
-	PHP_RUNKIT_SANDBOX_BEGIN(objval);
+	PHP_RUNKIT_SANDBOX_BEGIN(objval)
 		objval->parent_context = prior_context;
 
 		zend_alter_ini_entry("implicit_flush", sizeof("implicit_flush") , "1", 1, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
@@ -311,7 +311,7 @@ PHP_METHOD(Runkit_Sandbox,__construct)
 		php_request_startup(TSRMLS_C);
 		RUNKIT_G(current_sandbox) = objval;
 		PG(during_request_startup) = 0;
-	PHP_RUNKIT_SANDBOX_END(objval);
+	PHP_RUNKIT_SANDBOX_END(objval)
 
 	/* Prime the sandbox to be played in */
 	objval->active = 1;
@@ -340,7 +340,7 @@ PHP_METHOD(Runkit_Sandbox,__call)
 
 	argc = zend_hash_num_elements(Z_ARRVAL_P(args));
 
-	PHP_RUNKIT_SANDBOX_BEGIN(objval);
+	PHP_RUNKIT_SANDBOX_BEGIN(objval)
 	{
 		zval ***sandbox_args;
 		char *name = NULL;
@@ -355,7 +355,7 @@ PHP_METHOD(Runkit_Sandbox,__call)
 				if (name) {
 					efree(name);
 				}
-				PHP_RUNKIT_SANDBOX_ABORT(objval);
+				PHP_RUNKIT_SANDBOX_ABORT(objval)
 				RETURN_FALSE;
 			}
 
@@ -399,7 +399,7 @@ PHP_METHOD(Runkit_Sandbox,__call)
 			objval->active = 0;
 		} zend_end_try();
 	}
-	PHP_RUNKIT_SANDBOX_END(objval);
+	PHP_RUNKIT_SANDBOX_END(objval)
 
 	if (bailed_out) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Failed calling sandbox function");
@@ -409,9 +409,9 @@ PHP_METHOD(Runkit_Sandbox,__call)
 	PHP_SANDBOX_CROSS_SCOPE_ZVAL_COPY_CTOR(return_value);
 
 	if (retval) {
-		PHP_RUNKIT_SANDBOX_BEGIN(objval);
+		PHP_RUNKIT_SANDBOX_BEGIN(objval)
 		zval_ptr_dtor(&retval);
-		PHP_RUNKIT_SANDBOX_END(objval);
+		PHP_RUNKIT_SANDBOX_END(objval)
 	}
 }
 /* }}} */
@@ -439,7 +439,7 @@ static void php_runkit_sandbox_include_or_eval(INTERNAL_FUNCTION_PARAMETERS, int
 
 	RETVAL_NULL();
 
-	PHP_RUNKIT_SANDBOX_BEGIN(objval);
+	PHP_RUNKIT_SANDBOX_BEGIN(objval)
 		zend_first_try {
 			zend_op_array *op_array = NULL;
 			int already_included = 0;
@@ -498,7 +498,7 @@ static void php_runkit_sandbox_include_or_eval(INTERNAL_FUNCTION_PARAMETERS, int
 			objval->active = 0;
 			bailed_out = 1;
 		} zend_end_try();
-	PHP_RUNKIT_SANDBOX_END(objval);
+	PHP_RUNKIT_SANDBOX_END(objval)
 
 	if (bailed_out) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error executing sandbox code");
@@ -509,9 +509,9 @@ static void php_runkit_sandbox_include_or_eval(INTERNAL_FUNCTION_PARAMETERS, int
 
 	/* Don't confuse the memory manager */
 	if (retval) {
-		PHP_RUNKIT_SANDBOX_BEGIN(objval);
+		PHP_RUNKIT_SANDBOX_BEGIN(objval)
 		zval_ptr_dtor(&retval);
-		PHP_RUNKIT_SANDBOX_END(objval);
+		PHP_RUNKIT_SANDBOX_END(objval)
 	}
 }
 /* }}} */
@@ -582,7 +582,7 @@ PHP_METHOD(Runkit_Sandbox,echo)
 		RETURN_NULL();
 	}
 
-	PHP_RUNKIT_SANDBOX_BEGIN(objval);
+	PHP_RUNKIT_SANDBOX_BEGIN(objval)
 		zend_try {
 			for(i = 0; i < argc; i++) {
 				PHPWRITE(Z_STRVAL_P(argv[i]),Z_STRLEN_P(argv[i]));
@@ -590,7 +590,7 @@ PHP_METHOD(Runkit_Sandbox,echo)
 		} zend_catch {
 			objval->active = 0;
 		} zend_end_try();
-	PHP_RUNKIT_SANDBOX_END(objval);	
+	PHP_RUNKIT_SANDBOX_END(objval)
 
 	RETURN_NULL();
 }
@@ -616,13 +616,13 @@ PHP_METHOD(Runkit_Sandbox,print)
 		RETURN_NULL();
 	}
 
-	PHP_RUNKIT_SANDBOX_BEGIN(objval);
+	PHP_RUNKIT_SANDBOX_BEGIN(objval)
 		zend_try {
 			PHPWRITE(str,len);
 		} zend_catch {
 			objval->active = 0;
 		} zend_end_try();
-	PHP_RUNKIT_SANDBOX_END(objval);
+	PHP_RUNKIT_SANDBOX_END(objval)
 
 	RETURN_BOOL(len > 1 || (len == 1 && str[0] != '0'));
 }
@@ -652,7 +652,7 @@ PHP_METHOD(Runkit_Sandbox,die)
 		return;
 	}
 
-	PHP_RUNKIT_SANDBOX_BEGIN(objval);
+	PHP_RUNKIT_SANDBOX_BEGIN(objval)
 		zend_try {
 			if (message) {
 				if (Z_TYPE_P(message) == IS_LONG) {
@@ -666,7 +666,7 @@ PHP_METHOD(Runkit_Sandbox,die)
 			/* goes without saying doesn't it? */
 			objval->active = 0;
 		} zend_end_try();
-	PHP_RUNKIT_SANDBOX_END(objval);
+	PHP_RUNKIT_SANDBOX_END(objval)
 }
 /* }}} */
 
@@ -697,7 +697,7 @@ static zval *php_runkit_sandbox_read_property(zval *object, zval *member, int ty
 		member = tmp_member;
 	}
 
-	PHP_RUNKIT_SANDBOX_BEGIN(objval);
+	PHP_RUNKIT_SANDBOX_BEGIN(objval)
 		zend_try {
 			zval **value;
 
@@ -709,7 +709,7 @@ static zval *php_runkit_sandbox_read_property(zval *object, zval *member, int ty
 			/* Almost certainly impossible... */
 			objval->active = 0;
 		} zend_end_try();
-	PHP_RUNKIT_SANDBOX_END(objval);
+	PHP_RUNKIT_SANDBOX_END(objval)
 
 	if (tmp_member) {
 		zval_ptr_dtor(&tmp_member);
@@ -754,7 +754,7 @@ static void php_runkit_sandbox_write_property(zval *object, zval *member, zval *
 		member = tmp_member;
 	}
 
-	PHP_RUNKIT_SANDBOX_BEGIN(objval);
+	PHP_RUNKIT_SANDBOX_BEGIN(objval)
 		zend_try {
 			zval *copyval;
 
@@ -766,7 +766,7 @@ static void php_runkit_sandbox_write_property(zval *object, zval *member, zval *
 			/* An emalloc() could bailout */
 			objval->active = 0;
 		} zend_end_try();
-	PHP_RUNKIT_SANDBOX_END(objval);
+	PHP_RUNKIT_SANDBOX_END(objval)
 
 	if (tmp_member) {
 		zval_ptr_dtor(&tmp_member);
@@ -801,7 +801,7 @@ static int php_runkit_sandbox_has_property(zval *object, zval *member, int has_s
 		convert_to_string(member);
 	}
 
-	PHP_RUNKIT_SANDBOX_BEGIN(objval);
+	PHP_RUNKIT_SANDBOX_BEGIN(objval)
 	{
 		zval **tmpzval;
 
@@ -841,7 +841,7 @@ static int php_runkit_sandbox_has_property(zval *object, zval *member, int has_s
 			result = 0;
 		}
 	}
-	PHP_RUNKIT_SANDBOX_END(objval);
+	PHP_RUNKIT_SANDBOX_END(objval)
 
 	if (member == &member_copy) {
 		zval_dtor(member);
@@ -875,9 +875,9 @@ static void php_runkit_sandbox_unset_property(zval *object, zval *member TSRMLS_
 		convert_to_string(member);
 	}
 
-	PHP_RUNKIT_SANDBOX_BEGIN(objval);
+	PHP_RUNKIT_SANDBOX_BEGIN(objval)
 		zend_hash_del(&EG(symbol_table), Z_STRVAL_P(member), Z_STRLEN_P(member) + 1);
-	PHP_RUNKIT_SANDBOX_END(objval);
+	PHP_RUNKIT_SANDBOX_END(objval)
 
 	if (member == &member_copy) {
 		zval_dtor(member);
