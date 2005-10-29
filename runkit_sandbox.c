@@ -1356,6 +1356,9 @@ static void php_runkit_sandbox_dtor(php_runkit_sandbox_object *objval TSRMLS_DC)
 	if (objval->output_handler) {
 		zval_ptr_dtor(&objval->output_handler);
 	}
+	if (objval->parent_scope_name) {
+		efree(objval->parent_scope_name);
+	}
 
 	zend_hash_destroy(objval->obj.properties);
 	FREE_HASHTABLE(objval->obj.properties);
