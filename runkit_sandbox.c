@@ -1100,7 +1100,12 @@ PHP_RUNKIT_SANDBOX_SETTING_GETTER(parent_scope)
 	zval *retval;
 
 	MAKE_STD_ZVAL(retval);
-	ZVAL_LONG(retval, objval->parent_scope);
+	if (objval->parent_scope == 0 &&
+		objval->parent_scope_name) {
+		ZVAL_STRINGL(retval, objval->parent_scope_name, objval->parent_scope_namelen, 1);
+	} else {
+		ZVAL_LONG(retval, objval->parent_scope);
+	}
 	retval->refcount = 0;
 
 	return retval;
@@ -1109,6 +1114,24 @@ PHP_RUNKIT_SANDBOX_SETTING_GETTER(parent_scope)
 PHP_RUNKIT_SANDBOX_SETTING_SETTER(parent_scope)
 {
 	zval copyval = *value;
+
+	if (Z_TYPE_P(value) == IS_STRING) {
+		/* Variable in global symbol_table */
+		objval->parent_scope = 0;
+		if (objval->parent_scope_name) {
+			efree(objval->parent_scope_name);
+		}
+		objval->parent_scope_name = estrndup(Z_STRVAL_P(value), Z_STRLEN_P(value) + 1);
+		objval->parent_scope_namelen = Z_STRLEN_P(value);
+
+		return;
+	}
+
+	if (objval->parent_scope_name) {
+		efree(objval->parent_scope_name);
+		objval->parent_scope_name = NULL;
+	}
+	objval->parent_scope_namelen = 0;
 
 	zval_copy_ctor(&copyval);
 	convert_to_long(&copyval);

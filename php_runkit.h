@@ -171,6 +171,9 @@ struct _php_runkit_sandbox_object {
 	unsigned char parent_call;				/* May functions in the parent scope be called? */
 	unsigned char parent_die;				/* Are $PARENT->die() / $PARENT->exit() enabled? */
 	unsigned long parent_scope;				/* 0 == Global, 1 == Active, 2 == Active->prior, 3 == Active->prior->prior, etc... */
+
+	char *parent_scope_name;				/* Combines with parent_scope to refer to a named array as a symbol table */
+	int parent_scope_namelen;
 };
 
 /* TODO: It'd be nice if objects and resources could make it across... */

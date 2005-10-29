@@ -76,7 +76,39 @@ static HashTable *php_runkit_sandbox_parent_resolve_symbol_table(php_runkit_sand
 	zend_execute_data *ex = EG(current_execute_data);
 
 	if (objval->self->parent_scope <= 0) {
-		return &EG(symbol_table);
+		HashTable *ht = &EG(symbol_table);
+
+		if (objval->self->parent_scope_name) {
+			zval **symtable;
+
+			if (zend_hash_find(ht, objval->self->parent_scope_name, objval->self->parent_scope_namelen + 1, (void**)&symtable) == SUCCESS) {
+				if (Z_TYPE_PP(symtable) == IS_ARRAY) {
+					ht = Z_ARRVAL_PP(symtable);
+				} else {
+					/* Variable exists but is not an array,
+					 * Make a dummy array that contains this var */
+					zval *hidden;
+
+					ALLOC_INIT_ZVAL(hidden);
+					array_init(hidden);
+					ht = Z_ARRVAL_P(hidden);
+					zend_hash_update(ht, objval->self->parent_scope_name, objval->self->parent_scope_namelen + 1, (void*)symtable, sizeof(zval*), NULL);
+
+					/* Store that dummy array in the sandbox's hidden properties table so that it gets cleaned up on dtor */
+					zend_hash_update(objval->obj.properties, "scope", sizeof("scope"), (void*)&hidden, sizeof(zval*), NULL);
+				}
+			} else {
+				/* Create variable as an array */
+				zval *newval;
+
+				ALLOC_INIT_ZVAL(newval);
+				array_init(newval);
+				zend_hash_update(&EG(symbol_table), objval->self->parent_scope_name, objval->self->parent_scope_namelen + 1, (void*)&newval, sizeof(zval*), NULL);
+				ht = Z_ARRVAL_P(newval);
+			}
+		}
+
+		return ht;
 	}
 	if (objval->self->parent_scope == 1) {
 		return EG(active_symbol_table);
@@ -526,7 +558,7 @@ static void php_runkit_sandbox_parent_write_property(zval *object, zval *member,
 		MAKE_STD_ZVAL(copyval);
 		*copyval = *value;
 		PHP_SANDBOX_CROSS_SCOPE_ZVAL_COPY_CTOR(copyval);
-		ZEND_SET_SYMBOL(&EG(symbol_table), Z_STRVAL_P(member), copyval);
+		ZEND_SET_SYMBOL(php_runkit_sandbox_parent_resolve_symbol_table(objval TSRMLS_CC), Z_STRVAL_P(member), copyval);
 	PHP_RUNKIT_SANDBOX_PARENT_END(objval)
 
 	if (tmp_member) {
@@ -568,7 +600,7 @@ static int php_runkit_sandbox_parent_has_property(zval *object, zval *member, in
 	{
 		zval **tmpzval;
 
-		if (zend_hash_find(&EG(symbol_table), Z_STRVAL_P(member), Z_STRLEN_P(member) + 1, (void**)&tmpzval) == SUCCESS) {
+		if (zend_hash_find(php_runkit_sandbox_parent_resolve_symbol_table(objval TSRMLS_CC), Z_STRVAL_P(member), Z_STRLEN_P(member) + 1, (void**)&tmpzval) == SUCCESS) {
 			switch (has_set_exists) {
 				case 0:
 					result = (Z_TYPE_PP(tmpzval) != IS_NULL);
@@ -638,9 +670,9 @@ static void php_runkit_sandbox_parent_unset_property(zval *object, zval *member 
 	}
 
 	PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval)
-		if (zend_hash_exists(&EG(symbol_table), Z_STRVAL_P(member), Z_STRLEN_P(member) + 1)) {
+		if (zend_hash_exists(php_runkit_sandbox_parent_resolve_symbol_table(objval TSRMLS_CC), Z_STRVAL_P(member), Z_STRLEN_P(member) + 1)) {
 			/* Simply removing the zval* causes weirdness with CVs */
-			zend_hash_update(&EG(symbol_table), Z_STRVAL_P(member), Z_STRLEN_P(member) + 1, (void*)&EG(uninitialized_zval_ptr), sizeof(zval*), NULL);
+			zend_hash_update(php_runkit_sandbox_parent_resolve_symbol_table(objval TSRMLS_CC), Z_STRVAL_P(member), Z_STRLEN_P(member) + 1, (void*)&EG(uninitialized_zval_ptr), sizeof(zval*), NULL);
 		}
 	PHP_RUNKIT_SANDBOX_PARENT_END(objval)
 
