@@ -280,11 +280,11 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 	long flags; /* dummy variable */
 #endif
 
-	if (zend_parse_parameters(argc TSRMLS_CC, "ssss|l",	&classname, &classname_len,
-														&methodname, &methodname_len,
-														&arguments, &arguments_len,
-														&phpcode, &phpcode_len,
-														&flags) == FAILURE) {
+	if (zend_parse_parameters(argc TSRMLS_CC, "s/s/ss|l",	&classname, &classname_len,
+															&methodname, &methodname_len,
+															&arguments, &arguments_len,
+															&phpcode, &phpcode_len,
+															&flags) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -432,8 +432,8 @@ PHP_FUNCTION(runkit_method_remove)
 	zend_class_entry *ce, *ancestor_class = NULL;
 	zend_function *fe;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss",	&classname, &classname_len,
-																&methodname, &methodname_len) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s/s/",	&classname, &classname_len,
+																	&methodname, &methodname_len) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -470,9 +470,9 @@ PHP_FUNCTION(runkit_method_rename)
 	zend_class_entry *ce, *ancestor_class = NULL;
 	zend_function *fe, func;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sss",	&classname, &classname_len,
-																&methodname, &methodname_len,
-																&newname, &newname_len) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s/s/s/",	&classname, &classname_len,
+																	&methodname, &methodname_len,
+																	&newname, &newname_len) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -532,10 +532,10 @@ PHP_FUNCTION(runkit_method_copy)
 	char *dclass, *dfunc, *sclass, *sfunc = NULL;
 	int dclass_len, dfunc_len, sclass_len, sfunc_len = 0;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sss|s",   &dclass,    &dclass_len,
-																	&dfunc,     &dfunc_len,
-																	&sclass,    &sclass_len,
-																	&sfunc,     &sfunc_len) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s/s/s/|s/",   &dclass,    &dclass_len,
+																		&dfunc,     &dfunc_len,
+																		&sclass,    &sclass_len,
+																		&sfunc,     &sfunc_len) == FAILURE) {
 		RETURN_FALSE;
 	}
 

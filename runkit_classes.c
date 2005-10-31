@@ -45,7 +45,7 @@ PHP_FUNCTION(runkit_class_emancipate)
 	char *classname;
 	int classname_len;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &classname, &classname_len) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s/", &classname, &classname_len) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -104,7 +104,7 @@ PHP_FUNCTION(runkit_class_adopt)
 	char *classname, *parentname;
 	int classname_len, parentname_len;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss", &classname, &classname_len, &parentname, &parentname_len) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s/s/", &classname, &classname_len, &parentname, &parentname_len) == FAILURE) {
 		RETURN_FALSE;
 	}
 
