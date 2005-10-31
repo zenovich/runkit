@@ -92,6 +92,19 @@ static HashTable *php_runkit_sandbox_parent_resolve_symbol_table(php_runkit_sand
 					ALLOC_INIT_ZVAL(hidden);
 					array_init(hidden);
 					ht = Z_ARRVAL_P(hidden);
+					if ((*symtable)->refcount > 1 &&
+						!(*symtable)->is_ref) {
+						zval *cv;
+
+						MAKE_STD_ZVAL(cv);
+						*cv = **symtable;
+						zval_copy_ctor(cv);
+						zval_ptr_dtor(symtable);
+						INIT_PZVAL(cv);
+						*symtable = cv;
+					}
+					(*symtable)->is_ref = 1;
+					(*symtable)->refcount++;
 					zend_hash_update(ht, objval->self->parent_scope_name, objval->self->parent_scope_namelen + 1, (void*)symtable, sizeof(zval*), NULL);
 
 					/* Store that dummy array in the sandbox's hidden properties table so that it gets cleaned up on dtor */
