@@ -15,6 +15,21 @@ Execute code in restricted environment (sandboxing).</description>
   </maintainers>
 
    <release>
+    <version>0.7</version>
+    <state>beta</state>
+    <date>2005-10-30</date>
+    <notes>Primarily bugfix release, only new functionality is expanded parent_scope setting.
+
+Workaround bug when using runkit_import() with opcode caches by bypassing cache for imported file.
+Fix using runkit_import() with multiple classes (Thanks to Stuart Herbert for the patch)
+Fix various reference issues for parameters passed to manipulation functions.
+Fix C++ compatability in sandbox source files.
+Fix parent_scope support (was only applied to property_read and eval/include/require ops)
+Expand parent_scope setting to allow variable arrays as symbol tables.</notes>
+   </release>
+
+  <changelog>
+   <release>
     <version>0.6</version>
     <state>beta</state>
     <date>2005-09-30</date>
@@ -42,7 +57,6 @@ as seen from the child according to:
 </notes>
    </release>
 
-  <changelog>
    <release>
     <version>0.5</version>
     <state>beta</state>

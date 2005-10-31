@@ -30,7 +30,7 @@
 #include "ext/standard/info.h"
 #include "ext/standard/php_string.h"
 
-#define PHP_RUNKIT_VERSION					"0.6"
+#define PHP_RUNKIT_VERSION					"0.7"
 #define PHP_RUNKIT_SANDBOX_CLASSNAME		"Runkit_Sandbox"
 #define PHP_RUNKIT_SANDBOX_PARENT_CLASSNAME	"Runkit_Sandbox_Parent"
 
