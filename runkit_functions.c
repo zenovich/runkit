@@ -257,6 +257,21 @@ int php_runkit_restore_internal_functions(zend_internal_function *fe, int num_ar
    * Functions API *
    ***************** */
 
+/* {{{ proto bool runkit_return_value_used(void)
+Does the calling function do anything with our return value? */
+PHP_FUNCTION(runkit_return_value_used)
+{
+	zend_execute_data *ptr = EG(current_execute_data)->prev_execute_data;
+
+	if (!ptr) {
+		/* main() */
+		RETURN_FALSE;
+	}
+
+	RETURN_BOOL(!(ptr->opline->result.u.EA.type & EXT_TYPE_UNUSED));
+}
+/* }}} */
+
 /* {{{ proto bool runkit_function_add(string funcname, string arglist, string code)
 	Add a new function, similar to create_function, but allows specifying name
 	There's nothing about this function that's better than eval(), it's here for completeness */

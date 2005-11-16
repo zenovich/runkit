@@ -61,6 +61,7 @@ PHP_MSHUTDOWN_FUNCTION(runkit);
 PHP_RINIT_FUNCTION(runkit);
 PHP_RSHUTDOWN_FUNCTION(runkit);
 PHP_MINFO_FUNCTION(runkit);
+PHP_FUNCTION(runkit_return_value_used);
 PHP_FUNCTION(runkit_function_add);
 PHP_FUNCTION(runkit_function_remove);
 PHP_FUNCTION(runkit_function_rename);

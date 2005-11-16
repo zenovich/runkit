@@ -56,6 +56,7 @@ function_entry runkit_functions[] = {
 	PHP_FE(runkit_superglobals,										NULL)
 #endif
 
+	PHP_FE(runkit_return_value_used,								NULL)
 	PHP_FE(runkit_function_add,										NULL)
 	PHP_FE(runkit_function_remove,									NULL)
 	PHP_FE(runkit_function_rename,									NULL)
