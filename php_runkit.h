@@ -129,14 +129,21 @@ int php_runkit_update_children_methods(zend_class_entry *ce, int num_args, va_li
 int php_runkit_fetch_interface(char *classname, int classname_len, zend_class_entry **pce TSRMLS_DC);
 #endif
 
-#ifdef ZEND_ENGINE_2
+#if PHP_MAJOR_VERSION >= 6
+#define PHP_RUNKIT_FUNCTION_ADD_REF(f)	function_add_ref(f TSRML_CC)
 #define php_runkit_locate_scope(ce, fe, methodname, methodname_len)   fe->common.scope
-#else
+
+#elif PHP_MAJOR_VERSION >= 5
+#define PHP_RUNKIT_FUNCTION_ADD_REF(f)	function_add_ref(f)
+#define php_runkit_locate_scope(ce, fe, methodname, methodname_len)   fe->common.scope
+
+#else /* PHP4 */
+#define PHP_RUNKIT_FUNCTION_ADD_REF(f)	function_add_ref(f)
 zend_class_entry *_php_runkit_locate_scope(zend_class_entry *ce, zend_function *fe, char *methodname, int methodname_len);
 #define php_runkit_locate_scope(ce, fe, methodname, methodname_len)   _php_runkit_locate_scope((ce), (fe), (methodname), (methodname_len))
-
 #define zend_function_dtor		destroy_zend_function
-#endif
+
+#endif /* Version Agnosticism */
 
 /* runkit_constants.c */
 int php_runkit_update_children_consts(zend_class_entry *ce, int num_args, va_list args, zend_hash_key *hash_key);

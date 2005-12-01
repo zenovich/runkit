@@ -78,7 +78,7 @@ static int php_runkit_inherit_methods(zend_function *fe, zend_class_entry *ce TS
 
 	zend_hash_apply_with_arguments(EG(class_table), (apply_func_args_t)php_runkit_update_children_methods, 5, ancestor_class, ce, fe, function_name, function_name_len);
 
-	function_add_ref(fe);
+	PHP_RUNKIT_FUNCTION_ADD_REF(fe);
 
 	/* method name keys must be lower case */
 	function_name = estrndup(function_name, function_name_len);

@@ -35,7 +35,7 @@ static int php_runkit_import_functions(int original_num_functions TSRMLS_DC)
 		long idx;
 
 		zend_hash_get_current_data(EG(function_table), (void**)&fe);
-		function_add_ref(fe);
+		PHP_RUNKIT_FUNCTION_ADD_REF(fe);
 		fe_array[func++] = fe;
 
 		if (((type = zend_hash_get_current_key_ex(EG(function_table), &key, &key_len, &idx, 0, NULL)) != HASH_KEY_NON_EXISTANT) && 
@@ -143,7 +143,7 @@ static int php_runkit_import_class_methods(zend_class_entry *dce, zend_class_ent
 			}
 		}
 
-		function_add_ref(fe);
+		PHP_RUNKIT_FUNCTION_ADD_REF(fe);
 #ifdef ZEND_ENGINE_2
 		fe->common.scope = dce;
 #endif

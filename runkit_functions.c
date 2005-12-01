@@ -353,7 +353,7 @@ PHP_FUNCTION(runkit_function_rename)
 
 	if (fe->type == ZEND_USER_FUNCTION) {
 		func = *fe;
-		function_add_ref(&func);
+		PHP_RUNKIT_FUNCTION_ADD_REF(&func);
 	}
 
 	if (zend_hash_del(EG(function_table), sfunc, sfunc_len + 1) == FAILURE) {
@@ -439,7 +439,7 @@ PHP_FUNCTION(runkit_function_copy)
 	}
 
 	if (fe->type == ZEND_USER_FUNCTION) {
-		function_add_ref(fe);
+		PHP_RUNKIT_FUNCTION_ADD_REF(fe);
 	} else {
 		zend_hash_key hash_key;
 
