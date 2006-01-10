@@ -57,7 +57,11 @@ int php_runkit_sandbox_array_deep_copy(zval **value, int num_args, va_list args,
 	PHP_SANDBOX_CROSS_SCOPE_ZVAL_COPY_CTOR(copyval);
 
 	if (hash_key->nKeyLength) {
+#if PHP_MAJOR_VERSION >= 6
+		zend_u_hash_quick_update(target_hashtable, hash_key->type == HASH_KEY_IS_UNICODE ? IS_UNICODE : IS_STRING, hash_key->u.string, hash_key->nKeyLength, hash_key->h, &copyval, sizeof(zval*), NULL);
+#else
 		zend_hash_quick_update(target_hashtable, hash_key->arKey, hash_key->nKeyLength, hash_key->h, &copyval, sizeof(zval*), NULL);
+#endif
 	} else {
 		zend_hash_index_update(target_hashtable, hash_key->h, &copyval, sizeof(zval*), NULL);
 	}

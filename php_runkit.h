@@ -130,18 +130,48 @@ int php_runkit_fetch_interface(char *classname, int classname_len, zend_class_en
 #endif
 
 #if PHP_MAJOR_VERSION >= 6
-#define PHP_RUNKIT_FUNCTION_ADD_REF(f)	function_add_ref(f TSRML_CC)
+#define PHP_RUNKIT_FUNCTION_ADD_REF(f)	function_add_ref(f TSRMLS_CC)
 #define php_runkit_locate_scope(ce, fe, methodname, methodname_len)   fe->common.scope
-
+#define PHP_RUNKIT_DECL_STRING_PARAM(param)		void *param; int32_t param##_len; zend_uchar param##_type;
+#define PHP_RUNKIT_STRING_SPEC					"t"
+#define PHP_RUNKIT_STRING_PARAM(param)			&param, &param##_len, &param##_type
+#define PHP_RUNKIT_STRTOLOWER(param)			php_u_strtolower((UChar*)&param, &param##_len, UG(default_locale))
+#define PHP_RUNKIT_STRING_LEN(param,addtl)		(param##_type == IS_UNICODE ? UBYTES(param##_len + (addtl)) : (param##_len + (addtl)))
+#define PHP_RUNKIT_STRING_TYPE(param)			(param##_type)
+#define PHP_RUNKIT_HASH_FIND(hash,param,ppvar)	zend_u_hash_find(hash, param##_type, (UChar *)param, param##_len + 1, (void**)ppvar)
+#define PHP_RUNKIT_HASH_EXISTS(hash,param)		zend_u_hash_exists(hash, param##_type, (UChar *)param, param##_len + 1)
+#define PHP_RUNKIT_HASH_KEY(hash_key)			((hash_key)->type == HASH_KEY_IS_UNICODE ? (hash_key)->u.unicode : (hash_key)->u.string)
+#define PHP_RUNKIT_HASH_KEYLEN(hash_key)		((hash_key)->type == HASH_KEY_IS_UNICODE ? UBYTES((hash_key)->nKeyLength) : (hash_key)->nKeyLength)
+ 
 #elif PHP_MAJOR_VERSION >= 5
 #define PHP_RUNKIT_FUNCTION_ADD_REF(f)	function_add_ref(f)
 #define php_runkit_locate_scope(ce, fe, methodname, methodname_len)   fe->common.scope
+#define PHP_RUNKIT_DECL_STRING_PARAM(p)			char *p; int p##_len;
+#define PHP_RUNKIT_STRING_SPEC					"s"
+#define PHP_RUNKIT_STRING_PARAM(p)				&p, &p##_len
+#define PHP_RUNKIT_STRTOLOWER(p)				php_strtolower(&p, &p##_len)
+#define PHP_RUNKIT_STRING_LEN(param,addtl)		(param##_len + (addtl))
+#define PHP_RUNKIT_STRING_TYPE(param)			IS_STRING
+#define PHP_RUNKIT_HASH_FIND(hash,param,ppvar)	zend_hash_find(hash, param, param##_len + 1, (void**)ppvar)
+#define PHP_RUNKIT_HASH_EXISTS(hash,param)		zend_hash_exists(hash, param##_type, param, param##_len + 1)
+#define PHP_RUNKIT_HASH_KEY(hash_key)			((hash_key)->arKey)
+#define PHP_RUNKIT_HASH_KEYLEN(hash_key)		((hash_key)->nKeyLength)
 
 #else /* PHP4 */
-#define PHP_RUNKIT_FUNCTION_ADD_REF(f)	function_add_ref(f)
+#define PHP_RUNKIT_FUNCTION_ADD_REF(f)			function_add_ref(f)
 zend_class_entry *_php_runkit_locate_scope(zend_class_entry *ce, zend_function *fe, char *methodname, int methodname_len);
-#define php_runkit_locate_scope(ce, fe, methodname, methodname_len)   _php_runkit_locate_scope((ce), (fe), (methodname), (methodname_len))
-#define zend_function_dtor		destroy_zend_function
+#define php_runkit_locate_scope(ce, fe, 		methodname, methodname_len)   _php_runkit_locate_scope((ce), (fe), (methodname), (methodname_len))
+#define PHP_RUNKIT_DECL_STRING_PARAM(p)			char *p; int p##_len;
+#define PHP_RUNKIT_STRING_SPEC					"s"
+#define PHP_RUNKIT_STRING_PARAM(p)				&p, &p##_len
+#define PHP_RUNKIT_STRTOLOWER(p)				php_strtolower(&p, &p##_len)
+#define PHP_RUNKIT_STRING_LEN(param,addtl)		(param##_len + (addtl))
+#define PHP_RUNKIT_STRING_TYPE(param)			IS_STRING
+#define PHP_RUNKIT_HASH_FIND(hash,param,ppvar)	zend_hash_find(hash, param, param##_len + 1, (void**)ppvar)
+#define PHP_RUNKIT_HASH_EXISTS(hash,param)		zend_hash_exists(hash, param##_type, param, param##_len + 1)
+#define PHP_RUNKIT_HASH_KEY(hash_key)			((hash_key)->arKey)
+#define PHP_RUNKIT_HASH_KEYLEN(hash_key)		((hash_key)->nKeyLength)
+#define zend_function_dtor						destroy_zend_function
 
 #endif /* Version Agnosticism */
 
