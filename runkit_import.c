@@ -22,23 +22,24 @@
  */
 static int php_runkit_import_functions(int original_num_functions TSRMLS_DC)
 {
+	HashPosition pos;
 	zend_function **fe_array;
 	int i, func = 0, func_count = (zend_hash_num_elements(EG(function_table)) - original_num_functions);
 
 	fe_array = ecalloc(sizeof(zend_function*) * func_count, 0);
 
-	zend_hash_internal_pointer_end(EG(function_table));
+	zend_hash_internal_pointer_end_ex(EG(function_table), &pos);
 	for(i = zend_hash_num_elements(EG(function_table)); i > original_num_functions; i--) {
 		zend_function *fe = NULL;
 		char *key;
 		int key_len, type;
 		long idx;
 
-		zend_hash_get_current_data(EG(function_table), (void**)&fe);
+		zend_hash_get_current_data_ex(EG(function_table), (void**)&fe, &pos);
 		PHP_RUNKIT_FUNCTION_ADD_REF(fe);
 		fe_array[func++] = fe;
 
-		if (((type = zend_hash_get_current_key_ex(EG(function_table), &key, &key_len, &idx, 0, NULL)) != HASH_KEY_NON_EXISTANT) && 
+		if (((type = zend_hash_get_current_key_ex(EG(function_table), &key, &key_len, &idx, 0, &pos)) != HASH_KEY_NON_EXISTANT) && 
 			fe && fe->type == ZEND_USER_FUNCTION) {
 
 			if (type == HASH_KEY_IS_STRING) {
@@ -53,7 +54,7 @@ static int php_runkit_import_functions(int original_num_functions TSRMLS_DC)
 		} else {
 			goto err_exit;
 		}
-		zend_hash_move_backwards(EG(function_table));
+		zend_hash_move_backwards_ex(EG(function_table), &pos);
 	}
 
 	while (func >= 0) {
@@ -99,6 +100,7 @@ err_exit:
  */
 static int php_runkit_import_class_methods(zend_class_entry *dce, zend_class_entry *ce, int override TSRMLS_DC)
 {
+	HashPosition pos;
 	zend_function *fe;
 	char *fn;
 	int fn_maxlen;
@@ -107,15 +109,15 @@ static int php_runkit_import_class_methods(zend_class_entry *dce, zend_class_ent
 	fn_maxlen = 64;
 	fn = emalloc(fn_maxlen);
 
-	zend_hash_internal_pointer_reset(&ce->function_table);
-	while (zend_hash_get_current_data(&ce->function_table, (void**)&fe) == SUCCESS) {
+	zend_hash_internal_pointer_reset_ex(&ce->function_table, &pos);
+	while (zend_hash_get_current_data_ex(&ce->function_table, (void**)&fe, &pos) == SUCCESS) {
 		zend_function *dfe;
 		int fn_len = strlen(fe->common.function_name);
 		zend_class_entry *fe_scope = php_runkit_locate_scope(ce, fe, fe->common.function_name, fn_len);
 				
 		if (fe_scope != ce) {
 			/* This is an inhereted function, let's skip it */
-			zend_hash_move_forward(&ce->function_table);
+			zend_hash_move_forward_ex(&ce->function_table, &pos);
 			continue;
 		}
 
@@ -131,14 +133,14 @@ static int php_runkit_import_class_methods(zend_class_entry *dce, zend_class_ent
 
 			if (php_runkit_check_call_stack(&dfe->op_array TSRMLS_CC) == FAILURE) {
 				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot override active method %s::%s(). Skipping.", dce->name, fe->common.function_name);
-				zend_hash_move_forward(&ce->function_table);
+				zend_hash_move_forward_ex(&ce->function_table, &pos);
 				continue;
 			}
 
 			zend_hash_apply_with_arguments(EG(class_table), (apply_func_args_t)php_runkit_clean_children_methods, 4, scope, dce, fn, fn_len);
 			if (zend_hash_del(&dce->function_table, fn, fn_len + 1) == FAILURE) {
 				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error removing old method in destination class %s::%s", dce->name, fe->common.function_name);
-				zend_hash_move_forward(&ce->function_table);
+				zend_hash_move_forward_ex(&ce->function_table, &pos);
 				continue;
 			}
 		}
@@ -151,11 +153,11 @@ static int php_runkit_import_class_methods(zend_class_entry *dce, zend_class_ent
 
 		if (zend_hash_add(&dce->function_table, fn, fn_len + 1, fe, sizeof(zend_function), NULL) == FAILURE) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Failure importing %s::%s()", ce->name, fe->common.function_name);
-			zend_hash_move_forward(&ce->function_table);
+			zend_hash_move_forward_ex(&ce->function_table, &pos);
 			continue;
 		}
 
-		zend_hash_move_forward(&ce->function_table);
+		zend_hash_move_forward_ex(&ce->function_table, &pos);
 	}
 
 	efree(fn);
@@ -169,16 +171,17 @@ static int php_runkit_import_class_methods(zend_class_entry *dce, zend_class_ent
  */
 static int php_runkit_import_class_consts(zend_class_entry *dce, zend_class_entry *ce, int override TSRMLS_DC)
 {
+	HashPosition pos;
 	char *key;
 	int key_len;
 	long idx;
 	zval **c;
 
-	zend_hash_internal_pointer_reset(&ce->constants_table);
-	while (zend_hash_get_current_data(&ce->constants_table, (void**)&c) == SUCCESS && c && *c) {
+	zend_hash_internal_pointer_reset_ex(&ce->constants_table, &pos);
+	while (zend_hash_get_current_data_ex(&ce->constants_table, (void**)&c, &pos) == SUCCESS && c && *c) {
 		long action = HASH_ADD;
 
-		if (zend_hash_get_current_key_ex(&ce->constants_table, &key, &key_len, &idx, 0, NULL) == HASH_KEY_IS_STRING) {
+		if (zend_hash_get_current_key_ex(&ce->constants_table, &key, &key_len, &idx, 0, &pos) == HASH_KEY_IS_STRING) {
 			if (zend_hash_exists(&dce->constants_table, key, key_len)) {
 				if (override) {
 					action = HASH_UPDATE;
@@ -186,20 +189,19 @@ static int php_runkit_import_class_consts(zend_class_entry *dce, zend_class_entr
 					php_error_docref(NULL TSRMLS_CC, E_NOTICE, "%s::%s already exists, not importing", dce->name, key);
 					goto import_const_skip;
 				}
-			} else {
-				ZVAL_ADDREF(*c);
-				if (zend_hash_add_or_update(&dce->constants_table, key, key_len, (void*)c, sizeof(zval*), NULL, action) == FAILURE) {
-					zval_ptr_dtor(c);
-					php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to import %s::%s", dce->name, key);
-				}
-
-				zend_hash_apply_with_arguments(EG(class_table), (apply_func_args_t)php_runkit_update_children_consts, 4, dce, c, key, key_len - 1);
 			}
+			ZVAL_ADDREF(*c);
+			if (zend_hash_add_or_update(&dce->constants_table, key, key_len, (void*)c, sizeof(zval*), NULL, action) == FAILURE) {
+				zval_ptr_dtor(c);
+				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to import %s::%s", dce->name, key);
+			}
+
+			zend_hash_apply_with_arguments(EG(class_table), (apply_func_args_t)php_runkit_update_children_consts, 4, dce, c, key, key_len - 1);
 		} else {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Constant has invalid key name");
 		}
 import_const_skip:
-		zend_hash_move_forward(&ce->constants_table);
+		zend_hash_move_forward_ex(&ce->constants_table, &pos);
 	}
 	return SUCCESS;
 }
