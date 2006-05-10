@@ -25,9 +25,12 @@
 static zend_object_handlers php_runkit_sandbox_object_handlers;
 static zend_class_entry *php_runkit_sandbox_class_entry;
 
-#define PHP_RUNKIT_SANDBOX_BEGIN(objval) \
+#define PHP_RUNKIT_SANDBOX_BEGIN_NO_TSRM(objval) \
 { \
-	void *prior_context = tsrm_set_interpreter_context(objval->context); \
+	void *prior_context = tsrm_set_interpreter_context(objval->context);
+
+#define PHP_RUNKIT_SANDBOX_BEGIN(objval) \
+	PHP_RUNKIT_SANDBOX_BEGIN_NO_TSRM(objval); \
 	TSRMLS_FETCH();
 
 #define PHP_RUNKIT_SANDBOX_ABORT(objval) \
@@ -310,10 +313,9 @@ PHP_METHOD(Runkit_Sandbox,__construct)
 
 		SG(headers_sent) = 1;
 		SG(request_info).no_headers = 1;
-		SG(server_context) = objval;
 		SG(options) = SAPI_OPTION_NO_CHDIR;
-		php_request_startup(TSRMLS_C);
 		RUNKIT_G(current_sandbox) = objval;
+		php_request_startup(TSRMLS_C);
 		PG(during_request_startup) = 0;
 	PHP_RUNKIT_SANDBOX_END(objval)
 
@@ -413,7 +415,7 @@ PHP_METHOD(Runkit_Sandbox,__call)
 	PHP_SANDBOX_CROSS_SCOPE_ZVAL_COPY_CTOR(return_value);
 
 	if (retval) {
-		PHP_RUNKIT_SANDBOX_BEGIN(objval)
+		PHP_RUNKIT_SANDBOX_BEGIN_NO_TSRM(objval)
 		zval_ptr_dtor(&retval);
 		PHP_RUNKIT_SANDBOX_END(objval)
 	}
@@ -513,7 +515,7 @@ static void php_runkit_sandbox_include_or_eval(INTERNAL_FUNCTION_PARAMETERS, int
 
 	/* Don't confuse the memory manager */
 	if (retval) {
-		PHP_RUNKIT_SANDBOX_BEGIN(objval)
+		PHP_RUNKIT_SANDBOX_BEGIN_NO_TSRM(objval)
 		zval_ptr_dtor(&retval);
 		PHP_RUNKIT_SANDBOX_END(objval)
 	}
@@ -893,8 +895,12 @@ static void php_runkit_sandbox_unset_property(zval *object, zval *member TSRMLS_
    * Output Buffering *
    ******************** */
 
-/* Original write function */
+/* Original SAPI functions */
 static int (*php_runkit_sandbox_sapi_ub_write)(const char *str, uint str_length TSRMLS_DC);
+static int (*php_runkit_sandbox_sapi_header_handler)(sapi_header_struct *sapi_header,sapi_headers_struct *sapi_headers TSRMLS_DC);
+static int (*php_runkit_sandbox_sapi_send_headers)(sapi_headers_struct *sapi_headers TSRMLS_DC);
+static void (*php_runkit_sandbox_sapi_send_header)(sapi_header_struct *sapi_header, void *server_context TSRMLS_DC);
+static char *(*php_runkit_sandbox_sapi_read_cookies)(TSRMLS_D);
 
 /* {{{ php_runkit_sandbox_body_write
  * Wrap the caller's output handler with a mechanism for switching contexts
@@ -952,6 +958,87 @@ static int php_runkit_sandbox_body_write(const char *str, uint str_length TSRMLS
 	tsrm_set_interpreter_context(objval->context);
 
 	return bytes_written;	
+}
+/* }}} */
+
+/* {{{ php_runkit_sandbox_header_handler
+ * Ignore headers when in a subrequest
+ */
+static int php_runkit_sandbox_header_handler(sapi_header_struct *sapi_header,sapi_headers_struct *sapi_headers TSRMLS_DC)
+{
+	if (!RUNKIT_G(current_sandbox)) {
+		/* Not in a sandbox use SAPI's actual handler */
+		if (php_runkit_sandbox_sapi_header_handler) {
+			return php_runkit_sandbox_sapi_header_handler(sapi_header, sapi_headers TSRMLS_CC);
+		} else {
+			/* Active SAPI doesn't use headers, just ignore */
+			return SAPI_HEADER_ADD;
+		}
+	}
+
+	/* Otherwise ignore headers -- TODO: Provide a way for the calling scope to receive these a la output handler */
+	return SAPI_HEADER_ADD;
+}
+/* }}} */
+
+/* {{{ php_runkit_sandbox_send_headers
+ * Pretend to send headers
+ */
+static int php_runkit_sandbox_send_headers(sapi_headers_struct *sapi_headers TSRMLS_DC)
+{
+	if (!RUNKIT_G(current_sandbox)) {
+		/* Not in a sandbox use SAPI's actual handler */
+		if (php_runkit_sandbox_sapi_send_headers) {
+			return php_runkit_sandbox_sapi_send_headers(sapi_headers TSRMLS_CC);
+		} else {
+			/* Active SAPI doesn't use headers, just ignore */
+			return SAPI_HEADER_SENT_SUCCESSFULLY;
+		}
+	}
+
+	/* Do nothing */
+	return SAPI_HEADER_SENT_SUCCESSFULLY;
+}
+/* }}} */
+
+/* {{{ php_runkit_sandbox_send_header
+ * Pretend to send header
+ */
+static void php_runkit_sandbox_send_header(sapi_header_struct *sapi_header, void *server_context TSRMLS_DC)
+{
+	if (!RUNKIT_G(current_sandbox)) {
+		/* Not in a sandbox use SAPI's actual handler */
+		if (php_runkit_sandbox_sapi_send_header) {
+			php_runkit_sandbox_sapi_send_header(sapi_header, server_context TSRMLS_CC);
+			return;
+		} else {
+			/* Active SAPI doesn't use headers, just ignore */
+			return;
+		}
+	}
+
+	/* Do nothing */
+	return;
+}
+/* }}} */
+
+/* {{( php_runkit_sandbox_read_cookies
+ * Pretend to read cookies
+ */
+static char *php_runkit_sandbox_read_cookies(TSRMLS_D)
+{
+	if (!RUNKIT_G(current_sandbox)) {
+		/* Not in a sandbox use SAPI's actual handler */
+		if (php_runkit_sandbox_sapi_read_cookies) {
+			return php_runkit_sandbox_sapi_read_cookies(TSRMLS_C);
+		} else {
+			/* Active SAPI doesn't use cookies, just ignore */
+			return NULL;
+		}
+	}
+
+	/* Do nothing */
+	return NULL;
 }
 /* }}} */
 
@@ -1410,15 +1497,30 @@ int php_runkit_init_sandbox(INIT_FUNC_ARGS)
 	/* ZE has no concept of modifying properties in place via zval** across contexts */
 	php_runkit_sandbox_object_handlers.get_property_ptr_ptr		= NULL;
 
-	php_runkit_sandbox_sapi_ub_write = sapi_module.ub_write;
-	sapi_module.ub_write = php_runkit_sandbox_body_write;
+	/* Wedge ourselves in front of the SAPI */
+	php_runkit_sandbox_sapi_ub_write							= sapi_module.ub_write;
+	php_runkit_sandbox_sapi_header_handler						= sapi_module.header_handler;
+	php_runkit_sandbox_sapi_send_headers						= sapi_module.send_headers;
+	php_runkit_sandbox_sapi_send_header							= sapi_module.send_header;
+	php_runkit_sandbox_sapi_read_cookies						= sapi_module.read_cookies;
+
+	sapi_module.ub_write										= php_runkit_sandbox_body_write;
+	sapi_module.header_handler									= php_runkit_sandbox_header_handler;
+	sapi_module.send_headers									= php_runkit_sandbox_send_headers;
+	sapi_module.send_header										= php_runkit_sandbox_send_header;
+	sapi_module.read_cookies									= php_runkit_sandbox_read_cookies;
 
 	return SUCCESS;
 }
 
 int php_runkit_shutdown_sandbox(SHUTDOWN_FUNC_ARGS)
 {
-	sapi_module.ub_write = php_runkit_sandbox_sapi_ub_write;
+	/* Give direct control back to the SAPI */
+	sapi_module.ub_write										= php_runkit_sandbox_sapi_ub_write;
+	sapi_module.header_handler									= php_runkit_sandbox_sapi_header_handler;
+	sapi_module.send_headers									= php_runkit_sandbox_sapi_send_headers;
+	sapi_module.send_header										= php_runkit_sandbox_sapi_send_header;
+	sapi_module.read_cookies									= php_runkit_sandbox_sapi_read_cookies;
 
 	return SUCCESS;
 }

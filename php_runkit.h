@@ -75,6 +75,7 @@ PHP_FUNCTION(runkit_method_copy);
 PHP_FUNCTION(runkit_constant_redefine);
 PHP_FUNCTION(runkit_constant_remove);
 PHP_FUNCTION(runkit_constant_add);
+PHP_FUNCTION(runkit_default_property_add);
 PHP_FUNCTION(runkit_class_emancipate);
 PHP_FUNCTION(runkit_class_adopt);
 PHP_FUNCTION(runkit_import);
@@ -177,6 +178,9 @@ zend_class_entry *_php_runkit_locate_scope(zend_class_entry *ce, zend_function *
 
 /* runkit_constants.c */
 int php_runkit_update_children_consts(zend_class_entry *ce, int num_args, va_list args, zend_hash_key *hash_key);
+
+/* runkit_props.c */
+int php_runkit_update_children_def_props(zend_class_entry *ce, int num_args, va_list args, zend_hash_key *hash_key);
 
 #ifdef PHP_RUNKIT_SANDBOX
 /* runkit_sandbox.c */

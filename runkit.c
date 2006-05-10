@@ -41,12 +41,36 @@ PHP_FUNCTION(runkit_superglobals)
 /* }}} */
 #endif /* PHP_RUNKIT_SUPERGLOBALS */
 
+/* {{{ proto array runkit_zval_inspect(mized var)
+ */
+PHP_FUNCTION(runkit_zval_inspect)
+{
+	zval *value;
+	char *addr;
+	int addr_len;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z", &value) == FAILURE) {
+		return;
+	}
+
+	array_init(return_value);
+
+	addr_len = spprintf(&addr, 0, "0x%0lx", (long)value);
+	add_assoc_stringl(return_value, "address", addr, addr_len, 0);
+
+	add_assoc_long(return_value, "refcount", value->refcount);
+	add_assoc_bool(return_value, "is_ref", value->is_ref);
+	add_assoc_long(return_value, "type", value->type);
+}
+/* }}} */
+
 /* {{{ runkit_functions[]
  */
 function_entry runkit_functions[] = {
 	PHP_FE(runkit_class_emancipate,									NULL)
 	PHP_FE(runkit_class_adopt,										NULL)
 
+	PHP_FE(runkit_zval_inspect,										NULL)
 #ifdef ZEND_ENGINE_2
 	PHP_FE(runkit_object_id,										NULL)
 #endif
@@ -81,6 +105,8 @@ function_entry runkit_functions[] = {
 	PHP_FE(runkit_constant_redefine,								NULL)
 	PHP_FE(runkit_constant_remove,									NULL)
 	PHP_FE(runkit_constant_add,										NULL)
+
+	PHP_FE(runkit_default_property_add,								NULL)
 
 #ifdef PHP_RUNKIT_SANDBOX
 	PHP_FE(runkit_sandbox_output_handler,							NULL)

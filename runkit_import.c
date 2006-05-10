@@ -212,6 +212,44 @@ import_const_skip:
  */
 static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry *ce, int override TSRMLS_DC)
 {
+	HashPosition pos;
+	char *key;
+	int key_len;
+	long idx;
+	zval **p;
+
+	zend_hash_internal_pointer_reset_ex(&ce->default_properties, &pos);
+	while (zend_hash_get_current_data_ex(&ce->default_properties, (void**)&p, &pos) == SUCCESS && p && *p) {
+		long action = HASH_ADD;
+
+		if (zend_hash_get_current_key_ex(&ce->default_properties, &key, &key_len, &idx, 0, &pos) == HASH_KEY_IS_STRING) {
+			char *cname, *pname;
+
+			zend_unmangle_property_name(key, &cname, *pname);
+			if (zend_hash_exists(&dce->default_properties, key, key_len)) {
+				if (override) {
+					action = HASH_UPDATE;
+				} else {
+					php_error_docref(NULL TSRMLS_CC, E_NOTICE, "%s->%s already exists, not importing", dce->name, pname);
+					goto import_prop_skip;
+				}
+			}
+			ZVAL_ADDREF(*p);
+			if (zend_hash_add_or_update(&dce->default_properties, key, key_len, (void*)p, sizeof(zval*), NULL, action) == FAILURE) {
+				zval_ptr_dtor(p);
+				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to import %s->%s", dce->name, pname);
+			}
+
+			if (!cname || strcmp(cname, "*") == 0) {
+				/* PUBLIC || PROTECTED */
+				zend_hash_apply_with_arguments(EG(class_table), (apply_func_args_t)php_runkit_update_children_def_props, 4, dce, p, key, key_len - 1);
+			}
+		} else {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Property has invalid key name");
+		}
+import_prop_skip:
+		zend_hash_move_forward_ex(&ce->default_properties, &pos);
+	}
 
 	return SUCCESS;
 }
