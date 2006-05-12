@@ -14,6 +14,7 @@ $php->echo("BAZimbly\n");
 var_dump($php['output_handler']);
 
 function test_handler($str) {
+  if (strlen($str) == 0) return NULL; /* Do nothing with flush events */
   /* Echoing and returning have the same effect here, both go to parent's output chain */
   echo 'Received string from sandbox: ' . strlen($str) . " bytes long.\n";
 

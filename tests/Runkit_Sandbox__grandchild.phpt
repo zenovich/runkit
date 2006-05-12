@@ -15,14 +15,16 @@ $php->eval('echo "Foo\n";
 			echo "Baz\n";
 
 			function grandchild_output($str) {
-				echo "Grandchild Says: $str";
+				if (strlen($str) == 0) return NULL; /* flush() */
+				return "Grandchild Says: $str";
 			}');
 
 echo "Bling\n";
 $php->echo("Blong\n");
 
 function child_output($str) {
-	echo "Child Says: $str";
+	if (strlen($str) == 0) return NULL; /* flush() */
+	return "Child Says: $str";
 }
 
 --EXPECT--

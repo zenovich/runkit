@@ -13,6 +13,7 @@ $php->echo("Barish\n");
 $php->echo("BAZimbly\n");
 
 function test_handler($str) {
+  if (strlen($str) == 0) return NULL; /* flush() */
   /* Echoing and returning have the same effect here, both go to parent's output chain */
   echo 'Received string from sandbox: ' . strlen($str) . " bytes long.\n";
 

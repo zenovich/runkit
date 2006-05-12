@@ -891,21 +891,16 @@ static void php_runkit_sandbox_unset_property(zval *object, zval *member TSRMLS_
 }
 /* }}} */
 
-/* ********************
-   * Output Buffering *
-   ******************** */
+/* **************
+   * SAPI Wedge *
+   ************** */
 
-/* Original SAPI functions */
-static int (*php_runkit_sandbox_sapi_ub_write)(const char *str, uint str_length TSRMLS_DC);
-static int (*php_runkit_sandbox_sapi_header_handler)(sapi_header_struct *sapi_header,sapi_headers_struct *sapi_headers TSRMLS_DC);
-static int (*php_runkit_sandbox_sapi_send_headers)(sapi_headers_struct *sapi_headers TSRMLS_DC);
-static void (*php_runkit_sandbox_sapi_send_header)(sapi_header_struct *sapi_header, void *server_context TSRMLS_DC);
-static char *(*php_runkit_sandbox_sapi_read_cookies)(TSRMLS_D);
+static sapi_module_struct php_runkit_sandbox_original_sapi;
 
-/* {{{ php_runkit_sandbox_body_write
+/* {{{ php_runkit_sandbox_sapi_ub_write
  * Wrap the caller's output handler with a mechanism for switching contexts
  */
-static int php_runkit_sandbox_body_write(const char *str, uint str_length TSRMLS_DC)
+static int php_runkit_sandbox_sapi_ub_write(const char *str, uint str_length TSRMLS_DC)
 {
 	php_runkit_sandbox_object *objval = RUNKIT_G(current_sandbox);
 	int bytes_written;
@@ -916,7 +911,12 @@ static int php_runkit_sandbox_body_write(const char *str, uint str_length TSRMLS
 
 	if (!objval) {
 		/* Not in a sandbox -- Use genuine sapi.ub_write handler */
-		return php_runkit_sandbox_sapi_ub_write(str, str_length TSRMLS_CC);
+		if (php_runkit_sandbox_original_sapi.ub_write) {
+			return php_runkit_sandbox_original_sapi.ub_write(str, str_length TSRMLS_CC);
+		} else {
+			/* Ignore data, no real SAPI handler to pass it to */
+			return str_length;
+		}
 	}
 
 	tsrm_set_interpreter_context(objval->parent_context);
@@ -940,9 +940,12 @@ static int php_runkit_sandbox_body_write(const char *str, uint str_length TSRMLS
 
 		if (call_user_function_ex(EG(function_table), NULL, objval->output_handler, &retval, 1, output_buffer, 0, NULL TSRMLS_CC) == SUCCESS) {
 			if (retval) {
-				convert_to_string(retval);
-				bytes_written = PHPWRITE(Z_STRVAL_P(retval), Z_STRLEN_P(retval));
+				if (Z_TYPE_P(retval) != IS_NULL) {
+					convert_to_string(retval);
+					PHPWRITE(Z_STRVAL_P(retval), Z_STRLEN_P(retval));
+				}
 				zval_ptr_dtor(&retval);
+				bytes_written = str_length;
 			} else {
 				bytes_written = 0;
 			}
@@ -961,19 +964,144 @@ static int php_runkit_sandbox_body_write(const char *str, uint str_length TSRMLS
 }
 /* }}} */
 
-/* {{{ php_runkit_sandbox_header_handler
+/* {{{ php_runkit_sandbox_sapi_flush
+ */
+static void php_runkit_sandbox_sapi_flush(void *server_context)
+{
+	php_runkit_sandbox_object *objval;
+	TSRMLS_FETCH();
+
+	objval = RUNKIT_G(current_sandbox);
+
+	if (!objval) {
+		/* Not in a sandbox -- Use genuine sapi.flush handler */
+		if (php_runkit_sandbox_original_sapi.flush) {
+			php_runkit_sandbox_original_sapi.flush(server_context);
+		}
+		return;
+	}
+
+	tsrm_set_interpreter_context(objval->parent_context);
+	{
+		zval *retval = NULL, **args[1];
+		TSRMLS_FETCH();
+
+		if (!objval->output_handler ||
+			!zend_is_callable(objval->output_handler, IS_CALLABLE_CHECK_NO_ACCESS, NULL)) {
+			/* No hander, or invalid handler, pass up the line... */
+			if (php_runkit_sandbox_original_sapi.flush) {
+				php_runkit_sandbox_original_sapi.flush(server_context);
+			}
+			tsrm_set_interpreter_context(objval->context);
+			return;
+		}
+
+		args[0] = &EG(uninitialized_zval_ptr);
+
+		if (call_user_function_ex(EG(function_table), NULL, objval->output_handler, &retval, 1, args, 0, NULL TSRMLS_CC) == SUCCESS) {
+			if (retval) {
+				if (Z_TYPE_P(retval) != IS_NULL) {
+					convert_to_string(retval);
+					PHPWRITE(Z_STRVAL_P(retval), Z_STRLEN_P(retval));
+				}
+				zval_ptr_dtor(&retval);
+			}
+		} else {
+			php_error_docref("runkit.sandbox" TSRMLS_CC, E_WARNING, "Unable to call output buffer callback");
+		}
+	}
+	tsrm_set_interpreter_context(objval->context);
+
+	return;
+}
+/* }}} */
+
+/* {{{ php_runkit_sandbox_sapi_get_stat
+ */
+static struct stat *php_runkit_sandbox_sapi_get_stat(TSRMLS_D)
+{
+	php_runkit_sandbox_object *objval = RUNKIT_G(current_sandbox);
+	struct stat *ret;
+
+	if (objval) {
+		tsrm_set_interpreter_context(objval->parent_context);
+		{
+			TSRMLS_FETCH();
+
+			ret = php_runkit_sandbox_original_sapi.get_stat(TSRMLS_C);
+		}
+		tsrm_set_interpreter_context(objval->context);
+	} else {
+		ret = php_runkit_sandbox_original_sapi.get_stat(TSRMLS_C);
+	}
+
+	return ret;
+}
+/* }}} */
+
+/* {{{ php_runkit_sandbox_sapi_getenv
+ */
+static char *php_runkit_sandbox_sapi_getenv(char *name, size_t name_len TSRMLS_DC)
+{
+	php_runkit_sandbox_object *objval = RUNKIT_G(current_sandbox);
+	char *ret;
+
+	if (objval) {
+		tsrm_set_interpreter_context(objval->parent_context);
+		{
+			TSRMLS_FETCH();
+
+			ret = php_runkit_sandbox_original_sapi.getenv(name, name_len TSRMLS_CC);
+		}
+		tsrm_set_interpreter_context(objval->context);
+	} else {
+		ret = php_runkit_sandbox_original_sapi.getenv(name, name_len TSRMLS_CC);
+	}
+
+	return ret;
+}
+/* }}} */
+
+/* {{{ php_runkit_sandbox_sapi_sapi_error
+ */
+static void php_runkit_sandbox_sapi_sapi_error(int type, const char *error_msg, ...)
+{
+	char *message;
+	va_list args;
+	php_runkit_sandbox_object *objval;
+	TSRMLS_FETCH();
+
+	objval = RUNKIT_G(current_sandbox);
+
+	va_start(args, error_msg);
+	vspprintf(&message, 0, error_msg, args);
+	va_end(args);
+
+	if (objval) {
+		tsrm_set_interpreter_context(objval->parent_context);
+		{
+			TSRMLS_FETCH();
+
+			php_runkit_sandbox_original_sapi.sapi_error(type, "%s", message);
+		}
+	} else {
+		php_runkit_sandbox_original_sapi.sapi_error(type, "%s", message);
+	}
+
+	efree(message);
+
+	return;
+}
+/* }}} */
+
+/* {{{ php_runkit_sandbox_sapi_header_handler
  * Ignore headers when in a subrequest
  */
-static int php_runkit_sandbox_header_handler(sapi_header_struct *sapi_header,sapi_headers_struct *sapi_headers TSRMLS_DC)
+static int php_runkit_sandbox_sapi_header_handler(sapi_header_struct *sapi_header,sapi_headers_struct *sapi_headers TSRMLS_DC)
 {
 	if (!RUNKIT_G(current_sandbox)) {
 		/* Not in a sandbox use SAPI's actual handler */
-		if (php_runkit_sandbox_sapi_header_handler) {
-			return php_runkit_sandbox_sapi_header_handler(sapi_header, sapi_headers TSRMLS_CC);
-		} else {
-			/* Active SAPI doesn't use headers, just ignore */
-			return SAPI_HEADER_ADD;
-		}
+		return php_runkit_sandbox_original_sapi.header_handler(sapi_header, sapi_headers TSRMLS_CC);
 	}
 
 	/* Otherwise ignore headers -- TODO: Provide a way for the calling scope to receive these a la output handler */
@@ -981,19 +1109,14 @@ static int php_runkit_sandbox_header_handler(sapi_header_struct *sapi_header,sap
 }
 /* }}} */
 
-/* {{{ php_runkit_sandbox_send_headers
+/* {{{ php_runkit_sandbox_sapi_send_headers
  * Pretend to send headers
  */
-static int php_runkit_sandbox_send_headers(sapi_headers_struct *sapi_headers TSRMLS_DC)
+static int php_runkit_sandbox_sapi_send_headers(sapi_headers_struct *sapi_headers TSRMLS_DC)
 {
 	if (!RUNKIT_G(current_sandbox)) {
 		/* Not in a sandbox use SAPI's actual handler */
-		if (php_runkit_sandbox_sapi_send_headers) {
-			return php_runkit_sandbox_sapi_send_headers(sapi_headers TSRMLS_CC);
-		} else {
-			/* Active SAPI doesn't use headers, just ignore */
-			return SAPI_HEADER_SENT_SUCCESSFULLY;
-		}
+		return php_runkit_sandbox_original_sapi.send_headers(sapi_headers TSRMLS_CC);
 	}
 
 	/* Do nothing */
@@ -1001,20 +1124,15 @@ static int php_runkit_sandbox_send_headers(sapi_headers_struct *sapi_headers TSR
 }
 /* }}} */
 
-/* {{{ php_runkit_sandbox_send_header
+/* {{{ php_runkit_sandbox_sapi_send_header
  * Pretend to send header
  */
-static void php_runkit_sandbox_send_header(sapi_header_struct *sapi_header, void *server_context TSRMLS_DC)
+static void php_runkit_sandbox_sapi_send_header(sapi_header_struct *sapi_header, void *server_context TSRMLS_DC)
 {
 	if (!RUNKIT_G(current_sandbox)) {
 		/* Not in a sandbox use SAPI's actual handler */
-		if (php_runkit_sandbox_sapi_send_header) {
-			php_runkit_sandbox_sapi_send_header(sapi_header, server_context TSRMLS_CC);
-			return;
-		} else {
-			/* Active SAPI doesn't use headers, just ignore */
-			return;
-		}
+		php_runkit_sandbox_sapi_send_header(sapi_header, server_context TSRMLS_CC);
+		return;
 	}
 
 	/* Do nothing */
@@ -1022,25 +1140,224 @@ static void php_runkit_sandbox_send_header(sapi_header_struct *sapi_header, void
 }
 /* }}} */
 
-/* {{( php_runkit_sandbox_read_cookies
- * Pretend to read cookies
+/* {{{ php_runkit_sandbox_sapi_read_post
  */
-static char *php_runkit_sandbox_read_cookies(TSRMLS_D)
+static int php_runkit_sandbox_sapi_read_post(char *buffer, uint count_bytes TSRMLS_DC)
 {
 	if (!RUNKIT_G(current_sandbox)) {
 		/* Not in a sandbox use SAPI's actual handler */
-		if (php_runkit_sandbox_sapi_read_cookies) {
-			return php_runkit_sandbox_sapi_read_cookies(TSRMLS_C);
-		} else {
-			/* Active SAPI doesn't use cookies, just ignore */
-			return NULL;
-		}
+		return php_runkit_sandbox_original_sapi.read_post(buffer, count_bytes TSRMLS_CC);
+	}
+
+	/* return nothing */
+	return 0;
+}
+/* }}} */
+
+/* {{( php_runkit_sandbox_sapi_read_cookies
+ * Pretend to read cookies
+ */
+static char *php_runkit_sandbox_sapi_read_cookies(TSRMLS_D)
+{
+	if (!RUNKIT_G(current_sandbox)) {
+		/* Not in a sandbox use SAPI's actual handler */
+		return php_runkit_sandbox_original_sapi.read_cookies(TSRMLS_C);
 	}
 
 	/* Do nothing */
 	return NULL;
 }
 /* }}} */
+
+/* {{{ php_runkit_sandbox_sapi_register_server_variables
+ */
+static void php_runkit_sandbox_sapi_register_server_variables(zval *track_vars_array TSRMLS_DC)
+{
+	if (!RUNKIT_G(current_sandbox)) {
+		/* Not in a sandbox use SAPI's actual handler */
+		return php_runkit_sandbox_original_sapi.register_server_variables(track_vars_array TSRMLS_CC);
+	}
+
+	/* Do nothing */
+	return;
+}
+/* }}} */
+
+/* {{{ php_runkit_sandbox_sapi_log_message
+ */
+static void php_runkit_sandbox_sapi_log_message(char *message)
+{
+	TSRMLS_FETCH();
+
+	if (!RUNKIT_G(current_sandbox)) {
+		/* Not in a sandbox use SAPI's actual handler */
+		php_runkit_sandbox_original_sapi.log_message(message);
+		return;
+	}
+
+	/* Do nothing */
+	return;
+}
+/* }}} */
+
+/* {{{ php_runkit_sandbox_sapi_get_request_time
+ */
+static time_t php_runkit_sandbox_sapi_get_request_time(TSRMLS_D)
+{
+	if (!RUNKIT_G(current_sandbox)) {
+		/* Not in a sandbox use SAPI's actual handler */
+		return php_runkit_sandbox_original_sapi.get_request_time(TSRMLS_C);
+	}
+
+	/* Parrot what main/SAPI.c does */
+	if (!SG(global_request_time)) {
+		SG(global_request_time) = time(0);
+	}
+	return SG(global_request_time);
+}
+/* }}} */
+
+/* {{{ php_runkit_sandbox_sapi_block_interruptions
+ */
+static void php_runkit_sandbox_sapi_block_interruptions(void)
+{
+	TSRMLS_FETCH();
+
+	if (!RUNKIT_G(current_sandbox)) {
+		/* Not in a sandbox use SAPI's actual handler */
+		php_runkit_sandbox_original_sapi.block_interruptions();
+		return;
+	}
+
+	/* Do nothing */
+	return;
+}
+/* }}} */
+
+/* {{{ php_runkit_sandbox_sapi_unblock_interruptions
+ */
+static void php_runkit_sandbox_sapi_unblock_interruptions(void)
+{
+	TSRMLS_FETCH();
+
+	if (!RUNKIT_G(current_sandbox)) {
+		/* Not in a sandbox use SAPI's actual handler */
+		php_runkit_sandbox_original_sapi.unblock_interruptions();
+		return;
+	}
+
+	/* Do nothing */
+	return;
+}
+/* }}} */
+
+/* {{{ php_runkit_sandbox_sapi_default_post_reader
+ */
+static void php_runkit_sandbox_sapi_default_post_reader(TSRMLS_D)
+{
+	if (!RUNKIT_G(current_sandbox)) {
+		/* Not in a sandbox use SAPI's actual handler */
+		php_runkit_sandbox_original_sapi.default_post_reader(TSRMLS_C);
+		return;
+	}
+
+	/* Do nothing */
+	return;
+}
+/* }}} */
+
+/* {{{ php_runkit_sandbox_sapi_treat_data
+ */
+static void php_runkit_sandbox_sapi_treat_data(int arg, char *str, zval *destArray TSRMLS_DC)
+{
+	if (!RUNKIT_G(current_sandbox)) {
+		/* Not in a sandbox use SAPI's actual handler */
+		php_runkit_sandbox_original_sapi.treat_data(arg, str, destArray TSRMLS_CC);
+		return;
+	}
+
+	/* Do nothing */
+	return;
+}
+/* }}} */
+
+/* {{{ php_runkit_sandbox_sapi_get_fd
+ */
+static int php_runkit_sandbox_sapi_get_fd(int *fd TSRMLS_DC)
+{
+	if (!RUNKIT_G(current_sandbox)) {
+		/* Not in a sandbox use SAPI's actual handler */
+		return php_runkit_sandbox_original_sapi.get_fd(fd TSRMLS_CC);
+	}
+
+	/* Do nothing */
+	return FAILURE;
+}
+/* }}} */
+
+/* {{{ php_runkit_sandbox_sapi_force_http_10
+ */
+static int php_runkit_sandbox_sapi_force_http_10(TSRMLS_D)
+{
+	if (!RUNKIT_G(current_sandbox)) {
+		/* Not in a sandbox use SAPI's actual handler */
+		return php_runkit_sandbox_original_sapi.force_http_10(TSRMLS_C);
+	}
+
+	/* Do nothing */
+	return FAILURE;
+}
+/* }}} */
+
+/* {{{ php_runkit_sandbox_sapi_get_target_uid
+ */
+static int php_runkit_sandbox_sapi_get_target_uid(uid_t *uid TSRMLS_DC)
+{
+	if (!RUNKIT_G(current_sandbox)) {
+		/* Not in a sandbox use SAPI's actual handler */
+		return php_runkit_sandbox_original_sapi.get_target_uid(uid TSRMLS_CC);
+	}
+
+	/* Do nothing */
+	return FAILURE;
+}
+/* }}} */
+
+/* {{{ php_runkit_sandbox_sapi_get_target_gid
+ */
+static int php_runkit_sandbox_sapi_get_target_gid(uid_t *gid TSRMLS_DC)
+{
+	if (!RUNKIT_G(current_sandbox)) {
+		/* Not in a sandbox use SAPI's actual handler */
+		return php_runkit_sandbox_original_sapi.get_target_gid(gid TSRMLS_CC);
+	}
+
+	/* Do nothing */
+	return FAILURE;
+}
+/* }}} */
+
+/* {{{ php_runkit_sandbox_sapi_input_filter
+ */
+static unsigned int php_runkit_sandbox_sapi_input_filter(int arg, char *var, char **val, unsigned int val_len, unsigned int *new_val_len TSRMLS_DC)
+{
+	if (!RUNKIT_G(current_sandbox)) {
+		/* Not in a sandbox use SAPI's actual handler */
+		return php_runkit_sandbox_original_sapi.input_filter(arg, var, val, val_len, new_val_len TSRMLS_CC);
+	}
+
+	/* Parrot php_default_input_filter */
+	if (new_val_len) {
+		*new_val_len = val_len;
+	}
+
+	return 1;
+}
+/* }}} */
+
+/* ********************
+   * Output Buffering *
+   ******************** */
 
 /* {{{ proto mixed runkit_sandbox_output_handler(Runkit_Sandbox sandbox[, mixed callback])
 	Returns the output handler which was active prior to calling this method,
@@ -1473,6 +1790,7 @@ static zend_object_value php_runkit_sandbox_ctor(zend_class_entry *ce TSRMLS_DC)
 	return retval;
 }
 
+#define PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(method)	if (sapi_module.method) { sapi_module.method = php_runkit_sandbox_sapi_##method; }
 int php_runkit_init_sandbox(INIT_FUNC_ARGS)
 {
 	zend_class_entry ce;
@@ -1498,17 +1816,37 @@ int php_runkit_init_sandbox(INIT_FUNC_ARGS)
 	php_runkit_sandbox_object_handlers.get_property_ptr_ptr		= NULL;
 
 	/* Wedge ourselves in front of the SAPI */
-	php_runkit_sandbox_sapi_ub_write							= sapi_module.ub_write;
-	php_runkit_sandbox_sapi_header_handler						= sapi_module.header_handler;
-	php_runkit_sandbox_sapi_send_headers						= sapi_module.send_headers;
-	php_runkit_sandbox_sapi_send_header							= sapi_module.send_header;
-	php_runkit_sandbox_sapi_read_cookies						= sapi_module.read_cookies;
-
-	sapi_module.ub_write										= php_runkit_sandbox_body_write;
-	sapi_module.header_handler									= php_runkit_sandbox_header_handler;
-	sapi_module.send_headers									= php_runkit_sandbox_send_headers;
-	sapi_module.send_header										= php_runkit_sandbox_send_header;
-	sapi_module.read_cookies									= php_runkit_sandbox_read_cookies;
+	memcpy(&php_runkit_sandbox_original_sapi,					&sapi_module,				sizeof(sapi_module_struct));
+	/* startup -- Not important since it's already fired */
+	/* shutdown -- Not important since we'll be out of the way soon enough */
+	/* activate -- Okay to run as-is */
+	/* deactivate -- Okay to run as-is */
+	sapi_module.ub_write										= php_runkit_sandbox_sapi_ub_write;
+	sapi_module.flush											= php_runkit_sandbox_sapi_flush;
+	PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(get_stat)
+	PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(getenv)
+	PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(sapi_error)
+	PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(header_handler)
+	PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(send_headers)
+	PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(send_header)
+	PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(read_post)
+	PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(read_cookies)
+	PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(register_server_variables)
+	PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(log_message)
+	PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(get_request_time)
+	/* php_ini_path_override */
+	PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(block_interruptions)
+	PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(unblock_interruptions)
+	PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(default_post_reader)
+	PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(treat_data)
+	/* php_ini_ignore */
+	PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(get_fd)
+	PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(force_http_10)
+	PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(get_target_uid)
+	PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(get_target_gid)
+	PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(input_filter)
+	/* ini_defaults -- Not important since it's already fired */
+	/* phpinfo_as_text */
 
 	return SUCCESS;
 }
@@ -1516,11 +1854,7 @@ int php_runkit_init_sandbox(INIT_FUNC_ARGS)
 int php_runkit_shutdown_sandbox(SHUTDOWN_FUNC_ARGS)
 {
 	/* Give direct control back to the SAPI */
-	sapi_module.ub_write										= php_runkit_sandbox_sapi_ub_write;
-	sapi_module.header_handler									= php_runkit_sandbox_sapi_header_handler;
-	sapi_module.send_headers									= php_runkit_sandbox_sapi_send_headers;
-	sapi_module.send_header										= php_runkit_sandbox_sapi_send_header;
-	sapi_module.read_cookies									= php_runkit_sandbox_sapi_read_cookies;
+	memcpy(&sapi_module,								&php_runkit_sandbox_original_sapi,	sizeof(sapi_module_struct));
 
 	return SUCCESS;
 }
