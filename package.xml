@@ -15,6 +15,21 @@ Execute code in restricted environment (sandboxing).</description>
   </maintainers>
 
    <release>
+    <version>0.8</version>
+    <state>beta</state>
+    <date>2006-05-14</date>
+    <notes>Fixed SAPI handlers for genuinely threaded webservers (e.g. apache2-worker)
+Fixed internal pointer corruption in function/class popping
+Added functions:
+  runkit_zval_inspect()
+  runkit_return_value_used()
+  runkit_default_property_add()
+Implemented class property importing in runkit_import()
+Began refactor for PHP6 compatability</notes>
+   </release>
+
+  <changelog>
+   <release>
     <version>0.7</version>
     <state>beta</state>
     <date>2005-10-30</date>
@@ -28,7 +43,6 @@ Fix parent_scope support (was only applied to property_read and eval/include/req
 Expand parent_scope setting to allow variable arrays as symbol tables.</notes>
    </release>
 
-  <changelog>
    <release>
     <version>0.6</version>
     <state>beta</state>
