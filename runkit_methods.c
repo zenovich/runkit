@@ -333,6 +333,9 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 	} else if (flags & ZEND_ACC_PROTECTED) {
 		func.common.fn_flags &= ~ZEND_ACC_PPP_MASK;
 		func.common.fn_flags |= ZEND_ACC_PROTECTED;
+	} else {
+		func.common.fn_flags &= ~ZEND_ACC_PPP_MASK;
+		func.common.fn_flags |= ZEND_ACC_PUBLIC;
 	}
 
 	func.common.fn_flags |= ZEND_ACC_ALLOW_STATIC;
