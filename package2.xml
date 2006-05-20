@@ -17,25 +17,17 @@ Execute code in restricted environment (sandboxing).
   <active>yes</active>
  </lead>
 
- <date>2006-05-14</date>
- <version>
-  <release>0.8</release>
-  <api>0.8</api>
- </version>
- <stability>
-  <release>beta</release>
-  <api>beta</api>
- </stability>
- <license uri="http://www.php.net/license">PHP</license>
- <notes>Fixed SAPI handlers for genuinely threaded webservers (e.g. apache2-worker)
-Fixed internal pointer corruption in function/class popping
-Added functions:
-  runkit_zval_inspect()
-  runkit_return_value_used()
-  runkit_default_property_add()
-Implemented class property importing in runkit_import()
-Began refactor for PHP6 compatability
- </notes>
+   <date>2006-05-20</date>
+   <version>
+    <release>0.8.1</release>
+    <api>0.8</api>
+   </version>
+   <stability>
+    <release>beta</release>
+    <api>beta</api>
+   </stability>
+   <license uri="http://www.php.net/license">PHP</license>
+   <notes>Added source file runkit_props.c to package</notes>
 
  <contents>
   <dir name="/">
@@ -96,6 +88,7 @@ Began refactor for PHP6 compatability
    <file name="runkit_functions.c" role="src" />
    <file name="runkit_import.c" role="src" />
    <file name="runkit_methods.c" role="src" />
+   <file name="runkit_props.c" role="src" />
    <file name="runkit_sandbox.c" role="src" />
    <file name="runkit_sandbox_parent.c" role="src" />
    <file name="tsrm_5.0.diff" role="src" />
@@ -115,6 +108,29 @@ Began refactor for PHP6 compatability
  <extsrcrelease />
 
  <changelog>
+
+  <release>
+   <date>2006-05-14</date>
+   <version>
+    <release>0.8</release>
+    <api>0.8</api>
+   </version>
+   <stability>
+    <release>beta</release>
+    <api>beta</api>
+   </stability>
+   <license uri="http://www.php.net/license">PHP</license>
+   <notes>Fixed SAPI handlers for genuinely threaded webservers (e.g. apache2-worker)
+Fixed internal pointer corruption in function/class popping
+Added functions:
+  runkit_zval_inspect()
+  runkit_return_value_used()
+  runkit_default_property_add()
+Implemented class property importing in runkit_import()
+Began refactor for PHP6 compatability
+   </notes>
+  </release>
+
   <release>
    <version>
     <release>0.7</release>

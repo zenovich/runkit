@@ -15,6 +15,14 @@ Execute code in restricted environment (sandboxing).</description>
   </maintainers>
 
    <release>
+    <version>0.8.1</version>
+    <state>beta</state>
+    <date>2006-05-20</date>
+    <notes>Added source file runkit_props.c to package</notes>
+   </release>
+
+  <changelog>
+   <release>
     <version>0.8</version>
     <state>beta</state>
     <date>2006-05-14</date>
@@ -28,7 +36,6 @@ Implemented class property importing in runkit_import()
 Began refactor for PHP6 compatability</notes>
    </release>
 
-  <changelog>
    <release>
     <version>0.7</version>
     <state>beta</state>
@@ -136,6 +143,7 @@ Fix runkit_class_*.phpt regression tests to be version agnostic.</notes>
    <file role="src" name="runkit_functions.c"/>
    <file role="src" name="runkit_import.c"/>
    <file role="src" name="runkit_methods.c"/>
+   <file role="src" name="runkit_props.c"/>
    <file role="src" name="runkit_sandbox.c"/>
    <file role="src" name="runkit_sandbox_parent.c"/>
    <file role="doc" name="README"/>
