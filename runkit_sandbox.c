@@ -25,12 +25,9 @@
 static zend_object_handlers php_runkit_sandbox_object_handlers;
 static zend_class_entry *php_runkit_sandbox_class_entry;
 
-#define PHP_RUNKIT_SANDBOX_BEGIN_NO_TSRM(objval) \
-{ \
-	void *prior_context = tsrm_set_interpreter_context(objval->context);
-
 #define PHP_RUNKIT_SANDBOX_BEGIN(objval) \
-	PHP_RUNKIT_SANDBOX_BEGIN_NO_TSRM(objval); \
+{ \
+	void *prior_context = tsrm_set_interpreter_context(objval->context); \
 	TSRMLS_FETCH();
 
 #define PHP_RUNKIT_SANDBOX_ABORT(objval) \
@@ -415,7 +412,7 @@ PHP_METHOD(Runkit_Sandbox,__call)
 	PHP_SANDBOX_CROSS_SCOPE_ZVAL_COPY_CTOR(return_value);
 
 	if (retval) {
-		PHP_RUNKIT_SANDBOX_BEGIN_NO_TSRM(objval)
+		PHP_RUNKIT_SANDBOX_BEGIN(objval)
 		zval_ptr_dtor(&retval);
 		PHP_RUNKIT_SANDBOX_END(objval)
 	}
@@ -515,7 +512,7 @@ static void php_runkit_sandbox_include_or_eval(INTERNAL_FUNCTION_PARAMETERS, int
 
 	/* Don't confuse the memory manager */
 	if (retval) {
-		PHP_RUNKIT_SANDBOX_BEGIN_NO_TSRM(objval)
+		PHP_RUNKIT_SANDBOX_BEGIN(objval)
 		zval_ptr_dtor(&retval);
 		PHP_RUNKIT_SANDBOX_END(objval)
 	}
