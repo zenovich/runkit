@@ -18,6 +18,7 @@
 
 #include "php_runkit.h"
 
+#ifdef PHP_RUNKIT_MANIPULATION
 /* {{{ php_runkit_fetch_const
  */
 static int php_runkit_fetch_const(char *cname, int cname_len, zend_constant **constant TSRMLS_DC)
@@ -277,6 +278,7 @@ PHP_FUNCTION(runkit_constant_add)
 	RETURN_BOOL(php_runkit_constant_add(classname, classname_len, constname, constname_len, value TSRMLS_CC) == SUCCESS);
 }
 /* }}} */
+#endif /* PHP_RUNKIT_MANIPULATION */
 
 /*
  * Local variables:

@@ -67,20 +67,22 @@ PHP_FUNCTION(runkit_zval_inspect)
 /* {{{ runkit_functions[]
  */
 function_entry runkit_functions[] = {
-	PHP_FE(runkit_class_emancipate,									NULL)
-	PHP_FE(runkit_class_adopt,										NULL)
 
 	PHP_FE(runkit_zval_inspect,										NULL)
 #ifdef ZEND_ENGINE_2
 	PHP_FE(runkit_object_id,										NULL)
 #endif
+	PHP_FE(runkit_return_value_used,								NULL)
 
-	PHP_FE(runkit_import,											NULL)
 #ifdef PHP_RUNKIT_SUPERGLOBALS
 	PHP_FE(runkit_superglobals,										NULL)
 #endif
 
-	PHP_FE(runkit_return_value_used,								NULL)
+#ifdef PHP_RUNKIT_MANIPULATION
+	PHP_FE(runkit_class_emancipate,									NULL)
+	PHP_FE(runkit_class_adopt,										NULL)
+	PHP_FE(runkit_import,											NULL)
+
 	PHP_FE(runkit_function_add,										NULL)
 	PHP_FE(runkit_function_remove,									NULL)
 	PHP_FE(runkit_function_rename,									NULL)
@@ -107,6 +109,7 @@ function_entry runkit_functions[] = {
 	PHP_FE(runkit_constant_add,										NULL)
 
 	PHP_FE(runkit_default_property_add,								NULL)
+#endif /* PHP_RUNKIT_MANIPULATION */
 
 #ifdef PHP_RUNKIT_SANDBOX
 	PHP_FE(runkit_sandbox_output_handler,							NULL)
@@ -138,12 +141,16 @@ zend_module_entry runkit_module_entry = {
 };
 /* }}} */
 
+#if defined(PHP_RUNKIT_SUPERGLOBALS) || defined(PHP_RUNKIT_MANIPULATION)
 PHP_INI_BEGIN()
 #ifdef PHP_RUNKIT_SUPERGLOBALS
 	PHP_INI_ENTRY("runkit.superglobal", "", PHP_INI_SYSTEM|PHP_INI_PERDIR, NULL)
 #endif
+#ifdef PHP_RUNKIT_MANIPULATION
 	STD_PHP_INI_BOOLEAN("runkit.internal_override", "0", PHP_INI_SYSTEM, OnUpdateBool, internal_override, zend_runkit_globals, runkit_globals)
+#endif
 PHP_INI_END()
+#endif
 
 #ifdef COMPILE_DL_RUNKIT
 ZEND_GET_MODULE(runkit)
@@ -151,10 +158,31 @@ ZEND_GET_MODULE(runkit)
 
 static void php_runkit_globals_ctor(zend_runkit_globals *runkit_global TSRMLS_DC)
 {
+#ifdef PHP_RUNKIT_SANDBOX
 	runkit_global->current_sandbox = NULL;
+#endif
+#ifdef PHP_RUNKIT_MANIPULATION
 	runkit_global->replaced_internal_functions = NULL;
 	runkit_global->misplaced_internal_functions = NULL;
+#endif
 }
+
+#define php_runkit_feature_constant(feature, enabled) \
+		_php_runkit_feature_constant("RUNKIT_FEATURE_" #feature, sizeof("RUNKIT_FEATURE_" #feature), (enabled), \
+									CONST_CS | CONST_PERSISTENT, module_number TSRMLS_CC)
+static void _php_runkit_feature_constant(const char *name, size_t name_len, zend_bool enabled, 
+									int flags, int module_number TSRMLS_DC)
+{
+	zend_constant c;
+
+	ZVAL_BOOL(&(c.value), enabled);
+	c.flags = flags;
+	c.name = zend_strndup(name, name_len - 1);
+	c.name_len = name_len;
+	c.module_number = module_number;
+	zend_register_constant(&c TSRMLS_CC);
+}
+
 
 /* {{{ PHP_MINIT_FUNCTION
  */
@@ -166,7 +194,9 @@ PHP_MINIT_FUNCTION(runkit)
 	php_runkit_globals_ctor(&runkit_globals);
 #endif
 
+#if defined(PHP_RUNKIT_SUPERGLOBALS) || defined(PHP_RUNKIT_MANIPULATION)
 	REGISTER_INI_ENTRIES();
+#endif
 
 	REGISTER_LONG_CONSTANT("RUNKIT_IMPORT_FUNCTIONS",		PHP_RUNKIT_IMPORT_FUNCTIONS,		CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("RUNKIT_IMPORT_CLASS_METHODS",	PHP_RUNKIT_IMPORT_CLASS_METHODS,	CONST_CS | CONST_PERSISTENT);
@@ -190,6 +220,23 @@ PHP_MINIT_FUNCTION(runkit)
 #endif
 	REGISTER_STRING_CONSTANT("CLASSKIT_VERSION",			PHP_RUNKIT_VERSION,					CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("CLASSKIT_AGGREGATE_OVERRIDE",	PHP_RUNKIT_IMPORT_OVERRIDE,			CONST_CS | CONST_PERSISTENT);
+#endif
+
+	/* Feature Identifying constants */
+#ifdef PHP_RUNKIT_MANIPULATION
+	php_runkit_feature_constant(MANIPULATION, 1);
+#else
+	php_runkit_feature_constant(MANIPULATION, 0);
+#endif
+#ifdef PHP_RUNKIT_SUPERGLOBALS
+	php_runkit_feature_constant(SUPERGLOBALS, 1);
+#else
+	php_runkit_feature_constant(SUPERGLOBALS, 0);
+#endif
+#ifdef PHP_RUNKIT_SANDBOX
+	php_runkit_feature_constant(SANDBOX, 1);
+#else
+	php_runkit_feature_constant(SANDBOX, 0);
 #endif
 
 	return (1)
@@ -256,7 +303,7 @@ PHP_RINIT_FUNCTION(runkit)
 
 	RUNKIT_G(superglobals) = NULL;
 	if (!s || !strlen(s)) {
-		return SUCCESS;
+		goto no_superglobals_defined;
 	}
 
 	s = dup = estrdup(s);
@@ -275,11 +322,17 @@ PHP_RINIT_FUNCTION(runkit)
 		php_runkit_register_auto_global(s, len TSRMLS_CC);
 	}
 	efree(dup);
+no_superglobals_defined:
 #endif /* PHP_RUNKIT_SUPERGLOBALS */
 
+#ifdef PHP_RUNKIT_SANDBOX
 	RUNKIT_G(current_sandbox) = NULL;
+#endif
+
+#ifdef PHP_RUNKIT_MANIPULATION
 	RUNKIT_G(replaced_internal_functions) = NULL;
 	RUNKIT_G(misplaced_internal_functions) = NULL;
+#endif
 
 	return SUCCESS;
 }
@@ -309,6 +362,7 @@ PHP_RSHUTDOWN_FUNCTION(runkit)
 	}
 #endif /* PHP_RUNKIT_SUPERGLOBALS */
 
+#ifdef PHP_RUNKIT_MANIPULATION
 	if (RUNKIT_G(misplaced_internal_functions)) {
 		/* Just wipe out rename-to targets before restoring originals */
 		zend_hash_apply(RUNKIT_G(misplaced_internal_functions), php_runkit_destroy_misplaced_functions TSRMLS_CC);
@@ -324,6 +378,7 @@ PHP_RSHUTDOWN_FUNCTION(runkit)
 		FREE_HASHTABLE(RUNKIT_G(replaced_internal_functions));
 		RUNKIT_G(replaced_internal_functions) = NULL;
 	}
+#endif /* PHP_RUNKIT_MANIPULATION */
 
 	return SUCCESS;
 }
@@ -344,14 +399,20 @@ PHP_MINFO_FUNCTION(runkit)
 #ifdef PHP_RUNKIT_SUPERGLOBALS
 	php_info_print_table_header(2, "Custom Superglobal support", "enabled");
 #else
-	php_info_print_table_header(2, "Custom Superglobal support", "unavailable");
+	php_info_print_table_header(2, "Custom Superglobal support", "disabled or unavailable");
 #endif /* PHP_RUNKIT_SUPERGLOBALS */
 
 #ifdef PHP_RUNKIT_SANDBOX
 	php_info_print_table_header(2, "Sandbox Support", "enabled");
 #else
-	php_info_print_table_header(2, "Sandbox Support", "unavailable");
+	php_info_print_table_header(2, "Sandbox Support", "disable or unavailable");
 #endif /* PHP_RUNKIT_SANDBOX */
+
+#ifdef PHP_RUNKIT_MANIPULATION
+	php_info_print_table_header(2, "Runtime Manipulation", "enabled");
+#else
+	php_info_print_table_header(2, "Runtime Manipulation", "disabled or unavailable");
+#endif /* PHP_RUNKIT_MANIPULATION */
 
 	php_info_print_table_end();
 

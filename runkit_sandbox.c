@@ -311,8 +311,9 @@ PHP_METHOD(Runkit_Sandbox,__construct)
 		SG(headers_sent) = 1;
 		SG(request_info).no_headers = 1;
 		SG(options) = SAPI_OPTION_NO_CHDIR;
-		RUNKIT_G(current_sandbox) = objval;
+		RUNKIT_G(current_sandbox) = objval; /* Needs to be set before RINIT */
 		php_request_startup(TSRMLS_C);
+		RUNKIT_G(current_sandbox) = objval; /* But gets reset during RINIT -- Bad design on my part */
 		PG(during_request_startup) = 0;
 	PHP_RUNKIT_SANDBOX_END(objval)
 

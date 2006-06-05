@@ -18,6 +18,8 @@
 
 #include "php_runkit.h"
 
+#ifdef PHP_RUNKIT_MANIPULATION
+
 #ifndef ZEND_ENGINE_2
 /* {{{ _php_runkit_locate_scope
     ZendEngine 1 hack to determine a function's scope */
@@ -557,6 +559,7 @@ PHP_FUNCTION(runkit_method_copy)
 										sclass, sclass_len, sfunc, sfunc_len TSRMLS_CC) == SUCCESS ? 1 : 0);
 }
 /* }}} */
+#endif /* PHP_RUNKIT_MANIPULATION */
 
 /*
  * Local variables:

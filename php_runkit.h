@@ -44,13 +44,17 @@
 /* The TSRM interpreter patch required by runkit_sandbox was added in 5.1, but this package includes diffs for older versions
  * Those diffs include an additional #define to indicate that they've been applied
  */
-#if defined(ZTS) && (PHP_MAJOR_VERSION > 5 || (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION > 0) || defined(TSRM_INTERPRETER_PATCH_APPLIED))
+#if (defined(ZTS) && (PHP_MAJOR_VERSION > 5 || (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION > 0) || defined(TSRM_INTERPRETER_PATCH_APPLIED))) && defined(PHP_RUNKIT_FEATURE_SANDBOX)
 #define PHP_RUNKIT_SANDBOX
 #endif
 
 /* Superglobals don't exist until PHP 4.2 */
-#if PHP_MAJOR_VERSION > 4 || (PHP_MAJOR_VERSION == 4 && PHP_MINOR_VERSION > 1)
+#if (PHP_MAJOR_VERSION > 4 || (PHP_MAJOR_VERSION == 4 && PHP_MINOR_VERSION > 1)) && defined(PHP_RUNKIT_FEATURE_SUPER)
 #define PHP_RUNKIT_SUPERGLOBALS
+#endif
+
+#ifdef PHP_RUNKIT_FEATURE_MODIFY
+#define PHP_RUNKIT_MANIPULATION
 #endif
 
 extern zend_module_entry runkit_module_entry;
@@ -61,7 +65,13 @@ PHP_MSHUTDOWN_FUNCTION(runkit);
 PHP_RINIT_FUNCTION(runkit);
 PHP_RSHUTDOWN_FUNCTION(runkit);
 PHP_MINFO_FUNCTION(runkit);
+
 PHP_FUNCTION(runkit_return_value_used);
+#ifdef ZEND_ENGINE_2
+PHP_FUNCTION(runkit_object_id);
+#endif
+
+#ifdef PHP_RUNKIT_MANIPULATION
 PHP_FUNCTION(runkit_function_add);
 PHP_FUNCTION(runkit_function_remove);
 PHP_FUNCTION(runkit_function_rename);
@@ -79,23 +89,28 @@ PHP_FUNCTION(runkit_default_property_add);
 PHP_FUNCTION(runkit_class_emancipate);
 PHP_FUNCTION(runkit_class_adopt);
 PHP_FUNCTION(runkit_import);
-#ifdef ZEND_ENGINE_2
-PHP_FUNCTION(runkit_object_id);
-#endif
+#endif /* PHP_RUNKIT_MANIPULATION */
+
 #ifdef PHP_RUNKIT_SANDBOX
 PHP_FUNCTION(runkit_sandbox_output_handler);
 PHP_FUNCTION(runkit_lint);
 PHP_FUNCTION(runkit_lint_file);
-#endif
 
 typedef struct _php_runkit_sandbox_object php_runkit_sandbox_object;
+#endif /* PHP_RUNKIT_SANDBOX */
 
 ZEND_BEGIN_MODULE_GLOBALS(runkit)
+#ifdef PHP_RUNKIT_SUPERGLOBALS
 	HashTable *superglobals;
+#endif
+#ifdef PHP_RUNKIT_SANDBOX
 	php_runkit_sandbox_object *current_sandbox;
+#endif
+#ifdef PHP_RUNKIT_MANIPULATION
 	HashTable *misplaced_internal_functions;
 	HashTable *replaced_internal_functions;
 	zend_bool internal_override;
+#endif
 ZEND_END_MODULE_GLOBALS(runkit)
 
 extern ZEND_DECLARE_MODULE_GLOBALS(runkit);
@@ -108,6 +123,7 @@ extern ZEND_DECLARE_MODULE_GLOBALS(runkit);
 #define RUNKIT_TSRMLS_C		NULL
 #endif
 
+#ifdef PHP_RUNKIT_MANIPULATION
 #if defined(ZEND_ENGINE_2) && !defined(zend_hash_add_or_update)
 /* Why doesn't ZE2 define this? */
 #define zend_hash_add_or_update(ht, arKey, nKeyLength, pData, pDataSize, pDest, flag) \
@@ -181,6 +197,7 @@ int php_runkit_update_children_consts(zend_class_entry *ce, int num_args, va_lis
 
 /* runkit_props.c */
 int php_runkit_update_children_def_props(zend_class_entry *ce, int num_args, va_list args, zend_hash_key *hash_key);
+#endif /* PHP_RUNKIT_MANIPULATION */
 
 #ifdef PHP_RUNKIT_SANDBOX
 /* runkit_sandbox.c */
@@ -240,8 +257,9 @@ struct _php_runkit_sandbox_object {
 	(pzv)->refcount = 1; \
 	(pzv)->is_ref = 0; \
 }
-#endif
+#endif /* PHP_RUNKIT_SANDBOX */
 
+#ifdef PHP_RUNKIT_MANIPULATION
 #define PHP_RUNKIT_SPLIT_PN(classname, classname_len, pnname, pnname_len) { \
 	char *colon; \
 \
@@ -279,6 +297,7 @@ struct _php_runkit_sandbox_object {
 #define PHP_RUNKIT_ADD_MAGIC_METHOD(ce, method, fe)
 #define PHP_RUNKIT_DEL_MAGIC_METHOD(ce, fe)
 #endif
+#endif /* PHP_RUNKIT_MANIPULATION */
 
 #endif	/* PHP_RUNKIT_H */
 

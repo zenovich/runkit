@@ -18,6 +18,7 @@
 
 #include "php_runkit.h"
 
+#ifdef PHP_RUNKIT_MANIPULATION
 /* {{{ php_runkit_import_functions
  */
 static int php_runkit_import_functions(int original_num_functions TSRMLS_DC)
@@ -443,6 +444,7 @@ PHP_FUNCTION(runkit_import)
 	RETURN_TRUE;
 }
 /* }}} */
+#endif /* PHP_RUNKIT_MANIPULATION */
 
 /*
  * Local variables:

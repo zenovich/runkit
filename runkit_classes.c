@@ -18,6 +18,7 @@
 
 #include "php_runkit.h"
 
+#ifdef PHP_RUNKIT_MANIPULATION
 /* {{{ php_runkit_remove_inherited_methods */
 static int php_runkit_remove_inherited_methods(zend_function *fe, zend_class_entry *ce TSRMLS_DC)
 {
@@ -127,6 +128,8 @@ PHP_FUNCTION(runkit_class_adopt)
 }
 /* }}} */
 
+#endif /* PHP_RUNKIT_MANIPULATION */
+
 #ifdef ZEND_ENGINE_2
 /* {{{ proto int runkit_object_id(object instance)
 Fetch the Object Handle ID from an instance */
@@ -142,7 +145,6 @@ PHP_FUNCTION(runkit_object_id)
 }
 /* }}} */
 #endif /* ZEND_ENGINE_2 */
-
 /*
  * Local variables:
  * tab-width: 4

@@ -1,7 +1,7 @@
 --TEST--
 Runkit_Sandbox['output_handler'] setting
 --SKIPIF--
-<?php if(!extension_loaded("runkit")) print "skip"; 
+<?php if(!extension_loaded("runkit") || !RUNKIT_FEATURE_SANDBOX) print "skip"; 
       /* May not be available due to lack of TSRM interpreter support */
       if(!function_exists("runkit_sandbox_output_handler")) print "skip"; ?>
 --FILE--

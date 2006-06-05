@@ -1,7 +1,7 @@
 --TEST--
 runkit_class_emancipate() function
 --SKIPIF--
-<?php if(!extension_loaded("runkit")) print "skip"; ?>
+<?php if(!extension_loaded("runkit") || !RUNKIT_FEATURE_MANIPULATION) print "skip"; ?>
 --FILE--
 <?php
 class Grandparent {

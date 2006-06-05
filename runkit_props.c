@@ -18,6 +18,8 @@
 
 #include "php_runkit.h"
 
+#ifdef PHP_RUNKIT_MANIPULATION
+
 /* {{{ php_runkit_update_children_def_props
 	Scan the class_table for children of the class just updated */
 int php_runkit_update_children_def_props(zend_class_entry *ce, int num_args, va_list args, zend_hash_key *hash_key)
@@ -167,6 +169,7 @@ PHP_FUNCTION(runkit_default_property_add)
 	RETURN_BOOL(php_runkit_def_prop_add(classname, classname_len, propname, propname_len, value, visibility TSRMLS_CC) == SUCCESS);
 }
 /* }}} */
+#endif /* PHP_RUNKIT_MANIPULATION */
 
 /*
  * Local variables:
