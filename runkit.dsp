@@ -120,6 +120,14 @@ SOURCE=.\runkit_methods.c
 
 SOURCE=.\runkit_sandbox.c
 # End Source File
+# Begin Source File
+
+SOURCE=.\runkit_sandbox_parent.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\runkit_props.c
+# End Source File
 # End Group
 # Begin Group "Header Files"
 
