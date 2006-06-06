@@ -49,6 +49,8 @@ This release also:
   handling of default properties
 - Resolves an output buffering bug in Runkit_Sandbox
 - Resolves Runkit_Sandbox failure when superglobals are defined
+</notes>
+
  <contents>
   <dir name="/">
    <dir name="tests">
