@@ -15,13 +15,42 @@ Execute code in restricted environment (sandboxing).</description>
   </maintainers>
 
    <release>
+    <version>0.9</version>
+    <state>beta</state>
+    <date>2006-06-06</date>
+    <notes>Allow building part of runkit while leaving other functionality out.
+--enable-runkit works as before, building all runkit features
+Individual features may enabled or disable by using
+--enable-runkit-featurename or --disbale-runkit-featurename
+where featurename is any of:
+    modify  - Runtime manipulation
+    super   - Superglobal registration
+    sandbox - Sandboxing
+
+Ex: ./configure --enable-runkit --disable-runkit-modify
+		Enable superglobal registration and sandbox support,
+		but disable runtime manipulation.
+
+    ./configure --disable-runkit --enable-runkit-sandbox
+		Enable only sandboxing support.
+
+This release also:
+- Fixes PHP4 (ZE1) compilation
+- Closes a potential crash-bug in runkit_import()
+  handling of default properties
+- Resolves an output buffering bug in Runkit_Sandbox
+- Resolves Runkit_Sandbox failure when superglobals are defined
+</notes>
+   </release>
+
+  <changelog>
+   <release>
     <version>0.8.1</version>
     <state>beta</state>
     <date>2006-05-20</date>
     <notes>Added source file runkit_props.c to package</notes>
    </release>
 
-  <changelog>
    <release>
     <version>0.8</version>
     <state>beta</state>

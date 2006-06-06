@@ -17,9 +17,9 @@ Execute code in restricted environment (sandboxing).
   <active>yes</active>
  </lead>
 
-   <date>2006-05-20</date>
+   <date>2006-06-06</date>
    <version>
-    <release>0.8.1</release>
+    <release>0.9</release>
     <api>0.8</api>
    </version>
    <stability>
@@ -27,8 +27,28 @@ Execute code in restricted environment (sandboxing).
     <api>beta</api>
    </stability>
    <license uri="http://www.php.net/license">PHP</license>
-   <notes>Added source file runkit_props.c to package</notes>
+   <notes>Allow building part of runkit while leaving other functionality out.
+--enable-runkit works as before, building all runkit features
+Individual features may enabled or disable by using
+--enable-runkit-featurename or --disbale-runkit-featurename
+where featurename is any of:
+    modify  - Runtime manipulation
+    super   - Superglobal registration
+    sandbox - Sandboxing
 
+Ex: ./configure --enable-runkit --disable-runkit-modify
+        Enable superglobal registration and sandbox support,
+        but disable runtime manipulation.
+
+    ./configure --disable-runkit --enable-runkit-sandbox
+        Enable only sandboxing support.
+
+This release also:
+- Fixes PHP4 (ZE1) compilation
+- Closes a potential crash-bug in runkit_import()
+  handling of default properties
+- Resolves an output buffering bug in Runkit_Sandbox
+- Resolves Runkit_Sandbox failure when superglobals are defined
  <contents>
   <dir name="/">
    <dir name="tests">
@@ -110,6 +130,20 @@ Execute code in restricted environment (sandboxing).
  <changelog>
 
   <release>
+   <date>2006-05-20</date>
+   <version>
+    <release>0.8.1</release>
+    <api>0.8</api>
+   </version>
+   <stability>
+    <release>beta</release>
+    <api>beta</api>
+   </stability>
+   <license uri="http://www.php.net/license">PHP</license>
+   <notes>Added source file runkit_props.c to package</notes>
+  </release>
+
+  <release>
    <date>2006-05-14</date>
    <version>
     <release>0.8</release>
@@ -152,6 +186,7 @@ Fix parent_scope support (was only applied to property_read and eval/include/req
 Expand parent_scope setting to allow variable arrays as symbol tables.
    </notes>
   </release>
+
   <release>
    <version>
     <release>0.6</release>
@@ -187,6 +222,7 @@ as seen from the child according to:
 
    </notes>
   </release>
+
   <release>
    <version>
     <release>0.5</release>
@@ -208,6 +244,7 @@ Other changes include:
 - Fixed crash when multiple autoglobals are specified
    </notes>
   </release>
+
   <release>
    <version>
     <release>0.4</release>
@@ -227,6 +264,7 @@ Added INI overrides in Runkit_Sandbox (safe_mode_gid,safe_mode_include_dir)
 Fixed callback parameter to runkit_sandbox_output_handler() to be optional.
    </notes>
   </release>
+
   <release>
    <version>
     <release>0.3.0</release>
@@ -243,6 +281,7 @@ Implement die(), exit(), echo(), and print() and catch bailouts properly.
 Implement output capturing -- runkit_sandbox_output_handler().
    </notes>
   </release>
+
   <release>
    <version>
     <release>0.2.0</release>
@@ -261,6 +300,7 @@ Add runkit.superglobal as &quot;special&quot; ini supported by Runkit_Sandbox.
 Fix runkit_class_*.phpt regression tests to be version agnostic.
    </notes>
   </release>
+
   <release>
    <version>
     <release>0.1.0</release>
