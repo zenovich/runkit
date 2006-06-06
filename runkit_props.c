@@ -159,8 +159,12 @@ PHP_FUNCTION(runkit_default_property_add)
 	char *classname, *propname;
 	int classname_len, propname_len;
 	zval *value;
-	long visibility = ZEND_ACC_PUBLIC;
+	long visibility;
 	int existing_visibility;
+
+#ifdef ZEND_ENGINE_2
+	visibility = ZEND_ACC_PUBLIC;
+#endif
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s/s/z|l", &classname, &classname_len, &propname, &propname_len, &value, &visibility) == FAILURE) {
 		RETURN_FALSE;

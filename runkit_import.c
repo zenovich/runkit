@@ -224,9 +224,11 @@ static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry
 		long action = HASH_ADD;
 
 		if (zend_hash_get_current_key_ex(&ce->default_properties, &key, &key_len, &idx, 0, &pos) == HASH_KEY_IS_STRING) {
-			char *cname, *pname;
+			char *cname = NULL, *pname = key;
 
-			zend_unmangle_property_name(key, &cname, *pname);
+#ifdef ZEND_ENGINE_2
+			zend_unmangle_property_name(key, &cname, &pname);
+#endif
 			if (zend_hash_exists(&dce->default_properties, key, key_len)) {
 				if (override) {
 					action = HASH_UPDATE;
