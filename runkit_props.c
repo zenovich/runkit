@@ -91,6 +91,7 @@ static int php_runkit_def_prop_add(char *classname, int classname_len, char *pro
 		return FAILURE;
 	}
 
+#ifdef ZEND_ENGINE_2
 	/* Existing Protected? */
 	zend_mangle_property_name(&temp, &temp_len, "*", 1, propname, propname_len, 0);
 	if (zend_hash_exists(&ce->default_properties, temp, temp_len + 1)) {
@@ -118,7 +119,7 @@ static int php_runkit_def_prop_add(char *classname, int classname_len, char *pro
 	} else {
 		efree(temp);
 	}
-
+#endif
 
 	ALLOC_ZVAL(copyval);
 	*copyval = *value;
@@ -132,9 +133,11 @@ static int php_runkit_def_prop_add(char *classname, int classname_len, char *pro
 		return FAILURE;
 	}
 
+#ifdef ZEND_ENGINE_2
 	if (visibility != ZEND_ACC_PRIVATE) {
 		zend_hash_apply_with_arguments(EG(class_table), (apply_func_args_t)php_runkit_update_children_def_props, 4, ce, copyval, key, key_len);
 	}
+#endif
 
 	if (key != propname) {
 		efree(key);
