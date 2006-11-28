@@ -1470,7 +1470,7 @@ PHP_RUNKIT_SANDBOX_SETTING_GETTER(name) \
 \
 	ALLOC_ZVAL(retval); \
 	Z_TYPE_P(retval) = IS_BOOL; \
-	Z_BVAL_P(retval) = objval->name; \
+	Z_LVAL_P(retval) = objval->name; \
 	retval->refcount = 0; \
 	retval->is_ref = 0; \
 \
