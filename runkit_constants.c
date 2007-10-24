@@ -199,8 +199,15 @@ static int php_runkit_constant_add(char *classname, int classname_len, char *con
 	ALLOC_ZVAL(copyval);
 	*copyval = *value;
 	zval_copy_ctor(copyval);
+
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 3) || (PHP_MAJOR_VERSION >= 6)
+	Z_SET_REFCOUNT_P(copyval, 1);
+	Z_UNSET_ISREF_P(copyval);
+#else
 	copyval->refcount = 1;
 	copyval->is_ref = 0;
+#endif
+
 	if (zend_hash_add(&ce->constants_table, constname, constname_len + 1, &copyval, sizeof(zval *), NULL) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to add constant to class definition");
 		zval_ptr_dtor(&copyval);

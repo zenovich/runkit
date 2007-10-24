@@ -126,8 +126,14 @@ static int php_runkit_def_prop_add(char *classname, int classname_len, char *pro
 	ALLOC_ZVAL(copyval);
 	*copyval = *value;
 	zval_copy_ctor(copyval);
+
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 3) || (PHP_MAJOR_VERSION >= 6)
+	Z_SET_REFCOUNT_P(copyval, 1);
+	Z_UNSET_ISREF_P(copyval);
+#else
 	copyval->refcount = 1;
 	copyval->is_ref = 0;
+#endif
 
 	if (zend_hash_add(&ce->default_properties, key, key_len + 1, &copyval, sizeof(zval *), NULL) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to add default property to class definition");
