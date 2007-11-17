@@ -30,7 +30,7 @@ int php_runkit_check_call_stack(zend_op_array *op_array TSRMLS_DC)
 	ptr = EG(current_execute_data);
 
 	while (ptr) {
-		if (ptr->op_array->opcodes == op_array->opcodes) {
+		if (ptr->op_array && ptr->op_array->opcodes == op_array->opcodes) {
 			return FAILURE;
 		}
 		ptr = ptr->prev_execute_data;
