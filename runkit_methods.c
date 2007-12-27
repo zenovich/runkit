@@ -375,7 +375,7 @@ static int php_runkit_method_copy(char *dclass, int dclass_len, char *dfunc, int
 								  char *sclass, int sclass_len, char *sfunc, int sfunc_len TSRMLS_DC)
 {
 	zend_class_entry *dce, *sce;
-	zend_function dfe, *sfe;
+	zend_function dfe, *sfe, *dfeInHashTable;
 
 	if (php_runkit_fetch_class_method(sclass, sclass_len, sfunc, sfunc_len, &sce, &sfe TSRMLS_CC) == FAILURE) {
 		return FAILURE;
@@ -397,12 +397,12 @@ static int php_runkit_method_copy(char *dclass, int dclass_len, char *dfunc, int
 	dfe.common.scope = dce;
 #endif
 
-	if (zend_hash_add(&dce->function_table, dfunc, dfunc_len + 1, &dfe, sizeof(zend_function), NULL) == FAILURE) {
+	if (zend_hash_add(&dce->function_table, dfunc, dfunc_len + 1, &dfe, sizeof(zend_function), &dfeInHashTable) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error adding method to class %s::%s()", dclass, dfunc);
 		return FAILURE;
 	}
 
-	PHP_RUNKIT_ADD_MAGIC_METHOD(dce, dfunc, &dfe);
+	PHP_RUNKIT_ADD_MAGIC_METHOD(dce, dfunc, dfeInHashTable);
 
 	zend_hash_apply_with_arguments(EG(class_table), (apply_func_args_t)php_runkit_update_children_methods, 5, dce, dce, &dfe, dfunc, dfunc_len);
 

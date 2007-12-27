@@ -136,6 +136,8 @@ void php_runkit_function_copy_ctor(zend_function *fe, char *newname)
 	while (i > 0) {
 		i--;
 		dupvars[i].name = estrdup(fe->op_array.vars[i].name);
+		dupvars[i].name_len = fe->op_array.vars[i].name_len;
+		dupvars[i].hash_value = fe->op_array.vars[i].hash_value;
 	}
 	fe->op_array.vars = dupvars;
 #endif
