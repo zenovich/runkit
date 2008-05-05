@@ -23,79 +23,65 @@
 #ifdef PHP_RUNKIT_MANIPULATION
 /* {{{ php_runkit_import_functions
  */
-static int php_runkit_import_functions(int original_num_functions TSRMLS_DC)
+static int php_runkit_import_functions(HashTable *function_table, long flags TSRMLS_DC)
 {
 	HashPosition pos;
-	zend_function **fe_array;
-	int i, func = 0, func_count = (zend_hash_num_elements(EG(function_table)) - original_num_functions);
+	int i, func_count = zend_hash_num_elements(function_table);
 
-	fe_array = ecalloc(sizeof(zend_function*) * func_count, 0);
-
-	zend_hash_internal_pointer_end_ex(EG(function_table), &pos);
-	for(i = zend_hash_num_elements(EG(function_table)); i > original_num_functions; i--) {
+	zend_hash_internal_pointer_reset_ex(function_table, &pos);
+	for(i = 0; i < func_count; i++) {
 		zend_function *fe = NULL;
 		char *key;
 		int key_len, type;
 		long idx;
+		zend_bool add_function = 1;
 
-		zend_hash_get_current_data_ex(EG(function_table), (void**)&fe, &pos);
-		PHP_RUNKIT_FUNCTION_ADD_REF(fe);
-		fe_array[func++] = fe;
+		zend_hash_get_current_data_ex(function_table, (void**)&fe, &pos);
 
 		if (((type = zend_hash_get_current_key_ex(EG(function_table), &key, &key_len, &idx, 0, &pos)) != HASH_KEY_NON_EXISTANT) && 
 			fe && fe->type == ZEND_USER_FUNCTION) {
-
-			if (type == HASH_KEY_IS_STRING) {
-				if (zend_hash_del(EG(function_table), key, key_len) == FAILURE) {
-					goto err_exit;
+		
+			if (flags & PHP_RUNKIT_IMPORT_OVERRIDE) {
+				if (type == HASH_KEY_IS_STRING) {
+					if (zend_hash_del(EG(function_table), key, key_len) == FAILURE) {
+						php_error_docref(NULL TSRMLS_CC, E_WARNING, "Inconsistency cleaning up import environment");
+						return FAILURE;
+					}
+				} else {
+					if (zend_hash_index_del(EG(function_table), idx) == FAILURE) {
+						php_error_docref(NULL TSRMLS_CC, E_WARNING, "Inconsistency cleaning up import environment");
+						return FAILURE;
+					}
 				}
 			} else {
-				if (zend_hash_index_del(EG(function_table), idx) == FAILURE) {
-					goto err_exit;
-				}
+				add_function = 0;
 			}
-		} else {
-			goto err_exit;
 		}
-		zend_hash_move_backwards_ex(EG(function_table), &pos);
-	}
 
-	while (func >= 0) {
-		zend_function *fe = fe_array[func];
+		if (add_function) {
+			PHP_RUNKIT_FUNCTION_ADD_REF(fe);
 
-		if (fe) {
+
 			char *lcase = estrdup(fe->common.function_name);
 			int lcase_len = strlen(lcase);
 
 			php_strtolower(lcase, lcase_len);
 			if (zend_hash_add(EG(function_table), lcase, lcase_len + 1, fe, sizeof(zend_function), NULL) == FAILURE) {
-				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Failure importing %s()", fe->common.function_name); 
+				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Failure importing %s()", fe->common.function_name);
 #ifdef ZEND_ENGINE_2
 				destroy_zend_function(fe TSRMLS_CC);
 #else
-				destroy_zend_function(fe);
+				destroy_end_function(fe);
 #endif
 				efree(lcase);
+				return FAILURE;
 			}
+			efree(lcase);
 		}
-		func--;
+		zend_hash_move_forward_ex(function_table, &pos);
 	}
 
 	return SUCCESS;
-err_exit:
-	while (func >= 0) {
-		if (fe_array[func]) {
-#ifdef ZEND_ENGINE_2
-			destroy_zend_function(fe_array[func] TSRMLS_CC);
-#else
-			destroy_zend_function(fe_array[func]);
-#endif
-		}
-		func--;
-	}
-	efree(fe_array);
-	php_error_docref(NULL TSRMLS_CC, E_WARNING, "Inconsistency cleaning up import environment");
-	return FAILURE;
 }
 /* }}} */
 
@@ -264,21 +250,20 @@ import_prop_skip:
 
 /* {{{ php_runkit_import_classes
  */
-static int php_runkit_import_classes(int original_num_classes, long flags TSRMLS_DC)
+static int php_runkit_import_classes(HashTable *class_table, long flags TSRMLS_DC)
 {
 	HashPosition pos;
-	int i;
+	int i, class_count;
 
-	/* Pop the "new" classes off the class table */
-	zend_hash_internal_pointer_end_ex(EG(class_table), &pos);
-	for(i = zend_hash_num_elements(EG(class_table));
-		i > original_num_classes; i--) {
+	class_count = zend_hash_num_elements(class_table);
+	zend_hash_internal_pointer_reset_ex(class_table, &pos);
+	for(i = 0; i < class_count; i++) {
 		zend_class_entry *ce = NULL;
 		char *key;
 		int key_len, type;
 		long idx;
 
-		zend_hash_get_current_data_ex(EG(class_table), (void**)&ce, &pos);
+		zend_hash_get_current_data_ex(class_table, (void**)&ce, &pos);
 #ifdef ZEND_ENGINE_2
 		if (ce) {
 			ce = *((zend_class_entry**)ce);
@@ -292,13 +277,6 @@ static int php_runkit_import_classes(int original_num_classes, long flags TSRMLS
 		if (((type = zend_hash_get_current_key_ex(EG(class_table), &key, &key_len, &idx, 0, &pos)) != HASH_KEY_NON_EXISTANT) && 
 			ce && ce->type == ZEND_USER_CLASS) {
 			zend_class_entry *dce;
-
-			if (ce->name_length == key_len - 1) {
-				/* If their lengths are the same it's all the evidence we need that their names are the same.
-					If their names are the same its because this class was freshly declared, no need for aggregation. */
-				continue;
-			}
-			/* Otherwise aggregate methods/consts/props from temp class to real one then demolish it */
 
 			/* We can clobber the temp class's name, it'll be freed soon anyway */
 			php_strtolower(ce->name, ce->name_length);
@@ -323,15 +301,15 @@ static int php_runkit_import_classes(int original_num_classes, long flags TSRMLS
 				php_runkit_import_class_props(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE) TSRMLS_CC);
 			}
 
-			zend_hash_move_backwards_ex(EG(class_table), &pos);
+			zend_hash_move_forward_ex(class_table, &pos);
 
 			if (type == HASH_KEY_IS_STRING) {
-				if (zend_hash_del(EG(class_table), key, key_len) == FAILURE) {
+				if (zend_hash_del(class_table, key, key_len) == FAILURE) {
 					php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to remove temporary version of class %s", ce->name);
 					continue;
 				}
 			} else {
-				if (zend_hash_index_del(EG(class_table), idx) == FAILURE) {
+				if (zend_hash_index_del(class_table, idx) == FAILURE) {
 					php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to remove temporary version of class %s", ce->name);
 					continue;
 				}
@@ -408,11 +386,11 @@ static zend_op_array *php_runkit_compile_filename(int type, zval *filename TSRML
 	Similar to include(), but doesn't execute root op_array, and allows pre-existing functions/methods to be overridden */
 PHP_FUNCTION(runkit_import)
 {
-	int original_num_functions = zend_hash_num_elements(EG(function_table));
-	int original_num_classes = zend_hash_num_elements(EG(class_table));
 	zend_op_array *new_op_array;
 	zval *filename;
 	long flags = PHP_RUNKIT_IMPORT_CLASS_METHODS;
+	HashTable *current_class_table, *class_table, *current_function_table, *function_table;
+
 	zend_op_array *(*local_compile_filename)(int type, zval *filename TSRMLS_DC) = compile_filename;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z|l", &filename, &flags) == FAILURE) {
@@ -426,11 +404,27 @@ PHP_FUNCTION(runkit_import)
 		 * to be used */
 		local_compile_filename = php_runkit_compile_filename;
 	}
+
+	class_table = (HashTable *) emalloc(sizeof(HashTable));
+	zend_hash_init_ex(class_table, 10, NULL, ZEND_CLASS_DTOR, 0, 0);
+	function_table = (HashTable *) emalloc(sizeof(HashTable));
+	zend_hash_init_ex(function_table, 100, NULL, ZEND_FUNCTION_DTOR, 0, 0);	
+
+	current_class_table = CG(class_table);
+	CG(class_table) = class_table;
+	current_function_table = CG(function_table);
+	CG(function_table) = function_table;
+
 	new_op_array = local_compile_filename(ZEND_INCLUDE, filename TSRMLS_CC);
+	
+	CG(class_table) = current_class_table;
+	CG(function_table) = current_function_table;
+	
 	if (!new_op_array) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Import Failure");
 		RETURN_FALSE;
 	}
+
 	/* We never really needed the main loop opcodes to begin with */
 #ifdef ZEND_ENGINE_2
 	destroy_op_array(new_op_array TSRMLS_CC);
@@ -440,12 +434,17 @@ PHP_FUNCTION(runkit_import)
 	efree(new_op_array);
 
 	if (flags & PHP_RUNKIT_IMPORT_FUNCTIONS) {
-		php_runkit_import_functions(original_num_functions TSRMLS_CC);
+		php_runkit_import_functions(function_table, flags TSRMLS_CC);
 	}
 
 	if (flags & PHP_RUNKIT_IMPORT_CLASSES) {
-		php_runkit_import_classes(original_num_classes, flags TSRMLS_CC);
+		php_runkit_import_classes(class_table, flags TSRMLS_CC);
 	}
+
+	zend_hash_destroy(class_table);
+	efree(class_table);
+	zend_hash_destroy(function_table);
+	efree(function_table);
 
 	RETURN_TRUE;
 }
