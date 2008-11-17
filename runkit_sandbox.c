@@ -1716,7 +1716,6 @@ static int php_runkit_sandbox_has_dimension(zval *object, zval *member, int chec
    * Class Definition *
    ******************** */
 
-static
 	ZEND_BEGIN_ARG_INFO_EX(php_runkit_require_two_args, 0, 0, 2)
 		ZEND_ARG_PASS_INFO(0)
 		ZEND_ARG_PASS_INFO(0)

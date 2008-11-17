@@ -701,7 +701,6 @@ static void php_runkit_sandbox_parent_unset_property(zval *object, zval *member 
    * Class Definition *
    ******************** */
 
-static
 	ZEND_BEGIN_ARG_INFO_EX(php_runkit_require_two_args, 0, 0, 2)
 		ZEND_ARG_PASS_INFO(0)
 		ZEND_ARG_PASS_INFO(0)
