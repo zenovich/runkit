@@ -701,13 +701,13 @@ static void php_runkit_sandbox_parent_unset_property(zval *object, zval *member 
    * Class Definition *
    ******************** */
 
-	ZEND_BEGIN_ARG_INFO_EX(php_runkit_require_two_args, 0, 0, 2)
-		ZEND_ARG_PASS_INFO(0)
-		ZEND_ARG_PASS_INFO(0)
-	ZEND_END_ARG_INFO()
+ZEND_BEGIN_ARG_INFO_EX(arginfo_runkit_sandbox_parent__call, 0, 0, 2)
+	ZEND_ARG_PASS_INFO(0)
+	ZEND_ARG_PASS_INFO(0)
+ZEND_END_ARG_INFO()
 
 static function_entry php_runkit_sandbox_parent_functions[] = {
-	PHP_ME(Runkit_Sandbox_Parent,		__call,						php_runkit_require_two_args,		ZEND_ACC_PUBLIC)
+	PHP_ME(Runkit_Sandbox_Parent,		__call,						arginfo_runkit_sandbox_parent__call,ZEND_ACC_PUBLIC)
 	/* Language Constructs */
 	PHP_ME(Runkit_Sandbox_Parent,		eval,						NULL,								ZEND_ACC_PUBLIC)
 	PHP_ME(Runkit_Sandbox_Parent,		include,					NULL,								ZEND_ACC_PUBLIC)

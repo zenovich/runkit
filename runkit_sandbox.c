@@ -1716,14 +1716,14 @@ static int php_runkit_sandbox_has_dimension(zval *object, zval *member, int chec
    * Class Definition *
    ******************** */
 
-	ZEND_BEGIN_ARG_INFO_EX(php_runkit_require_two_args, 0, 0, 2)
-		ZEND_ARG_PASS_INFO(0)
-		ZEND_ARG_PASS_INFO(0)
-	ZEND_END_ARG_INFO()
+ZEND_BEGIN_ARG_INFO_EX(arginfo_runkit_sandbox__call, 0, 0, 2)
+	ZEND_ARG_PASS_INFO(0)
+	ZEND_ARG_PASS_INFO(0)
+ZEND_END_ARG_INFO()
 
 static function_entry php_runkit_sandbox_functions[] = {
 	PHP_ME(Runkit_Sandbox,		__construct,				NULL,								ZEND_ACC_PUBLIC		| ZEND_ACC_CTOR)
-	PHP_ME(Runkit_Sandbox,		__call,						php_runkit_require_two_args,		ZEND_ACC_PUBLIC)
+	PHP_ME(Runkit_Sandbox,		__call,						arginfo_runkit_sandbox__call,		ZEND_ACC_PUBLIC)
 	/* Language Constructs */
 	PHP_ME(Runkit_Sandbox,		eval,						NULL,								ZEND_ACC_PUBLIC)
 	PHP_ME(Runkit_Sandbox,		include,					NULL,								ZEND_ACC_PUBLIC)
