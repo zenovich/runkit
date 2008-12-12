@@ -425,6 +425,10 @@ PHP_MINFO_FUNCTION(runkit)
 
 	php_info_print_table_end();
 
+#if defined(PHP_RUNKIT_SUPERGLOBALS) || defined(PHP_RUNKIT_MANIPULATION)
+	DISPLAY_INI_ENTRIES();
+#endif
+
 }
 /* }}} */
 
