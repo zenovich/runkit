@@ -48,6 +48,21 @@ zend_class_entry *_php_runkit_locate_scope(zend_class_entry *ce, zend_function *
     return top;
 }
 /* }}} */
+#else
+/* {{{ _php_runkit_get_method_prototype
+	Locates the prototype method */
+zend_function* _php_runkit_get_method_prototype(zend_class_entry *ce, char* func, int func_len) {
+	zend_class_entry *pce = ce;
+	zend_function *proto = NULL;
+	while (pce) {
+		if (zend_hash_find(&pce->function_table, func, func_len+1, (void**) &proto) != FAILURE) {
+			break;
+		}
+		pce = pce->parent;
+	}
+	return proto;
+}
+/* }}} */
 #endif
 
 /* {{{ php_runkit_fetch_class
@@ -330,6 +345,7 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 	func.common.function_name = estrndup(methodname, methodname_len);
 #ifdef ZEND_ENGINE_2
 	func.common.scope = ce;
+	func.common.prototype = _php_runkit_get_method_prototype(ce, methodname, methodname_len);
 
 	if (flags & ZEND_ACC_PRIVATE) {
 		func.common.fn_flags &= ~ZEND_ACC_PPP_MASK;
@@ -395,6 +411,7 @@ static int php_runkit_method_copy(char *dclass, int dclass_len, char *dfunc, int
 
 #ifdef ZEND_ENGINE_2
 	dfe.common.scope = dce;
+	dfe.common.prototype = _php_runkit_get_method_prototype(dce, dfunc, dfunc_len);
 #endif
 
 	if (zend_hash_add(&dce->function_table, dfunc, dfunc_len + 1, &dfe, sizeof(zend_function), &dfeInHashTable) == FAILURE) {
