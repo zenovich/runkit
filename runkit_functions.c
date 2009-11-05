@@ -266,7 +266,6 @@ int php_runkit_restore_internal_functions(zend_internal_function *fe, int num_ar
 	zend_hash_update(EG(function_table), hash_key->arKey, hash_key->nKeyLength, (void*)fe, sizeof(zend_function), NULL);
 #endif
 
-    EG(function_table)->pDestructor = NULL;
 	return ZEND_HASH_APPLY_REMOVE;
 }
 /* }}} */
