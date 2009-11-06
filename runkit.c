@@ -400,7 +400,7 @@ PHP_RSHUTDOWN_FUNCTION(runkit)
 		RUNKIT_G(replaced_internal_functions) = NULL;
 	}
 
-	zend_hash_apply(EG(function_table), php_runkit_delete_user_functions);
+	zend_hash_apply(EG(function_table), php_runkit_delete_user_functions TSRMLS_CC);
 #endif /* PHP_RUNKIT_MANIPULATION */
 
 	return SUCCESS;
