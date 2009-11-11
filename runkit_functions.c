@@ -119,7 +119,7 @@ void php_runkit_function_copy_ctor(zend_function *fe, char *newname)
 
 	if (fe->op_array.static_variables) {
 		HashTable *tmpHash;
-		zval tmpZval;
+		zval *tmpZval;
 
 		ALLOC_HASHTABLE(tmpHash);
 		zend_hash_init(tmpHash, zend_hash_num_elements(fe->op_array.static_variables), NULL, ZVAL_PTR_DTOR, 0);
