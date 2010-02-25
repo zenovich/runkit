@@ -19,7 +19,19 @@ if (method_exists('runkit_class','runkit_original')) {
 	echo "Runkit Original still exists!\n";
 }
 runkit_class::runkit_duplicate(2);
+runkit_method_rename('runkit_class','runkit_duplicate', 'runkitDuplicate');
+if (method_exists('runkit_class','runkit_duplicate')) {
+	echo "Runkit Duplicate still exists!\n";
+}
+runkit_class::runkitDuplicate(3);
+runkit_method_rename('runkit_class','runkitDuplicate', 'runkit_original');
+if (method_exists('runkit_class','runkitDuplicate')) {
+	echo "RunkitDuplicate still exists!\n";
+}
+runkit_class::runkit_original(4);
 ?>
 --EXPECT--
 Runkit Original: a is 1
 Runkit Original: a is 2
+Runkit Original: a is 3
+Runkit Original: a is 4

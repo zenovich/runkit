@@ -29,14 +29,24 @@ zend_class_entry *_php_runkit_locate_scope(zend_class_entry *ce, zend_function *
 {
     zend_class_entry *current = ce->parent, *top = ce;
     zend_function *func;
+    char *methodnameLower;
+
+    methodnameLower = estrndup(methodname, methodname_len);
+	if (methodnameLower == NULL) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Not enough memory");
+		return top;
+	}
+	php_strtolower(methodnameLower, fname_len);
 
     while (current) {
-        if (zend_hash_find(&current->function_table, methodname, methodname_len + 1, (void **)&func) == FAILURE) {
+        if (zend_hash_find(&current->function_table, methodnameLower, methodname_len + 1, (void **)&func) == FAILURE) {
             /* Not defined at this point (or higher) */
+            efree(methodnameLower);
             return top;
         }
         if (func->op_array.opcodes != fe->op_array.opcodes) {
             /* Different function above this point */
+            efree(methodnameLower);
             return top;
         }
         /* Same opcodes */
@@ -45,6 +55,7 @@ zend_class_entry *_php_runkit_locate_scope(zend_class_entry *ce, zend_function *
         current = current->parent;
     }
 
+    efree(methodnameLower);
     return top;
 }
 /* }}} */
@@ -54,12 +65,25 @@ zend_class_entry *_php_runkit_locate_scope(zend_class_entry *ce, zend_function *
 zend_function* _php_runkit_get_method_prototype(zend_class_entry *ce, char* func, int func_len) {
 	zend_class_entry *pce = ce;
 	zend_function *proto = NULL;
+    char *funcLower;
+
+    funcLower = estrndup(func, func_len);
+	if (funcLower == NULL) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Not enough memory");
+		return NULL;
+	}
+
+	php_strtolower(funcLower, func_len);
 	while (pce) {
-		if (zend_hash_find(&pce->function_table, func, func_len+1, (void**) &proto) != FAILURE) {
+		if (zend_hash_find(&pce->function_table, funcLower, func_len+1, (void**) &proto) != FAILURE) {
 			break;
 		}
 		pce = pce->parent;
 	}
+    if (!pce) {
+        proto = NULL;
+    }
+    efree(funcLower);
 	return proto;
 }
 /* }}} */
@@ -142,6 +166,7 @@ TSRMLS_DC)
 	HashTable *ftable = EG(function_table);
 	zend_class_entry *ce;
 	zend_function *fe;
+    char *fnameLower;
 #ifdef ZEND_ENGINE_2
 	zend_class_entry **ze;
 #endif
@@ -175,14 +200,22 @@ TSRMLS_DC)
 
 	ftable = &ce->function_table;
 
-	php_strtolower(fname, fname_len);
-	if (zend_hash_find(ftable, fname, fname_len + 1, (void**)&fe) == FAILURE) {
+    fnameLower = estrndup(fname, fname_len);
+	if (fnameLower == NULL) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Not enough memory");
+		return FAILURE;
+	}
+	php_strtolower(fnameLower, fname_len);
+
+	if (zend_hash_find(ftable, fnameLower, fname_len + 1, (void**)&fe) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s::%s() not found", classname, fname);
+        efree(fnameLower);
 		return FAILURE;
 	}
 
 	if (fe->type != ZEND_USER_FUNCTION) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s::%s() is not a user function", classname, fname);
+        efree(fnameLower);
 		return FAILURE;
 	}
 
@@ -190,6 +223,7 @@ TSRMLS_DC)
 		*pfe = fe;
 	}
 
+    efree(fnameLower);
 	return SUCCESS;
 }
 /* }}} */
@@ -205,21 +239,30 @@ int php_runkit_update_children_methods(zend_class_entry *ce, int num_args, va_li
 	char *fname = va_arg(args, char*);
 	int fname_len = va_arg(args, int);
 	zend_function *cfe = NULL;
+    char *fnameLower;
 	TSRMLS_FETCH();
 
+    fnameLower = estrndup(fname, fname_len);
+	if (fnameLower == NULL) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Not enough memory");
+		return FAILURE;
+	}
+	php_strtolower(fnameLower, fname_len);
 #ifdef ZEND_ENGINE_2
 	ce = *((zend_class_entry**)ce);
 #endif
 
 	if (ce->parent != parent_class) {
 		/* Not a child, ignore */
+        efree(fnameLower);
 		return ZEND_HASH_APPLY_KEEP;
 	}
 
-	if (zend_hash_find(&ce->function_table, fname, fname_len + 1, (void**)&cfe) == SUCCESS) {
+	if (zend_hash_find(&ce->function_table, fnameLower, fname_len + 1, (void**)&cfe) == SUCCESS) {
 		scope = php_runkit_locate_scope(ce, cfe, fname, fname_len);
 		if (scope != ancestor_class) {
 			/* This method was defined below our current level, leave it be */
+            efree(fnameLower);
 			return ZEND_HASH_APPLY_KEEP;
 		}
 	}
@@ -228,13 +271,15 @@ int php_runkit_update_children_methods(zend_class_entry *ce, int num_args, va_li
 	zend_hash_apply_with_arguments(EG(class_table), (apply_func_args_t)php_runkit_update_children_methods, 5, ancestor_class, ce, fe, fname, fname_len);
 
 	PHP_RUNKIT_FUNCTION_ADD_REF(fe);
-	if (zend_hash_add_or_update(&ce->function_table, fname, fname_len + 1, fe, sizeof(zend_function), NULL, cfe ? HASH_UPDATE : HASH_ADD) ==  FAILURE) {
+	if (zend_hash_add_or_update(&ce->function_table, fnameLower, fname_len + 1, fe, sizeof(zend_function), NULL, cfe ? HASH_UPDATE : HASH_ADD) ==  FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error updating child class");
+        efree(fnameLower);
 		return ZEND_HASH_APPLY_KEEP;
 	}
 
 	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, fname, fe);
 
+    efree(fnameLower);
 	return ZEND_HASH_APPLY_KEEP;
 }
 /* }}} */
@@ -249,37 +294,48 @@ int php_runkit_clean_children_methods(zend_class_entry *ce, int num_args, va_lis
 	char *fname = va_arg(args, char*);
 	int fname_len = va_arg(args, int);
 	zend_function *cfe = NULL;
+    char *fnameLower;
 	TSRMLS_FETCH();
 
+    fnameLower = estrndup(fname, fname_len);
+	if (fnameLower == NULL) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Not enough memory");
+		return FAILURE;
+	}
+	php_strtolower(fnameLower, fname_len);
 #ifdef ZEND_ENGINE_2
 	ce = *((zend_class_entry**)ce);
 #endif
 
 	if (ce->parent != parent_class) {
 		/* Not a child, ignore */
+        efree(fnameLower);
 		return ZEND_HASH_APPLY_KEEP;
 	}
 
-	if (zend_hash_find(&ce->function_table, fname, fname_len + 1, (void**)&cfe) == SUCCESS) {
+	if (zend_hash_find(&ce->function_table, fnameLower, fname_len + 1, (void**)&cfe) == SUCCESS) {
 		scope = php_runkit_locate_scope(ce, cfe, fname, fname_len);
 		if (scope != ancestor_class) {
 			/* This method was defined below our current level, leave it be */
+            efree(fnameLower);
 			return ZEND_HASH_APPLY_KEEP;
 		}
 	}
 
 	if (!cfe) {
 		/* Odd.... nothing to destroy.... */
+        efree(fnameLower);
 		return ZEND_HASH_APPLY_KEEP;
 	}
 
 	/* Process children of this child */
 	zend_hash_apply_with_arguments(EG(class_table), (apply_func_args_t)php_runkit_clean_children_methods, 4, ancestor_class, ce, fname, fname_len);
 
-	zend_hash_del(&ce->function_table, fname, fname_len + 1);
+	zend_hash_del(&ce->function_table, fnameLower, fname_len + 1);
 
 	PHP_RUNKIT_DEL_MAGIC_METHOD(ce, cfe);
 
+    efree(fnameLower);
 	return ZEND_HASH_APPLY_KEEP;
 }
 /* }}} */
@@ -292,6 +348,7 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 	int classname_len, methodname_len, arguments_len, phpcode_len;
 	zend_class_entry *ce, *ancestor_class = NULL;
 	zend_function func, *fe;
+    char *methodnameLower;
 	long argc = ZEND_NUM_ARGS();
 #ifdef ZEND_ENGINE_2
 	long flags = ZEND_ACC_PUBLIC;
@@ -318,24 +375,35 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 		RETURN_FALSE;
 	}
 
+    methodnameLower = estrndup(methodname, methodname_len);
+	if (methodnameLower == NULL) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Not enough memory");
+		RETURN_FALSE;
+	}
+	php_strtolower(methodnameLower, methodname_len);
+
 	if (add_or_update == HASH_UPDATE) {
 		if (php_runkit_fetch_class_method(classname, classname_len, methodname, methodname_len, &ce, &fe TSRMLS_CC) == FAILURE) {
+            efree(methodnameLower);
 			RETURN_FALSE;
 		}
 		ancestor_class = php_runkit_locate_scope(ce, fe, methodname, methodname_len);
 
 		if (php_runkit_check_call_stack(&fe->op_array TSRMLS_CC) == FAILURE) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot redefine a method while that method is active.");
+            efree(methodnameLower);
 			RETURN_FALSE;
 		}
 	} else {
 		if (php_runkit_fetch_class(classname, classname_len, &ce TSRMLS_CC) == FAILURE) {
+            efree(methodnameLower);
 			RETURN_FALSE;
 		}
 		ancestor_class = ce;
 	}
 
 	if (php_runkit_generate_lambda_method(arguments, arguments_len, phpcode, phpcode_len, &fe TSRMLS_CC) == FAILURE) {
+        efree(methodnameLower);
 		RETURN_FALSE;
 	}
 
@@ -358,29 +426,37 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 		func.common.fn_flags |= ZEND_ACC_PUBLIC;
 	}
 
-	func.common.fn_flags |= ZEND_ACC_ALLOW_STATIC;
+    if (flags & ZEND_ACC_STATIC) {
+        func.common.fn_flags |= ZEND_ACC_STATIC;
+    } else {
+        func.common.fn_flags |= ZEND_ACC_ALLOW_STATIC;
+    }
 #endif
 
 	zend_hash_apply_with_arguments(EG(class_table), (apply_func_args_t)php_runkit_update_children_methods, 5, ancestor_class, ce, &func, methodname, 
 methodname_len);
 
-	if (zend_hash_add_or_update(&ce->function_table, methodname, methodname_len + 1, &func, sizeof(zend_function), NULL, add_or_update) == FAILURE) {
+	if (zend_hash_add_or_update(&ce->function_table, methodnameLower, methodname_len + 1, &func, sizeof(zend_function), NULL, add_or_update) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to add method to class");
+        efree(methodnameLower);
 		RETURN_FALSE;
 	}
 
 	if (zend_hash_del(EG(function_table), RUNKIT_TEMP_FUNCNAME, sizeof(RUNKIT_TEMP_FUNCNAME)) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to remove temporary function entry");
+        efree(methodnameLower);
 		RETURN_FALSE;
 	}
 
-	if (zend_hash_find(&ce->function_table, methodname, methodname_len + 1, (void**)&fe) == FAILURE ||
+	if (zend_hash_find(&ce->function_table, methodnameLower, methodname_len + 1, (void**)&fe) == FAILURE ||
 		!fe) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to locate newly added method");
+        efree(methodnameLower);
 		RETURN_FALSE;
 	}
 
 	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, methodname, fe);
+    efree(methodnameLower);
 	RETURN_TRUE;
 }
 /* }}} */
@@ -392,6 +468,7 @@ static int php_runkit_method_copy(char *dclass, int dclass_len, char *dfunc, int
 {
 	zend_class_entry *dce, *sce;
 	zend_function dfe, *sfe, *dfeInHashTable;
+    char *dfuncLower;
 
 	if (php_runkit_fetch_class_method(sclass, sclass_len, sfunc, sfunc_len, &sce, &sfe TSRMLS_CC) == FAILURE) {
 		return FAILURE;
@@ -401,8 +478,16 @@ static int php_runkit_method_copy(char *dclass, int dclass_len, char *dfunc, int
 		return FAILURE;
 	}
 
-	if (zend_hash_exists(&dce->function_table, dfunc, dfunc_len + 1)) {
+    dfuncLower = estrndup(dfunc, dfunc_len);
+    if (dfuncLower == NULL) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Not enough memory");
+		return FAILURE;
+    }
+	php_strtolower(dfuncLower, dfunc_len);
+
+	if (zend_hash_exists(&dce->function_table, dfuncLower, dfunc_len + 1)) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Destination method %s::%s() already exists", dclass, dfunc);
+        efree(dfuncLower);
 		return FAILURE;
 	}
 
@@ -414,15 +499,17 @@ static int php_runkit_method_copy(char *dclass, int dclass_len, char *dfunc, int
 	dfe.common.prototype = _php_runkit_get_method_prototype(dce, dfunc, dfunc_len);
 #endif
 
-	if (zend_hash_add(&dce->function_table, dfunc, dfunc_len + 1, &dfe, sizeof(zend_function), &dfeInHashTable) == FAILURE) {
+	if (zend_hash_add(&dce->function_table, dfuncLower, dfunc_len + 1, &dfe, sizeof(zend_function), &dfeInHashTable) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error adding method to class %s::%s()", dclass, dfunc);
+        efree(dfuncLower);
 		return FAILURE;
 	}
 
 	PHP_RUNKIT_ADD_MAGIC_METHOD(dce, dfunc, dfeInHashTable);
 
-	zend_hash_apply_with_arguments(EG(class_table), (apply_func_args_t)php_runkit_update_children_methods, 5, dce, dce, &dfe, dfunc, dfunc_len);
+	zend_hash_apply_with_arguments(EG(class_table), (apply_func_args_t)php_runkit_update_children_methods, 5, dce, dce, &dfe, dfuncLower, dfunc_len);
 
+    efree(dfuncLower);
 	return SUCCESS;
 }
 /* }}} */
@@ -455,6 +542,7 @@ PHP_FUNCTION(runkit_method_remove)
 	int classname_len, methodname_len;
 	zend_class_entry *ce, *ancestor_class = NULL;
 	zend_function *fe;
+    char *methodnameLower;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s/s/",	&classname, &classname_len,
 																	&methodname, &methodname_len) == FAILURE) {
@@ -473,13 +561,22 @@ PHP_FUNCTION(runkit_method_remove)
 
 	ancestor_class = php_runkit_locate_scope(ce, fe, methodname, methodname_len);
 
+    methodnameLower = estrndup(methodname, methodname_len);
+    if (methodnameLower == NULL) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Not enough memory");
+		RETURN_FALSE;
+    }
+	php_strtolower(methodnameLower, methodname_len);
+
 	zend_hash_apply_with_arguments(EG(class_table), (apply_func_args_t)php_runkit_clean_children_methods, 4, ancestor_class, ce, methodname, methodname_len);
 
-	if (zend_hash_del(&ce->function_table, methodname, methodname_len + 1) == FAILURE) {
+	if (zend_hash_del(&ce->function_table, methodnameLower, methodname_len + 1) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to remove method from class");
+        efree(methodnameLower);
 		RETURN_FALSE;
 	}
 
+    efree(methodnameLower);
 	PHP_RUNKIT_DEL_MAGIC_METHOD(ce, fe);
 	RETURN_TRUE;
 }
@@ -493,6 +590,7 @@ PHP_FUNCTION(runkit_method_rename)
 	int classname_len, methodname_len, newname_len;
 	zend_class_entry *ce, *ancestor_class = NULL;
 	zend_function *fe, func;
+    char *newnameLower;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s/s/s/",	&classname, &classname_len,
 																	&methodname, &methodname_len,
@@ -510,10 +608,17 @@ PHP_FUNCTION(runkit_method_rename)
 		RETURN_FALSE;
 	}
 
-	php_strtolower(newname, newname_len);
+    newnameLower = estrndup(newname, newname_len);
+    if (newnameLower == NULL) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Not enough memory");
+		RETURN_FALSE;
+    }
+	php_strtolower(newnameLower, newname_len);
+	php_strtolower(methodname, methodname_len);
 
-	if (zend_hash_exists(&ce->function_table, newname, newname_len + 1)) {
+	if (zend_hash_exists(&ce->function_table, newnameLower, newname_len + 1)) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s::%s() already exists", classname, newname);
+        efree(newnameLower);
 		RETURN_FALSE;
 	}
 
@@ -526,14 +631,16 @@ methodname_len);
 	efree(func.common.function_name);
 	func.common.function_name = estrndup(newname, newname_len + 1);
 
-	if (zend_hash_add(&ce->function_table, newname, newname_len + 1, &func, sizeof(zend_function), NULL) == FAILURE) {
+	if (zend_hash_add(&ce->function_table, newnameLower, newname_len + 1, &func, sizeof(zend_function), NULL) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to add new reference to class method");
 		zend_function_dtor(&func);
+        efree(newnameLower);
 		RETURN_FALSE;
 	}
 
 	if (zend_hash_del(&ce->function_table, methodname, methodname_len + 1) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to remove old method reference from class");
+        efree(newnameLower);
 		RETURN_FALSE;
 	}
 
@@ -541,9 +648,11 @@ methodname_len);
 
 	if (php_runkit_fetch_class_method(classname, classname_len, newname, newname_len, &ce, &fe TSRMLS_CC) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to locate newly renamed method");
+        efree(newnameLower);
 		RETURN_FALSE;
 	}
 
+    efree(newnameLower);
 	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, newname, fe);
 	RETURN_TRUE;
 }
@@ -565,7 +674,6 @@ PHP_FUNCTION(runkit_method_copy)
 
 	php_strtolower(sclass, sclass_len);
 	php_strtolower(dclass, dclass_len);
-	php_strtolower(dfunc, dfunc_len);
 
     if (!sfunc) {
 		sfunc = dfunc;
