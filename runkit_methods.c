@@ -75,7 +75,7 @@ zend_function* _php_runkit_get_method_prototype(zend_class_entry *ce, char* func
 
 	php_strtolower(funcLower, func_len);
 	while (pce) {
-		if (zend_hash_find(&pce->function_table, funcLower, func_len+1, (void**) &proto) != FAILURE) {
+		if (zend_hash_find(&pce->function_table, funcLower, func_len+1, (void**) &proto) == FAILURE) {
 			break;
 		}
 		pce = pce->parent;
