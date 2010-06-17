@@ -73,7 +73,7 @@ PHP_FUNCTION(runkit_zval_inspect)
 
 /* {{{ runkit_functions[]
  */
-function_entry runkit_functions[] = {
+zend_function_entry runkit_functions[] = {
 
 	PHP_FE(runkit_zval_inspect,										NULL)
 #ifdef ZEND_ENGINE_2

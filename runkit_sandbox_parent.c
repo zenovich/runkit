@@ -706,7 +706,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_runkit_sandbox_parent__call, 0, 0, 2)
 	ZEND_ARG_PASS_INFO(0)
 ZEND_END_ARG_INFO()
 
-static function_entry php_runkit_sandbox_parent_functions[] = {
+static zend_function_entry php_runkit_sandbox_parent_functions[] = {
 	PHP_ME(Runkit_Sandbox_Parent,		__call,						arginfo_runkit_sandbox_parent__call,ZEND_ACC_PUBLIC)
 	/* Language Constructs */
 	PHP_ME(Runkit_Sandbox_Parent,		eval,						NULL,								ZEND_ACC_PUBLIC)

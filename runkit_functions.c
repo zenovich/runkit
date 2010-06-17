@@ -380,7 +380,7 @@ PHP_FUNCTION(runkit_function_rename)
 	}
 
 	if (zend_hash_add(EG(function_table), dfunc, dfunc_len + 1, &func, sizeof(zend_function), NULL) == FAILURE) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to add refernce to new function name %s()", dfunc);
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to add reference to new function name %s()", dfunc);
 		zend_function_dtor(fe);
 		RETURN_FALSE;
 	}
