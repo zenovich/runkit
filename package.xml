@@ -1,24 +1,33 @@
-<package version="1.0">
-  <name>runkit</name>
-  <summary>For all those things you.... probably shouldn't have been doing anyway....</summary>
-  <description>Replace, rename, and remove user defined functions and classes.
+<?xml version="1.0" encoding="UTF-8"?>
+<package packagerversion="1.4.9" version="2.0" xmlns="http://pear.php.net/dtd/package-2.0" xmlns:tasks="http://pear.php.net/dtd/tasks-1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://pear.php.net/dtd/tasks-1.0
+http://pear.php.net/dtd/tasks-1.0.xsd
+http://pear.php.net/dtd/package-2.0
+http://pear.php.net/dtd/package-2.0.xsd">
+ <name>runkit</name>
+ <channel>pecl.php.net</channel>
+ <summary>For all those things you.... probably shouldn&apos;t have been doing anyway....</summary>
+ <description>Replace, rename, and remove user defined functions and classes.
 Define customized superglobal variables for general purpose use.
-Execute code in restricted environment (sandboxing).</description>
-  <license>PHP</license>
-  <maintainers>
-    <maintainer>
-      <user>pollita</user>
-      <name>Sara Golemon</name>
-      <email>pollita@php.net</email>
-      <role>lead</role>
-    </maintainer>
-  </maintainers>
+Execute code in restricted environment (sandboxing).
+ </description>
+ <lead>
+  <name>Sara Golemon</name>
+  <user>pollita</user>
+  <email>pollita@php.net</email>
+  <active>yes</active>
+ </lead>
 
-   <release>
-    <version>0.9</version>
-    <state>beta</state>
-    <date>2006-06-06</date>
-    <notes>Allow building part of runkit while leaving other functionality out.
+   <date>2006-06-06</date>
+   <version>
+    <release>0.9</release>
+    <api>0.8</api>
+   </version>
+   <stability>
+    <release>beta</release>
+    <api>beta</api>
+   </stability>
+   <license uri="http://www.php.net/license">PHP</license>
+   <notes>Allow building part of runkit while leaving other functionality out.
 --enable-runkit works as before, building all runkit features
 Individual features may enabled or disable by using
 --enable-runkit-featurename or --disbale-runkit-featurename
@@ -28,11 +37,11 @@ where featurename is any of:
     sandbox - Sandboxing
 
 Ex: ./configure --enable-runkit --disable-runkit-modify
-		Enable superglobal registration and sandbox support,
-		but disable runtime manipulation.
+        Enable superglobal registration and sandbox support,
+        but disable runtime manipulation.
 
     ./configure --disable-runkit --enable-runkit-sandbox
-		Enable only sandboxing support.
+        Enable only sandboxing support.
 
 This release also:
 - Fixes PHP4 (ZE1) compilation
@@ -41,58 +50,166 @@ This release also:
 - Resolves an output buffering bug in Runkit_Sandbox
 - Resolves Runkit_Sandbox failure when superglobals are defined
 </notes>
-   </release>
 
-  <changelog>
-   <release>
-    <version>0.8.1</version>
-    <state>beta</state>
-    <date>2006-05-20</date>
-    <notes>Added source file runkit_props.c to package</notes>
-   </release>
+ <contents>
+  <dir name="/">
+   <dir name="tests">
+    <file name="runkit_class_adopt.phpt" role="test" />
+    <file name="runkit_class_emancipate.phpt" role="test" />
+    <file name="runkit_constant_add.phpt" role="test" />
+    <file name="runkit_constant_redefine.phpt" role="test" />
+    <file name="runkit_constant_remove.phpt" role="test" />
+    <file name="runkit_function_add.phpt" role="test" />
+    <file name="runkit_function_copy.phpt" role="test" />
+    <file name="runkit_function_redefine.phpt" role="test" />
+    <file name="runkit_function_remove.phpt" role="test" />
+    <file name="runkit_function_rename.phpt" role="test" />
+    <file name="runkit_lint.phpt" role="test" />
+    <file name="runkit_method_add.phpt" role="test" />
+    <file name="runkit_method_copy.phpt" role="test" />
+    <file name="runkit_method_redefine.phpt" role="test" />
+    <file name="runkit_method_remove.phpt" role="test" />
+    <file name="runkit_method_rename.phpt" role="test" />
+    <file name="runkit_return_value_used.phpt" role="test" />
+    <file name="Runkit_Sandbox_.active.phpt" role="test" />
+    <file name="Runkit_Sandbox_.output_handler.phpt" role="test" />
+    <file name="runkit_sandbox_output_handler.phpt" role="test" />
+    <file name="Runkit_Sandbox_Parent1.phpt" role="test" />
+    <file name="Runkit_Sandbox_Parent2.phpt" role="test" />
+    <file name="Runkit_Sandbox_Parent__.call.access.phpt" role="test" />
+    <file name="Runkit_Sandbox_Parent__.call.phpt" role="test" />
+    <file name="Runkit_Sandbox_Parent__.die.access.phpt" role="test" />
+    <file name="Runkit_Sandbox_Parent__.die.phpt" role="test" />
+    <file name="Runkit_Sandbox_Parent__.echo.access.phpt" role="test" />
+    <file name="Runkit_Sandbox_Parent__.echo.phpt" role="test" />
+    <file name="Runkit_Sandbox_Parent__.eval.access.phpt" role="test" />
+    <file name="Runkit_Sandbox_Parent__.eval.phpt" role="test" />
+    <file name="Runkit_Sandbox_Parent__.read.access.phpt" role="test" />
+    <file name="Runkit_Sandbox_Parent__.read.phpt" role="test" />
+    <file name="Runkit_Sandbox_Parent__.scope.phpt" role="test" />
+    <file name="Runkit_Sandbox_Parent__.write.access.phpt" role="test" />
+    <file name="Runkit_Sandbox_Parent__.write.phpt" role="test" />
+    <file name="Runkit_Sandbox__call.phpt" role="test" />
+    <file name="Runkit_Sandbox__die.phpt" role="test" />
+    <file name="Runkit_Sandbox__disable_classes.phpt" role="test" />
+    <file name="Runkit_Sandbox__disable_functions.phpt" role="test" />
+    <file name="Runkit_Sandbox__echo.phpt" role="test" />
+    <file name="Runkit_Sandbox__eval.phpt" role="test" />
+    <file name="Runkit_Sandbox__get.phpt" role="test" />
+    <file name="Runkit_Sandbox__grandchild.phpt" role="test" rolw="test" />
+    <file name="Runkit_Sandbox__set.phpt" role="test" />
+   </dir> <!-- //tests -->
+   <file name="config.m4" role="src" />
+   <file name="config.w32" role="src" />
+   <file name="php_runkit.h" role="src" />
+   <file name="README" role="doc" />
+   <file name="runkit.c" role="src" />
+   <file name="runkit.dsp" role="src" />
+   <file name="runkit_classes.c" role="src" />
+   <file name="runkit_constants.c" role="src" />
+   <file name="runkit_functions.c" role="src" />
+   <file name="runkit_import.c" role="src" />
+   <file name="runkit_methods.c" role="src" />
+   <file name="runkit_props.c" role="src" />
+   <file name="runkit_sandbox.c" role="src" />
+   <file name="runkit_sandbox_parent.c" role="src" />
+   <file name="tsrm_5.0.diff" role="src" />
+  </dir> <!-- / -->
+ </contents>
+ <dependencies>
+  <required>
+   <php>
+    <min>4.0.0</min>
+   </php>
+   <pearinstaller>
+    <min>1.4.0b1</min>
+   </pearinstaller>
+  </required>
+ </dependencies>
+ <providesextension>runkit</providesextension>
+ <extsrcrelease />
 
-   <release>
-    <version>0.8</version>
-    <state>beta</state>
-    <date>2006-05-14</date>
-    <notes>Fixed SAPI handlers for genuinely threaded webservers (e.g. apache2-worker)
+ <changelog>
+
+  <release>
+   <date>2006-05-20</date>
+   <version>
+    <release>0.8.1</release>
+    <api>0.8</api>
+   </version>
+   <stability>
+    <release>beta</release>
+    <api>beta</api>
+   </stability>
+   <license uri="http://www.php.net/license">PHP</license>
+   <notes>Added source file runkit_props.c to package</notes>
+  </release>
+
+  <release>
+   <date>2006-05-14</date>
+   <version>
+    <release>0.8</release>
+    <api>0.8</api>
+   </version>
+   <stability>
+    <release>beta</release>
+    <api>beta</api>
+   </stability>
+   <license uri="http://www.php.net/license">PHP</license>
+   <notes>Fixed SAPI handlers for genuinely threaded webservers (e.g. apache2-worker)
 Fixed internal pointer corruption in function/class popping
 Added functions:
   runkit_zval_inspect()
   runkit_return_value_used()
   runkit_default_property_add()
 Implemented class property importing in runkit_import()
-Began refactor for PHP6 compatability</notes>
-   </release>
+Began refactor for PHP6 compatability
+   </notes>
+  </release>
 
-   <release>
-    <version>0.7</version>
-    <state>beta</state>
-    <date>2005-10-30</date>
-    <notes>Primarily bugfix release, only new functionality is expanded parent_scope setting.
+  <release>
+   <version>
+    <release>0.7</release>
+    <api>0.7</api>
+   </version>
+   <stability>
+    <release>beta</release>
+    <api>beta</api>
+   </stability>
+   <date>2005-10-30</date>
+   <license uri="http://www.php.net/license">PHP</license>
+   <notes>Primarily bugfix release, only new functionality is expanded parent_scope setting.
 
 Workaround bug when using runkit_import() with opcode caches by bypassing cache for imported file.
 Fix using runkit_import() with multiple classes (Thanks to Stuart Herbert for the patch)
 Fix various reference issues for parameters passed to manipulation functions.
 Fix C++ compatability in sandbox source files.
 Fix parent_scope support (was only applied to property_read and eval/include/require ops)
-Expand parent_scope setting to allow variable arrays as symbol tables.</notes>
-   </release>
+Expand parent_scope setting to allow variable arrays as symbol tables.
+   </notes>
+  </release>
 
-   <release>
-    <version>0.6</version>
-    <state>beta</state>
-    <date>2005-09-30</date>
-    <notes>Add ability to modify/rename/remove internal functions.
+  <release>
+   <version>
+    <release>0.6</release>
+    <api>0.6</api>
+   </version>
+   <stability>
+    <release>beta</release>
+    <api>beta</api>
+   </stability>
+   <date>2005-09-30</date>
+   <license uri="http://www.php.net/license">PHP</license>
+   <notes>Add ability to modify/rename/remove internal functions.
 Requires PHP_INI_SYSTEM setting runkit.internal_override to be enabled.
 
-Implement Runkit_Sandbox_Parent to give child access to parent's scope
-Parent must enable $sandbox['parent_access'] at minimum.
+Implement Runkit_Sandbox_Parent to give child access to parent&apos;s scope
+Parent must enable $sandbox[&apos;parent_access&apos;] at minimum.
 
 Additional boolean settings include:
 parent_read - Can read properties in parent_scope
 parent_write - Can modify properties in parent_scope
-parent_call - Can call parent's functions
+parent_call - Can call parent&apos;s functions
 parent_eval - Can eval arbitrary code in parent scope
 parent_include - Can include/require code in parent scope
 parent_echo - Can echo/print data (bypass output_handler)
@@ -104,125 +221,101 @@ as seen from the child according to:
 1 = Current active symbol table
 2 = Previously active symbol table
 3 = The one before that...etc...
-</notes>
-   </release>
 
-   <release>
-    <version>0.5</version>
-    <state>beta</state>
-    <date>2005-09-23</date>
-    <notes>NOTICE: This release demotes runkit_sandbox_output_handler() to DEPRECATED.
-Use $sandbox['output_handler'] = $handler; rather than
+   </notes>
+  </release>
+
+  <release>
+   <version>
+    <release>0.5</release>
+    <api>0.5</api>
+   </version>
+   <stability>
+    <release>beta</release>
+    <api>beta</api>
+   </stability>
+   <date>2005-09-23</date>
+   <license uri="http://www.php.net/license">PHP</license>
+   <notes>NOTICE: This release demotes runkit_sandbox_output_handler() to DEPRECATED.
+Use $sandbox[&apos;output_handler&apos;] = $handler; rather than
 runkit_sandbox_output_handler($sandbox, $handler);
 The procedural version will be removed prior to a 1.0-stable release.
 Other changes include:
 - Major refactor of Runkit_Sandbox OOP Model.
-- Addition of $sandbox['active'] R/O status indicator.
-- Fixed crash when multiple autoglobals are specified</notes>
-   </release>
+- Addition of $sandbox[&apos;active&apos;] R/O status indicator.
+- Fixed crash when multiple autoglobals are specified
+   </notes>
+  </release>
 
-   <release>
-    <version>0.4</version>
-    <state>beta</state>
-    <date>2005-07-08</date>
-    <notes>Added runkit_object_id() -- Fetch object handle identifier
-Fixed runkit_import() -- Fold case when adding method keys to ce->function_table
+  <release>
+   <version>
+    <release>0.4</release>
+    <api>0.4</api>
+   </version>
+   <stability>
+    <release>beta</release>
+    <api>beta</api>
+   </stability>
+   <date>2005-07-08</date>
+   <license uri="http://www.php.net/license">PHP</license>
+   <notes>Added runkit_object_id() -- Fetch object handle identifier
+Fixed runkit_import() -- Fold case when adding method keys to ce-&gt;function_table
 Fixed runkit_method_*() to properly return TRUE on success
 Refactored INI overrides in Runkit_Sandbox for readability
 Added INI overrides in Runkit_Sandbox (safe_mode_gid,safe_mode_include_dir)
-Fixed callback parameter to runkit_sandbox_output_handler() to be optional.</notes>
-   </release>
+Fixed callback parameter to runkit_sandbox_output_handler() to be optional.
+   </notes>
+  </release>
 
-   <release>
-    <version>0.3.0</version>
-    <state>beta</state>
-    <date>2005-06-03</date>
-    <notes>Put php_runkit.h back into the package.xml file. (pear install runkit-beta should work now).
+  <release>
+   <version>
+    <release>0.3.0</release>
+    <api>0.3.0</api>
+   </version>
+   <stability>
+    <release>beta</release>
+    <api>beta</api>
+   </stability>
+   <date>2005-06-03</date>
+   <license uri="http://www.php.net/license">PHP</license>
+   <notes>Put php_runkit.h back into the package.xml file. (pear install runkit-beta should work now).
 Implement die(), exit(), echo(), and print() and catch bailouts properly.
-Implement output capturing -- runkit_sandbox_output_handler().</notes>
-   </release>
+Implement output capturing -- runkit_sandbox_output_handler().
+   </notes>
+  </release>
 
-   <release>
-    <version>0.2.0</version>
-    <state>beta</state>
-    <date>2005-05-03</date>
-    <notes>Numerous build fixes in older versions and Win32.
+  <release>
+   <version>
+    <release>0.2.0</release>
+    <api>0.2.0</api>
+   </version>
+   <stability>
+    <release>beta</release>
+    <api>beta</api>
+   </stability>
+   <date>2005-05-03</date>
+   <license uri="http://www.php.net/license">PHP</license>
+   <notes>Numerous build fixes in older versions and Win32.
 Fix registration of more than one superglobal.
 Implement include(), require(), include_once(), require_once(), unset(), isset(), and empty() support in Runkit_Sandbox.
-Add runkit.superglobal as "special" ini supported by Runkit_Sandbox.
-Fix runkit_class_*.phpt regression tests to be version agnostic.</notes>
-   </release>
+Add runkit.superglobal as &quot;special&quot; ini supported by Runkit_Sandbox.
+Fix runkit_class_*.phpt regression tests to be version agnostic.
+   </notes>
+  </release>
 
-   <release>
-    <version>0.1.0</version>
-    <state>beta</state>
-    <date>2005-04-29</date>
-    <notes>Initial Release</notes>
-   </release>
-  </changelog>
-
-  <filelist>
-   <file role="src" name="config.m4"/>
-   <file role="src" name="config.w32"/>
-   <file role="src" name="runkit.dsp"/>
-   <file role="src" name="php_runkit.h"/>
-   <file role="src" name="runkit.c"/>
-   <file role="src" name="runkit_classes.c"/>
-   <file role="src" name="runkit_constants.c"/>
-   <file role="src" name="runkit_functions.c"/>
-   <file role="src" name="runkit_import.c"/>
-   <file role="src" name="runkit_methods.c"/>
-   <file role="src" name="runkit_props.c"/>
-   <file role="src" name="runkit_sandbox.c"/>
-   <file role="src" name="runkit_sandbox_parent.c"/>
-   <file role="doc" name="README"/>
-   <file role="src" name="tsrm_5.0.diff"/>
-   <dir role="test" name="tests">
-    <file role="test" name="runkit_class_adopt.phpt"/>
-    <file role="test" name="runkit_class_emancipate.phpt"/>
-    <file role="test" name="runkit_constant_add.phpt"/>
-    <file role="test" name="runkit_constant_redefine.phpt"/>
-    <file role="test" name="runkit_constant_remove.phpt"/>
-    <file role="test" name="runkit_function_add.phpt"/>
-    <file role="test" name="runkit_function_copy.phpt"/>
-    <file role="test" name="runkit_function_redefine.phpt"/>
-    <file role="test" name="runkit_function_remove.phpt"/>
-    <file role="test" name="runkit_function_rename.phpt"/>
-    <file role="test" name="runkit_lint.phpt"/>
-    <file role="test" name="runkit_method_add.phpt"/>
-    <file role="test" name="runkit_method_copy.phpt"/>
-    <file role="test" name="runkit_method_redefine.phpt"/>
-    <file role="test" name="runkit_method_remove.phpt"/>
-    <file role="test" name="runkit_method_rename.phpt"/>
-    <file role="test" name="runkit_return_value_used.phpt"/>
-    <file role="test" name="runkit_sandbox_output_handler.phpt"/>
-    <file role="test" name="Runkit_Sandbox_.output_handler.phpt"/>
-    <file role="test" name="Runkit_Sandbox_.active.phpt"/>
-    <file rolw="test" name="Runkit_Sandbox__grandchild.phpt"/>
-    <file role="test" name="Runkit_Sandbox__call.phpt"/>
-    <file role="test" name="Runkit_Sandbox__die.phpt"/>
-    <file role="test" name="Runkit_Sandbox__disable_functions.phpt"/>
-    <file role="test" name="Runkit_Sandbox__disable_classes.phpt"/>
-    <file role="test" name="Runkit_Sandbox__echo.phpt"/>
-    <file role="test" name="Runkit_Sandbox__eval.phpt"/>
-    <file role="test" name="Runkit_Sandbox__get.phpt"/>
-    <file role="test" name="Runkit_Sandbox__set.phpt"/>
-    <file role="test" name="Runkit_Sandbox_Parent1.phpt"/>
-    <file role="test" name="Runkit_Sandbox_Parent2.phpt"/>
-    <file role="test" name="Runkit_Sandbox_Parent__.call.access.phpt"/>
-    <file role="test" name="Runkit_Sandbox_Parent__.call.phpt"/>
-    <file role="test" name="Runkit_Sandbox_Parent__.die.access.phpt"/>
-    <file role="test" name="Runkit_Sandbox_Parent__.die.phpt"/>
-    <file role="test" name="Runkit_Sandbox_Parent__.echo.access.phpt"/>
-    <file role="test" name="Runkit_Sandbox_Parent__.echo.phpt"/>
-    <file role="test" name="Runkit_Sandbox_Parent__.eval.access.phpt"/>
-    <file role="test" name="Runkit_Sandbox_Parent__.eval.phpt"/>
-    <file role="test" name="Runkit_Sandbox_Parent__.read.access.phpt"/>
-    <file role="test" name="Runkit_Sandbox_Parent__.read.phpt"/>
-    <file role="test" name="Runkit_Sandbox_Parent__.scope.phpt"/>
-    <file role="test" name="Runkit_Sandbox_Parent__.write.access.phpt"/>
-    <file role="test" name="Runkit_Sandbox_Parent__.write.phpt"/>
-   </dir>
-  </filelist>
-
+  <release>
+   <version>
+    <release>0.1.0</release>
+    <api>0.1.0</api>
+   </version>
+   <stability>
+    <release>beta</release>
+    <api>beta</api>
+   </stability>
+   <date>2005-04-29</date>
+   <license uri="http://www.php.net/license">PHP</license>
+   <notes>Initial Release
+   </notes>
+  </release>
+ </changelog>
 </package>
