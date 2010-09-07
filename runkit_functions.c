@@ -251,14 +251,16 @@ int php_runkit_destroy_misplaced_functions(zend_hash_key *hash_key TSRMLS_DC)
 
 /* {{{ php_runkit_restore_internal_functions
 	Cleanup after modifications to internal functions */
-int php_runkit_restore_internal_functions(zend_internal_function *fe, int num_args, va_list args, zend_hash_key *hash_key)
+int php_runkit_restore_internal_functions(RUNKIT_53_TSRMLS_ARG(zend_internal_function *fe), int num_args, va_list args, zend_hash_key *hash_key)
 {
-	void ***tsrm_ls = va_arg(args, void***); /* NULL when !defined(ZTS) */
-
 	if (!hash_key->nKeyLength) {
 		/* Nonsense, skip it */
 		return ZEND_HASH_APPLY_REMOVE;
 	}
+
+#if (RUNKIT_UNDER53)
+    void ***tsrm_ls = va_arg(args, void***); /* NULL when !defined(ZTS) */
+#endif
 
 #if PHP_MAJOR_VERSION >= 6
 	zend_u_hash_update(EG(function_table), hash_key->type, hash_key->u.unicode, hash_key->nKeyLength, (void*)fe, sizeof(zend_function), NULL);

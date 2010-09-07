@@ -12,6 +12,6 @@ var_dump(runkit_lint('echo "Foo";'));
 var_dump(runkit_lint('echo "Bar;'));
 --EXPECTF--
 bool(true)
-%s
-%s error%s:%s error, unexpected $end in %sUnknown(0) : runkit_lint test compile%s on line %s1%s
+
+%s error:%s error, unexpected $end in Unknown(0) : runkit_lint test compile on line 1
 bool(false)

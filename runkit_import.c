@@ -126,7 +126,7 @@ static int php_runkit_import_class_methods(zend_class_entry *dce, zend_class_ent
 				continue;
 			}
 
-			zend_hash_apply_with_arguments(EG(class_table), (apply_func_args_t)php_runkit_clean_children_methods, 4, scope, dce, fn, fn_len);
+			zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_clean_children_methods, 4, scope, dce, fn, fn_len);
 			if (zend_hash_del(&dce->function_table, fn, fn_len + 1) == FAILURE) {
 				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error removing old method in destination class %s::%s", dce->name, fe->common.function_name);
 				zend_hash_move_forward_ex(&ce->function_table, &pos);
@@ -138,7 +138,7 @@ static int php_runkit_import_class_methods(zend_class_entry *dce, zend_class_ent
 #ifdef ZEND_ENGINE_2
 		fe->common.scope = dce;
 #endif
-		zend_hash_apply_with_arguments(EG(class_table), (apply_func_args_t)php_runkit_update_children_methods, 5, dce, dce, fe, fn, fn_len);
+		zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 5, dce, dce, fe, fn, fn_len);
 
 		if (zend_hash_add(&dce->function_table, fn, fn_len + 1, fe, sizeof(zend_function), NULL) == FAILURE) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Failure importing %s::%s()", ce->name, fe->common.function_name);
@@ -185,7 +185,7 @@ static int php_runkit_import_class_consts(zend_class_entry *dce, zend_class_entr
 				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to import %s::%s", dce->name, key);
 			}
 
-			zend_hash_apply_with_arguments(EG(class_table), (apply_func_args_t)php_runkit_update_children_consts, 4, dce, c, key, key_len - 1);
+			zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_consts, 4, dce, c, key, key_len - 1);
 		} else {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Constant has invalid key name");
 		}
@@ -235,7 +235,7 @@ static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry
 
 			if (!cname || strcmp(cname, "*") == 0) {
 				/* PUBLIC || PROTECTED */
-				zend_hash_apply_with_arguments(EG(class_table), (apply_func_args_t)php_runkit_update_children_def_props, 4, dce, p, key, key_len - 1);
+				zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_def_props, 4, dce, p, key, key_len - 1);
 			}
 		} else {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Property has invalid key name");

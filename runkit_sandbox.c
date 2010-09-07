@@ -47,10 +47,12 @@ static zend_class_entry *php_runkit_sandbox_class_entry;
 
 #define PHP_RUNKIT_SANDBOX_FETCHBOX(zval_p) (php_runkit_sandbox_object*)zend_objects_get_address(zval_p TSRMLS_CC)
 
-int php_runkit_sandbox_array_deep_copy(zval **value, int num_args, va_list args, zend_hash_key *hash_key)
+int php_runkit_sandbox_array_deep_copy(RUNKIT_53_TSRMLS_ARG(zval **value), int num_args, va_list args, zend_hash_key *hash_key)
 {
 	HashTable *target_hashtable = va_arg(args, HashTable*);
+#if (RUNKIT_UNDER53)
 	TSRMLS_D = va_arg(args, void***);
+#endif
 	zval *copyval;
 
 	MAKE_STD_ZVAL(copyval);
@@ -356,7 +358,7 @@ PHP_METHOD(Runkit_Sandbox,__call)
 			HashPosition pos;
 			zval **tmpzval;
 
-			if (!zend_is_callable(func_name, IS_CALLABLE_CHECK_NO_ACCESS, &name)) {
+			if (!RUNKIT_IS_CALLABLE(func_name, IS_CALLABLE_CHECK_NO_ACCESS, &name)) {
 				php_error_docref1(NULL TSRMLS_CC, name, E_WARNING, "Function not defined");
 				if (name) {
 					efree(name);
@@ -471,7 +473,7 @@ static void php_runkit_sandbox_include_or_eval(INTERNAL_FUNCTION_PARAMETERS, int
 						op_array = zend_compile_file(&file_handle, type TSRMLS_CC);
 						zend_destroy_file_handle(&file_handle TSRMLS_CC);
 					} else {
-						zend_file_handle_dtor(&file_handle);
+						RUNKIT_FILE_HANDLE_DTOR(&file_handle);
 						RETVAL_TRUE;
 						already_included = 1;
 					}
@@ -730,7 +732,7 @@ static zval *php_runkit_sandbox_read_property(zval *object, zval *member, int ty
 		/* ZE expects refcount == 0 for unowned values */
 		INIT_PZVAL(return_value);
 		PHP_SANDBOX_CROSS_SCOPE_ZVAL_COPY_CTOR(return_value);
-		return_value->refcount--;
+		return_value->RUNKIT_REFCOUNT--;
 
 		return return_value;
 	} else {
@@ -803,7 +805,7 @@ static int php_runkit_sandbox_has_property(zval *object, zval *member, int has_s
 		member_copy = *member;
 		member = &member_copy;
 		zval_copy_ctor(member);
-		member->refcount = 1;
+		member->RUNKIT_REFCOUNT = 1;
 		convert_to_string(member);
 	}
 
@@ -877,7 +879,7 @@ static void php_runkit_sandbox_unset_property(zval *object, zval *member TSRMLS_
 		member_copy = *member;
 		member = &member_copy;
 		zval_copy_ctor(member);
-		member->refcount = 1;
+		member->RUNKIT_REFCOUNT = 1;
 		convert_to_string(member);
 	}
 
@@ -925,7 +927,7 @@ static int php_runkit_sandbox_sapi_ub_write(const char *str, uint str_length TSR
 		TSRMLS_FETCH();
 
 		if (!objval->output_handler ||
-			!zend_is_callable(objval->output_handler, IS_CALLABLE_CHECK_NO_ACCESS, NULL)) {
+			!RUNKIT_IS_CALLABLE(objval->output_handler, IS_CALLABLE_CHECK_NO_ACCESS, NULL)) {
 			/* No hander, or invalid handler, pass up the line... */
 			bytes_written = PHPWRITE(str, str_length);
 
@@ -987,7 +989,7 @@ static void php_runkit_sandbox_sapi_flush(void *server_context)
 		TSRMLS_FETCH();
 
 		if (!objval->output_handler ||
-			!zend_is_callable(objval->output_handler, IS_CALLABLE_CHECK_NO_ACCESS, NULL)) {
+			!RUNKIT_IS_CALLABLE(objval->output_handler, IS_CALLABLE_CHECK_NO_ACCESS, NULL)) {
 			/* No hander, or invalid handler, pass up the line... */
 			if (php_runkit_sandbox_original_sapi.flush) {
 				php_runkit_sandbox_original_sapi.flush(server_context);
@@ -1097,11 +1099,19 @@ static void php_runkit_sandbox_sapi_sapi_error(int type, const char *error_msg, 
 /* {{{ php_runkit_sandbox_sapi_header_handler
  * Ignore headers when in a subrequest
  */
-static int php_runkit_sandbox_sapi_header_handler(sapi_header_struct *sapi_header,sapi_headers_struct *sapi_headers TSRMLS_DC)
+static int php_runkit_sandbox_sapi_header_handler(sapi_header_struct *sapi_header,
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 3) || (PHP_MAJOR_VERSION >= 6)
+                                                  sapi_header_op_enum op,
+#endif
+                                                  sapi_headers_struct *sapi_headers TSRMLS_DC)
 {
 	if (!RUNKIT_G(current_sandbox)) {
 		/* Not in a sandbox use SAPI's actual handler */
-		return php_runkit_sandbox_original_sapi.header_handler(sapi_header, sapi_headers TSRMLS_CC);
+		return php_runkit_sandbox_original_sapi.header_handler(sapi_header,
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 3) || (PHP_MAJOR_VERSION >= 6)
+                                                               op,
+#endif
+                                                               sapi_headers TSRMLS_CC);
 	}
 
 	/* Otherwise ignore headers -- TODO: Provide a way for the calling scope to receive these a la output handler */
@@ -1392,14 +1402,14 @@ PHP_FUNCTION(runkit_sandbox_output_handler)
 		zval callback_copy = *callback;
 
 		zval_copy_ctor(&callback_copy);
-		callback_copy.is_ref = 0;
-		callback_copy.refcount = 1;
+		callback_copy.RUNKIT_IS_REF = 0;
+		callback_copy.RUNKIT_REFCOUNT = 1;
 		callback_is_true = zval_is_true(&callback_copy);
 		zval_dtor(&callback_copy);
 	}
 
 	if (callback && callback_is_true &&
-		!zend_is_callable(callback, IS_CALLABLE_CHECK_NO_ACCESS, &name)) {
+		!RUNKIT_IS_CALLABLE(callback, IS_CALLABLE_CHECK_NO_ACCESS, &name)) {
 		php_error_docref1(NULL TSRMLS_CC, name, E_WARNING, "Second argument (%s) is expected to be a valid callback", name);
 		if (name) {
 			efree(name);
@@ -1413,8 +1423,8 @@ PHP_FUNCTION(runkit_sandbox_output_handler)
 	if (objval->output_handler && return_value_used) {
 		*return_value = *objval->output_handler;
 		zval_copy_ctor(return_value);
-		return_value->refcount = 1;
-		return_value->is_ref = 0;
+		return_value->RUNKIT_REFCOUNT = 1;
+		return_value->RUNKIT_IS_REF = 0;
 	} else {
 		RETVAL_FALSE;
 	}
@@ -1430,14 +1440,14 @@ PHP_FUNCTION(runkit_sandbox_output_handler)
 
 	if (callback && callback_is_true) {
 		zval *cb = callback;
-		if (callback->is_ref) {
+		if (callback->RUNKIT_IS_REF) {
 			MAKE_STD_ZVAL(cb);
 			*cb = *callback;
 			zval_copy_ctor(cb);
-			cb->refcount = 0;
-			cb->is_ref = 0;
+			cb->RUNKIT_REFCOUNT = 0;
+			cb->RUNKIT_IS_REF = 0;
 		}
-		cb->refcount++;
+		cb->RUNKIT_REFCOUNT++;
 		objval->output_handler = cb;
 	}
 }
@@ -1471,8 +1481,8 @@ PHP_RUNKIT_SANDBOX_SETTING_GETTER(name) \
 	ALLOC_ZVAL(retval); \
 	Z_TYPE_P(retval) = IS_BOOL; \
 	Z_LVAL_P(retval) = objval->name; \
-	retval->refcount = 0; \
-	retval->is_ref = 0; \
+	retval->RUNKIT_REFCOUNT = 0; \
+	retval->RUNKIT_IS_REF = 0; \
 \
 	return retval; \
 }
@@ -1491,7 +1501,7 @@ PHP_RUNKIT_SANDBOX_SETTING_GETTER(output_handler)
 
 PHP_RUNKIT_SANDBOX_SETTING_SETTER(output_handler)
 {
-	if (!zend_is_callable(value, IS_CALLABLE_CHECK_NO_ACCESS, NULL)) {
+	if (!RUNKIT_IS_CALLABLE(value, IS_CALLABLE_CHECK_NO_ACCESS, NULL)) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "output_handler is not a valid callback is expected to be a valid callback");
 	}
 
@@ -1499,7 +1509,7 @@ PHP_RUNKIT_SANDBOX_SETTING_SETTER(output_handler)
 		zval_ptr_dtor(&objval->output_handler);
 	}
 
-	value->refcount++;
+	value->RUNKIT_REFCOUNT++;
 	objval->output_handler = value;
 }
 
@@ -1514,7 +1524,7 @@ PHP_RUNKIT_SANDBOX_SETTING_GETTER(parent_scope)
 	} else {
 		ZVAL_LONG(retval, objval->parent_scope);
 	}
-	retval->refcount = 0;
+	retval->RUNKIT_REFCOUNT = 0;
 
 	return retval;
 }
@@ -1620,7 +1630,7 @@ static zval *php_runkit_sandbox_read_dimension(zval *object, zval *member, int t
 		member_copy = *member;
 		member = &member_copy;
 		zval_copy_ctor(member);
-		member->refcount = 1;
+		member->RUNKIT_REFCOUNT = 1;
 		convert_to_string(member);
 	}
 
@@ -1656,7 +1666,7 @@ static void php_runkit_sandbox_write_dimension(zval *object, zval *member, zval 
 		member_copy = *member;
 		member = &member_copy;
 		zval_copy_ctor(member);
-		member->refcount = 1;
+		member->RUNKIT_REFCOUNT = 1;
 		convert_to_string(member);
 	}
 
@@ -1692,7 +1702,7 @@ static int php_runkit_sandbox_has_dimension(zval *object, zval *member, int chec
 		member_copy = *member;
 		member = &member_copy;
 		zval_copy_ctor(member);
-		member->refcount = 1;
+		member->RUNKIT_REFCOUNT = 1;
 		convert_to_string(member);
 	}
 

@@ -10,6 +10,4 @@ $php = new Runkit_Sandbox(array('disable_classes'=>'stdClass'));
 $php->ini_set('html_errors',false);
 $php->eval('$a = new stdClass();');
 --EXPECTF--
-Fatal error: Class 'stdClass' not found in Unknown(0) : Runkit_Sandbox Eval Code on line 1
-
-Warning: Runkit_Sandbox::eval(): Error executing sandbox code in %s on line %d
+Warning: stdclass() has been disabled for security reasons in Unknown(0) : Runkit_Sandbox Eval Code on line 1

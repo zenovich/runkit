@@ -137,18 +137,38 @@ extern ZEND_DECLARE_MODULE_GLOBALS(runkit);
         _zend_hash_add_or_update((ht), (arKey), (nKeyLength), (pData), (pDataSize), (pDest), (flag) ZEND_FILE_LINE_CC)
 #endif
 
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 3) || (PHP_MAJOR_VERSION >= 6)
+#     define RUNKIT_REFCOUNT  refcount__gc
+#     define RUNKIT_IS_REF    is_ref__gc
+#     define RUNKIT_IS_CALLABLE(cb_zv, flags, cb_sp) zend_is_callable((cb_zv), (flags), (cb_sp) TSRMLS_CC)
+#     define RUNKIT_FILE_HANDLE_DTOR(pHandle)        zend_file_handle_dtor((pHandle) TSRMLS_CC)
+#     define RUNKIT_53_TSRMLS_PARAM(param)           (param) TSRMLS_CC
+#     define RUNKIT_53_TSRMLS_ARG(arg)               arg TSRMLS_DC
+#     define RUNKIT_UNDER53_TSRMLS_FETCH()
+#     define RUNKIT_UNDER53                          0
+#else
+#     define RUNKIT_REFCOUNT  refcount
+#     define RUNKIT_IS_REF    is_ref
+#     define RUNKIT_IS_CALLABLE(cb_zv, flags, cb_sp) zend_is_callable((cb_zv), (flags), (cb_sp))
+#     define RUNKIT_FILE_HANDLE_DTOR(pHandle)        zend_file_handle_dtor((pHandle))
+#     define RUNKIT_53_TSRMLS_PARAM(param)           (param)
+#     define RUNKIT_53_TSRMLS_ARG(arg)               arg
+#     define RUNKIT_UNDER53_TSRMLS_FETCH()           TSRMLS_FETCH()
+#     define RUNKIT_UNDER53                          1
+#endif
+
 /* runkit_functions.c */
-#define RUNKIT_TEMP_FUNCNAME  "__runkit_temporary_function__"
+#define RUNKIT_TEMP_FUNCNAME  "__runkit_temporary_function__"  
 int php_runkit_check_call_stack(zend_op_array *op_array TSRMLS_DC);
 void php_runkit_function_copy_ctor(zend_function *fe, char *newname);
 int php_runkit_generate_lambda_method(char *arguments, int arguments_len, char *phpcode, int phpcode_len, zend_function **pfe TSRMLS_DC);
 int php_runkit_destroy_misplaced_functions(zend_hash_key *hash_key TSRMLS_DC);
-int php_runkit_restore_internal_functions(zend_internal_function *fe, int num_args, va_list args, zend_hash_key *hash_key);
+int php_runkit_restore_internal_functions(RUNKIT_53_TSRMLS_ARG(zend_internal_function *fe), int num_args, va_list args, zend_hash_key *hash_key);
 
 /* runkit_methods.c */
 int php_runkit_fetch_class(char *classname, int classname_len, zend_class_entry **pce TSRMLS_DC);
-int php_runkit_clean_children_methods(zend_class_entry *ce, int num_args, va_list args, zend_hash_key *hash_key);
-int php_runkit_update_children_methods(zend_class_entry *ce, int num_args, va_list args, zend_hash_key *hash_key);
+int php_runkit_clean_children_methods(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce), int num_args, va_list args, zend_hash_key *hash_key);
+int php_runkit_update_children_methods(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce), int num_args, va_list args, zend_hash_key *hash_key);
 #ifdef ZEND_ENGINE_2
 int php_runkit_fetch_interface(char *classname, int classname_len, zend_class_entry **pce TSRMLS_DC);
 #endif
@@ -200,10 +220,10 @@ zend_class_entry *_php_runkit_locate_scope(zend_class_entry *ce, zend_function *
 #endif /* Version Agnosticism */
 
 /* runkit_constants.c */
-int php_runkit_update_children_consts(zend_class_entry *ce, int num_args, va_list args, zend_hash_key *hash_key);
+int php_runkit_update_children_consts(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce), int num_args, va_list args, zend_hash_key *hash_key);
 
 /* runkit_props.c */
-int php_runkit_update_children_def_props(zend_class_entry *ce, int num_args, va_list args, zend_hash_key *hash_key);
+int php_runkit_update_children_def_props(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce), int num_args, va_list args, zend_hash_key *hash_key);
 #endif /* PHP_RUNKIT_MANIPULATION */
 
 #ifdef PHP_RUNKIT_SANDBOX
@@ -214,7 +234,7 @@ int php_runkit_shutdown_sandbox(SHUTDOWN_FUNC_ARGS);
 /* runkit_sandbox_parent.c */
 int php_runkit_init_sandbox_parent(INIT_FUNC_ARGS);
 int php_runkit_shutdown_sandbox_parent(SHUTDOWN_FUNC_ARGS);
-int php_runkit_sandbox_array_deep_copy(zval **value, int num_args, va_list args, zend_hash_key *hash_key);
+int php_runkit_sandbox_array_deep_copy(RUNKIT_53_TSRMLS_ARG(zval **value), int num_args, va_list args, zend_hash_key *hash_key);
 
 struct _php_runkit_sandbox_object {
 	zend_object obj;
@@ -255,14 +275,14 @@ struct _php_runkit_sandbox_object {
 		{ \
 			HashTable *original_hashtable = Z_ARRVAL_P(pzv); \
 			array_init(pzv); \
-			zend_hash_apply_with_arguments(original_hashtable, (apply_func_args_t)php_runkit_sandbox_array_deep_copy, 1, Z_ARRVAL_P(pzv) TSRMLS_CC); \
+			zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(original_hashtable), (apply_func_args_t)php_runkit_sandbox_array_deep_copy, 1, Z_ARRVAL_P(pzv) TSRMLS_CC); \
 			break; \
 		} \
 		default: \
 			zval_copy_ctor(pzv); \
 	} \
-	(pzv)->refcount = 1; \
-	(pzv)->is_ref = 0; \
+	(pzv)->RUNKIT_REFCOUNT = 1; \
+	(pzv)->RUNKIT_IS_REF = 0; \
 }
 #endif /* PHP_RUNKIT_SANDBOX */
 

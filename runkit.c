@@ -395,7 +395,7 @@ PHP_RSHUTDOWN_FUNCTION(runkit)
 
 	if (RUNKIT_G(replaced_internal_functions)) {
 		/* Restore internal functions */
-		zend_hash_apply_with_arguments(RUNKIT_G(replaced_internal_functions), php_runkit_restore_internal_functions, 1, RUNKIT_TSRMLS_C);
+		zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(RUNKIT_G(replaced_internal_functions)), php_runkit_restore_internal_functions, 1, RUNKIT_TSRMLS_C);
 		zend_hash_destroy(RUNKIT_G(replaced_internal_functions));
 		FREE_HASHTABLE(RUNKIT_G(replaced_internal_functions));
 		RUNKIT_G(replaced_internal_functions) = NULL;

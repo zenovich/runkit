@@ -49,13 +49,13 @@ static int php_runkit_fetch_const(char *cname, int cname_len, zend_constant **co
 #ifdef ZEND_ENGINE_2
 /* {{{ php_runkit_update_children_consts
 	Scan the class_table for children of the class just updated */
-int php_runkit_update_children_consts(zend_class_entry *ce, int num_args, va_list args, zend_hash_key *hash_key)
+int php_runkit_update_children_consts(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce), int num_args, va_list args, zend_hash_key *hash_key)
 {
 	zend_class_entry *parent_class =  va_arg(args, zend_class_entry*);
 	zval *c = va_arg(args, zval*);
 	char *cname = va_arg(args, char*);
 	int cname_len = va_arg(args, int);
-	TSRMLS_FETCH();
+	RUNKIT_UNDER53_TSRMLS_FETCH();
 
 /* Redundant I know, but it's too keep these things consistent */
 #ifdef ZEND_ENGINE_2
@@ -68,7 +68,7 @@ int php_runkit_update_children_consts(zend_class_entry *ce, int num_args, va_lis
 	}
 
 	/* Process children of this child */
-	zend_hash_apply_with_arguments(EG(class_table), (apply_func_args_t)php_runkit_update_children_consts, 4, ce, c, cname, cname_len);
+	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_consts, 4, ce, c, cname, cname_len);
 
 	zend_hash_del(&ce->constants_table, cname, cname_len + 1);
 	ZVAL_ADDREF(c);
@@ -204,7 +204,7 @@ static int php_runkit_constant_add(char *classname, int classname_len, char *con
 	Z_SET_REFCOUNT_P(copyval, 1);
 	Z_UNSET_ISREF_P(copyval);
 #else
-	copyval->refcount = 1;
+	copyval->RUNKIT_REFCOUNT = 1;
 	copyval->is_ref = 0;
 #endif
 
@@ -214,7 +214,7 @@ static int php_runkit_constant_add(char *classname, int classname_len, char *con
 		return FAILURE;
 	}
 
-	zend_hash_apply_with_arguments(EG(class_table), (apply_func_args_t)php_runkit_update_children_consts, 4, ce, copyval, constname, constname_len);
+	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_consts, 4, ce, copyval, constname, constname_len);
 
 	return SUCCESS;
 #else

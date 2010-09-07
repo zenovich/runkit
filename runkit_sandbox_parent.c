@@ -77,6 +77,12 @@ static HashTable *php_runkit_sandbox_parent_resolve_symbol_table(php_runkit_sand
 	int i;
 	zend_execute_data *ex = EG(current_execute_data);
 
+#if (RUNKIT_UNDER53 == 0)
+    if (!EG(active_symbol_table)) {
+        zend_rebuild_symbol_table(TSRMLS_C);
+    }
+#endif
+
 	if (objval->self->parent_scope <= 0) {
 		HashTable *ht = &EG(symbol_table);
 
@@ -94,8 +100,8 @@ static HashTable *php_runkit_sandbox_parent_resolve_symbol_table(php_runkit_sand
 					ALLOC_INIT_ZVAL(hidden);
 					array_init(hidden);
 					ht = Z_ARRVAL_P(hidden);
-					if ((*symtable)->refcount > 1 &&
-						!(*symtable)->is_ref) {
+					if ((*symtable)->RUNKIT_REFCOUNT > 1 &&
+						!(*symtable)->RUNKIT_IS_REF) {
 						zval *cv;
 
 						MAKE_STD_ZVAL(cv);
@@ -105,8 +111,8 @@ static HashTable *php_runkit_sandbox_parent_resolve_symbol_table(php_runkit_sand
 						INIT_PZVAL(cv);
 						*symtable = cv;
 					}
-					(*symtable)->is_ref = 1;
-					(*symtable)->refcount++;
+					(*symtable)->RUNKIT_IS_REF = 1;
+					(*symtable)->RUNKIT_REFCOUNT++;
 					zend_hash_update(ht, objval->self->parent_scope_name, objval->self->parent_scope_namelen + 1, (void*)symtable, sizeof(zval*), NULL);
 
 					/* Store that dummy array in the sandbox's hidden properties table so that it gets cleaned up on dtor */
@@ -125,6 +131,7 @@ static HashTable *php_runkit_sandbox_parent_resolve_symbol_table(php_runkit_sand
 
 		return ht;
 	}
+
 	if (objval->self->parent_scope == 1) {
 		return EG(active_symbol_table);
 	}
@@ -137,7 +144,19 @@ static HashTable *php_runkit_sandbox_parent_resolve_symbol_table(php_runkit_sand
 		ex = ex->prev_execute_data;
 	}
 
+#if (RUNKIT_UNDER53)
 	return ex->symbol_table ? ex->symbol_table : &EG(symbol_table);
+#else
+    HashTable *oldActiveSymbolTable = EG(active_symbol_table);
+    EG(active_symbol_table) = NULL;
+    zend_execute_data *oldCurExData = EG(current_execute_data);
+    EG(current_execute_data) = ex;
+    zend_rebuild_symbol_table(TSRMLS_C);
+    HashTable *result = EG(active_symbol_table);
+    EG(active_symbol_table) = oldActiveSymbolTable;
+    EG(current_execute_data) = oldCurExData;
+    return result;
+#endif
 }
 
 /* {{{ proto Runkit_Sandbox_Parent::__call(mixed function_name, array args)
@@ -168,7 +187,7 @@ PHP_METHOD(Runkit_Sandbox_Parent,__call)
 		int i;
 
 
-		if (!zend_is_callable(func_name, IS_CALLABLE_CHECK_NO_ACCESS, &name)) {
+		if (!RUNKIT_IS_CALLABLE(func_name, IS_CALLABLE_CHECK_NO_ACCESS, &name)) {
 			php_error_docref1(NULL TSRMLS_CC, name, E_WARNING, "Function not defined");
 			if (name) {
 				efree(name);
@@ -278,7 +297,7 @@ static void php_runkit_sandbox_parent_include_or_eval(INTERNAL_FUNCTION_PARAMETE
 					op_array = zend_compile_file(&file_handle, type TSRMLS_CC);
 					zend_destroy_file_handle(&file_handle TSRMLS_CC);
 				} else {
-					zend_file_handle_dtor(&file_handle);
+					RUNKIT_FILE_HANDLE_DTOR(&file_handle);
 					RETVAL_TRUE;
 					already_included = 1;
 				}
@@ -534,7 +553,7 @@ static zval *php_runkit_sandbox_parent_read_property(zval *object, zval *member,
 		/* ZE expects refcount == 0 for unowned values */
 		INIT_PZVAL(return_value);
 		PHP_SANDBOX_CROSS_SCOPE_ZVAL_COPY_CTOR(return_value);
-		return_value->refcount--;
+		return_value->RUNKIT_REFCOUNT--;
 
 		return return_value;
 	} else {
@@ -607,7 +626,7 @@ static int php_runkit_sandbox_parent_has_property(zval *object, zval *member, in
 		member_copy = *member;
 		member = &member_copy;
 		zval_copy_ctor(member);
-		member->refcount = 1;
+		member->RUNKIT_REFCOUNT = 1;
 		convert_to_string(member);
 	}
 
@@ -680,7 +699,7 @@ static void php_runkit_sandbox_parent_unset_property(zval *object, zval *member 
 		member_copy = *member;
 		member = &member_copy;
 		zval_copy_ctor(member);
-		member->refcount = 1;
+		member->RUNKIT_REFCOUNT = 1;
 		convert_to_string(member);
 	}
 
