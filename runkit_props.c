@@ -45,8 +45,41 @@ int php_runkit_update_children_def_props(RUNKIT_53_TSRMLS_ARG(zend_class_entry *
 	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_def_props, 4, ce, p, pname, pname_len);
 
 	zend_hash_del(&ce->default_properties, pname, pname_len + 1);
-	ZVAL_ADDREF(p);
+	Z_ADDREF_P(p);
 	if (zend_hash_add(&ce->default_properties, pname, pname_len + 1, p, sizeof(zval*), NULL) ==  FAILURE) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error updating child class");
+		return ZEND_HASH_APPLY_KEEP;
+	}
+
+	return ZEND_HASH_APPLY_KEEP;
+}
+/* }}} */
+
+/* {{{ php_runkit_update_children_static_props
+	Scan the class_table for children of the class just updated */
+int php_runkit_update_children_static_props(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce), int num_args, va_list args, zend_hash_key *hash_key)
+{
+	zend_class_entry *parent_class =  va_arg(args, zend_class_entry*);
+	zval *p = va_arg(args, zval*);
+	char *pname = va_arg(args, char*);
+	int pname_len = va_arg(args, int);
+	RUNKIT_UNDER53_TSRMLS_FETCH();
+
+#ifdef ZEND_ENGINE_2
+	ce = *((zend_class_entry**)ce);
+#endif
+
+	if (ce->parent != parent_class) {
+		/* Not a child, ignore */
+		return ZEND_HASH_APPLY_KEEP;
+	}
+
+	/* Process children of this child */
+	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_static_props, 4, ce, p, pname, pname_len);
+
+	zend_hash_del(CE_STATIC_MEMBERS(ce), pname, pname_len + 1);
+	Z_ADDREF_P(p);
+	if (zend_hash_add(CE_STATIC_MEMBERS(ce), pname, pname_len + 1, p, sizeof(zval*), NULL) ==  FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error updating child class");
 		return ZEND_HASH_APPLY_KEEP;
 	}

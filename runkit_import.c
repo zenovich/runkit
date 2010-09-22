@@ -35,48 +35,55 @@ static int php_runkit_import_functions(HashTable *function_table, long flags TSR
 		int key_len, type;
 		long idx;
 		zend_bool add_function = 1;
+		zend_bool exists = 0;
 
 		zend_hash_get_current_data_ex(function_table, (void**)&fe, &pos);
 
-		if (((type = zend_hash_get_current_key_ex(EG(function_table), &key, &key_len, &idx, 0, &pos)) != HASH_KEY_NON_EXISTANT) && 
+		char *new_key = fe->common.function_name;
+		int new_key_len = strlen(new_key) + 1;
+
+		if (((type = zend_hash_get_current_key_ex(function_table, &key, &key_len, &idx, 0, &pos)) != HASH_KEY_NON_EXISTANT) && 
 			fe && fe->type == ZEND_USER_FUNCTION) {
 		
+		    if (type == HASH_KEY_IS_STRING) {
+			new_key = key;
+			new_key_len = key_len;
+			exists = zend_hash_exists(EG(function_table), new_key, new_key_len);
+		    } else {
+			exists = zend_hash_index_exists(EG(function_table), idx);
+		    }
+
+		    if (exists) {
 			if (flags & PHP_RUNKIT_IMPORT_OVERRIDE) {
-				if (type == HASH_KEY_IS_STRING) {
-					if (zend_hash_del(EG(function_table), key, key_len) == FAILURE) {
-						php_error_docref(NULL TSRMLS_CC, E_WARNING, "Inconsistency cleaning up import environment");
-						return FAILURE;
-					}
-				} else {
-					if (zend_hash_index_del(EG(function_table), idx) == FAILURE) {
-						php_error_docref(NULL TSRMLS_CC, E_WARNING, "Inconsistency cleaning up import environment");
-						return FAILURE;
-					}
+			    if (type == HASH_KEY_IS_STRING) {
+				if (zend_hash_del(EG(function_table), new_key, new_key_len) == FAILURE) {
+				    php_error_docref(NULL TSRMLS_CC, E_WARNING, "Inconsistency cleaning up import environment");
+				    return FAILURE;
 				}
+			    } else {
+				if (zend_hash_index_del(EG(function_table), idx) == FAILURE) {
+				    php_error_docref(NULL TSRMLS_CC, E_WARNING, "Inconsistency cleaning up import environment");
+				    return FAILURE;
+				}
+			    }
 			} else {
-				add_function = 0;
+			    add_function = 0;
 			}
+		    }
 		}
 
 		if (add_function) {
 			PHP_RUNKIT_FUNCTION_ADD_REF(fe);
 
-
-			char *lcase = estrdup(fe->common.function_name);
-			int lcase_len = strlen(lcase);
-
-			php_strtolower(lcase, lcase_len);
-			if (zend_hash_add(EG(function_table), lcase, lcase_len + 1, fe, sizeof(zend_function), NULL) == FAILURE) {
+			if (zend_hash_add(EG(function_table), new_key, new_key_len, fe, sizeof(zend_function), NULL) == FAILURE) {
 				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Failure importing %s()", fe->common.function_name);
 #ifdef ZEND_ENGINE_2
 				destroy_zend_function(fe TSRMLS_CC);
 #else
 				destroy_end_function(fe);
 #endif
-				efree(lcase);
 				return FAILURE;
 			}
-			efree(lcase);
 		}
 		zend_hash_move_forward_ex(function_table, &pos);
 	}
@@ -118,6 +125,12 @@ static int php_runkit_import_class_methods(zend_class_entry *dce, zend_class_ent
 		php_strtolower(fn, fn_len);
 
 		if (zend_hash_find(&dce->function_table, fn, fn_len + 1, (void**)&dfe) == SUCCESS) {
+			if (!override) {
+				php_error_docref(NULL TSRMLS_CC, E_NOTICE, "%s::%s() already exists, not importing", dce->name, fe->common.function_name);
+				zend_hash_move_forward_ex(&ce->function_table, &pos);
+				continue;
+			}
+
 			zend_class_entry *scope = php_runkit_locate_scope(dce, dfe, fn, fn_len);
 
 			if (php_runkit_check_call_stack(&dfe->op_array TSRMLS_CC) == FAILURE) {
@@ -179,7 +192,7 @@ static int php_runkit_import_class_consts(zend_class_entry *dce, zend_class_entr
 					goto import_const_skip;
 				}
 			}
-			ZVAL_ADDREF(*c);
+			Z_ADDREF_P(*c);
 			if (zend_hash_add_or_update(&dce->constants_table, key, key_len, (void*)c, sizeof(zval*), NULL, action) == FAILURE) {
 				zval_ptr_dtor(c);
 				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to import %s::%s", dce->name, key);
@@ -191,6 +204,48 @@ static int php_runkit_import_class_consts(zend_class_entry *dce, zend_class_entr
 		}
 import_const_skip:
 		zend_hash_move_forward_ex(&ce->constants_table, &pos);
+	}
+	return SUCCESS;
+}
+/* }}} */
+#endif
+
+#ifdef ZEND_ENGINE_2
+/* {{{ php_runkit_import_class_static_props
+ */
+static int php_runkit_import_class_static_props(zend_class_entry *dce, zend_class_entry *ce, int override TSRMLS_DC)
+{
+	HashPosition pos;
+	char *key;
+	int key_len;
+	long idx;
+	zval **c;
+
+	zend_hash_internal_pointer_reset_ex(CE_STATIC_MEMBERS(ce), &pos);
+	while (zend_hash_get_current_data_ex(CE_STATIC_MEMBERS(ce), (void**)&c, &pos) == SUCCESS && c && *c) {
+		long action = HASH_ADD;
+
+		if (zend_hash_get_current_key_ex(CE_STATIC_MEMBERS(ce), &key, &key_len, &idx, 0, &pos) == HASH_KEY_IS_STRING) {
+			if (zend_hash_exists(CE_STATIC_MEMBERS(dce), key, key_len)) {
+				if (override) {
+					action = HASH_UPDATE;
+				} else {
+					php_error_docref(NULL TSRMLS_CC, E_NOTICE, "%s::$%s already exists, not importing", dce->name, key);
+					goto import_st_prop_skip;
+				}
+			}
+			Z_ADDREF_P(*c);
+			if (zend_hash_add_or_update(CE_STATIC_MEMBERS(dce), key, key_len, (void*)c, sizeof(zval*), NULL, action) == FAILURE) {
+				zval_ptr_dtor(c);
+				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to import %s::$%s", dce->name, key);
+			}
+
+			zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_static_props, 4, dce, c, key, key_len - 1);
+		} else {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Property has invalid key name");
+		}
+import_st_prop_skip:
+		zend_hash_move_forward_ex(CE_STATIC_MEMBERS(ce), &pos);
 	}
 	return SUCCESS;
 }
@@ -227,7 +282,7 @@ static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry
 					goto import_prop_skip;
 				}
 			}
-			ZVAL_ADDREF(*p);
+			Z_ADDREF_P(*p);
 			if (zend_hash_add_or_update(&dce->default_properties, key, key_len, (void*)p, sizeof(zval*), NULL, action) == FAILURE) {
 				zval_ptr_dtor(p);
 				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to import %s->%s", dce->name, pname);
@@ -294,6 +349,9 @@ static int php_runkit_import_classes(HashTable *class_table, long flags TSRMLS_D
 #ifdef ZEND_ENGINE_2
 			if (flags & PHP_RUNKIT_IMPORT_CLASS_CONSTS) {
 				php_runkit_import_class_consts(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE) TSRMLS_CC);
+			}
+			if (flags & PHP_RUNKIT_IMPORT_CLASS_STATIC_PROPS) {
+				php_runkit_import_class_static_props(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE) TSRMLS_CC);
 			}
 #endif
 

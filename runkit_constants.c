@@ -71,7 +71,7 @@ int php_runkit_update_children_consts(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce)
 	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_consts, 4, ce, c, cname, cname_len);
 
 	zend_hash_del(&ce->constants_table, cname, cname_len + 1);
-	ZVAL_ADDREF(c);
+	Z_ADDREF_P(c);
 	if (zend_hash_add(&ce->constants_table, cname, cname_len + 1, c, sizeof(zval*), NULL) ==  FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error updating child class");
 		return ZEND_HASH_APPLY_KEEP;

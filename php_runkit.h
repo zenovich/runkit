@@ -30,16 +30,21 @@
 #include "ext/standard/info.h"
 #include "ext/standard/php_string.h"
 
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 3) || (PHP_MAJOR_VERSION >= 6)
+#include "Zend/zend_closures.h"
+#endif
+
 #define PHP_RUNKIT_VERSION					"1.0.0-dev"
 #define PHP_RUNKIT_SANDBOX_CLASSNAME		"Runkit_Sandbox"
 #define PHP_RUNKIT_SANDBOX_PARENT_CLASSNAME	"Runkit_Sandbox_Parent"
 
-#define PHP_RUNKIT_IMPORT_FUNCTIONS			0x0001
-#define PHP_RUNKIT_IMPORT_CLASS_METHODS		0x0002
-#define PHP_RUNKIT_IMPORT_CLASS_CONSTS		0x0004
-#define PHP_RUNKIT_IMPORT_CLASS_PROPS		0x0008
-#define PHP_RUNKIT_IMPORT_CLASSES			(PHP_RUNKIT_IMPORT_CLASS_METHODS|PHP_RUNKIT_IMPORT_CLASS_CONSTS|PHP_RUNKIT_IMPORT_CLASS_PROPS)
-#define PHP_RUNKIT_IMPORT_OVERRIDE			0x0010
+#define PHP_RUNKIT_IMPORT_FUNCTIONS                 0x0001
+#define PHP_RUNKIT_IMPORT_CLASS_METHODS             0x0002
+#define PHP_RUNKIT_IMPORT_CLASS_CONSTS              0x0004
+#define PHP_RUNKIT_IMPORT_CLASS_PROPS               0x0008
+#define PHP_RUNKIT_IMPORT_CLASS_STATIC_PROPS        0x0010
+#define PHP_RUNKIT_IMPORT_CLASSES                   (PHP_RUNKIT_IMPORT_CLASS_METHODS|PHP_RUNKIT_IMPORT_CLASS_CONSTS|PHP_RUNKIT_IMPORT_CLASS_PROPS|PHP_RUNKIT_IMPORT_CLASS_STATIC_PROPS)
+#define PHP_RUNKIT_IMPORT_OVERRIDE                  0x0020
 
 #if ZEND_MODULE_API_NO > 20050922
 #define ZEND_ENGINE_2_2
@@ -146,6 +151,7 @@ extern ZEND_DECLARE_MODULE_GLOBALS(runkit);
 #     define RUNKIT_53_TSRMLS_ARG(arg)               arg TSRMLS_DC
 #     define RUNKIT_UNDER53_TSRMLS_FETCH()
 #     define RUNKIT_UNDER53                          0
+#     define RUNKIT_ABOVE53                          1
 #else
 #     define RUNKIT_REFCOUNT  refcount
 #     define RUNKIT_IS_REF    is_ref
@@ -155,6 +161,11 @@ extern ZEND_DECLARE_MODULE_GLOBALS(runkit);
 #     define RUNKIT_53_TSRMLS_ARG(arg)               arg
 #     define RUNKIT_UNDER53_TSRMLS_FETCH()           TSRMLS_FETCH()
 #     define RUNKIT_UNDER53                          1
+#     define RUNKIT_ABOVE53                          0
+#endif
+
+#ifndef Z_ADDREF_P
+#     define Z_ADDREF_P(x)                           ZVAL_ADDREF(x)
 #endif
 
 /* runkit_functions.c */
@@ -224,6 +235,7 @@ int php_runkit_update_children_consts(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce)
 
 /* runkit_props.c */
 int php_runkit_update_children_def_props(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce), int num_args, va_list args, zend_hash_key *hash_key);
+int php_runkit_update_children_static_props(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce), int num_args, va_list args, zend_hash_key *hash_key);
 #endif /* PHP_RUNKIT_MANIPULATION */
 
 #ifdef PHP_RUNKIT_SANDBOX

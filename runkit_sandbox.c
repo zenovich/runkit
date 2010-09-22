@@ -283,7 +283,7 @@ inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_object *objval, H
 		}
 	}
 }
-
+/* }}} */
 
 /* {{{ proto void Runkit_Sandbox::__construct(array options)
  * Options: see php_runkit_sandbox_ini_override()
@@ -327,6 +327,12 @@ PHP_METHOD(Runkit_Sandbox,__construct)
 	RETURN_TRUE;
 }
 /* }}} */
+
+typedef struct _zend_closure {
+    zend_object    std;
+    zend_function  func;
+    HashTable     *debug_info;
+} zend_closure;
 
 /* {{{ proto Runkit_Sandbox::__call(mixed function_name, array args)
 	Call User Function */
@@ -374,8 +380,17 @@ PHP_METHOD(Runkit_Sandbox,__call)
 				sandbox_args[i] = emalloc(sizeof(zval*));
 				MAKE_STD_ZVAL(*sandbox_args[i]);
 				**sandbox_args[i] = **tmpzval;
-				PHP_SANDBOX_CROSS_SCOPE_ZVAL_COPY_CTOR(*sandbox_args[i]);
+
+#if RUNKIT_ABOVE53
+				if (Z_TYPE_P(*sandbox_args[i]) == IS_OBJECT && zend_get_class_entry(*sandbox_args[i], prior_context) == zend_ce_closure) {
+					zend_closure *closure;
+					closure = (zend_closure *) zend_object_store_get_object(*sandbox_args[i], prior_context);
+					zend_object_store_set_object(*sandbox_args[i], closure TSRMLS_CC);
+				} else 
+#endif
+					PHP_SANDBOX_CROSS_SCOPE_ZVAL_COPY_CTOR(*sandbox_args[i]);
 			}
+
 			/* Shouldn't be necessary */
 			argc = i;
 
@@ -398,6 +413,12 @@ PHP_METHOD(Runkit_Sandbox,__call)
 			}
 
 			for(i = 0; i < argc; i++) {
+#if RUNKIT_ABOVE53
+				if (Z_TYPE_P(*sandbox_args[i]) == IS_OBJECT && zend_get_class_entry(*sandbox_args[i], prior_context) == zend_ce_closure) {
+					zend_objects_store_del_ref(*sandbox_args[i] TSRMLS_CC);
+					zval_ptr_dtor(sandbox_args[i]);
+				}
+#endif
 				zval_ptr_dtor(sandbox_args[i]);
 				efree(sandbox_args[i]);
 			}
