@@ -45,36 +45,34 @@ static int php_runkit_import_functions(HashTable *function_table, long flags TSR
 		if (((type = zend_hash_get_current_key_ex(function_table, &key, &key_len, &idx, 0, &pos)) != HASH_KEY_NON_EXISTANT) && 
 			fe && fe->type == ZEND_USER_FUNCTION) {
 		
-		    if (type == HASH_KEY_IS_STRING) {
-			new_key = key;
-			new_key_len = key_len;
-			exists = zend_hash_exists(EG(function_table), new_key, new_key_len);
-		    } else {
-			exists = zend_hash_index_exists(EG(function_table), idx);
-		    }
-
-		    if (exists) {
-			if (flags & PHP_RUNKIT_IMPORT_OVERRIDE) {
-			    if (type == HASH_KEY_IS_STRING) {
-				if (zend_hash_del(EG(function_table), new_key, new_key_len) == FAILURE) {
-				    php_error_docref(NULL TSRMLS_CC, E_WARNING, "Inconsistency cleaning up import environment");
-				    return FAILURE;
-				}
-			    } else {
-				if (zend_hash_index_del(EG(function_table), idx) == FAILURE) {
-				    php_error_docref(NULL TSRMLS_CC, E_WARNING, "Inconsistency cleaning up import environment");
-				    return FAILURE;
-				}
-			    }
+			if (type == HASH_KEY_IS_STRING) {
+				new_key = key;
+				new_key_len = key_len;
+				exists = zend_hash_exists(EG(function_table), new_key, new_key_len);
 			} else {
-			    add_function = 0;
+				exists = zend_hash_index_exists(EG(function_table), idx);
 			}
-		    }
+
+			if (exists) {
+				if (flags & PHP_RUNKIT_IMPORT_OVERRIDE) {
+					if (type == HASH_KEY_IS_STRING) {
+						if (zend_hash_del(EG(function_table), new_key, new_key_len) == FAILURE) {
+							php_error_docref(NULL TSRMLS_CC, E_WARNING, "Inconsistency cleaning up import environment");
+							return FAILURE;
+						}
+					} else {
+						if (zend_hash_index_del(EG(function_table), idx) == FAILURE) {
+							php_error_docref(NULL TSRMLS_CC, E_WARNING, "Inconsistency cleaning up import environment");
+							return FAILURE;
+						}
+					}
+				} else {
+					add_function = 0;
+				}
+			}
 		}
 
 		if (add_function) {
-			PHP_RUNKIT_FUNCTION_ADD_REF(fe);
-
 			if (zend_hash_add(EG(function_table), new_key, new_key_len, fe, sizeof(zend_function), NULL) == FAILURE) {
 				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Failure importing %s()", fe->common.function_name);
 #ifdef ZEND_ENGINE_2
@@ -83,6 +81,9 @@ static int php_runkit_import_functions(HashTable *function_table, long flags TSR
 				destroy_end_function(fe);
 #endif
 				return FAILURE;
+			} else {
+				fe->op_array.static_variables = NULL;
+				(*fe->op_array.refcount)++;
 			}
 		}
 		zend_hash_move_forward_ex(function_table, &pos);
@@ -147,17 +148,19 @@ static int php_runkit_import_class_methods(zend_class_entry *dce, zend_class_ent
 			}
 		}
 
-		PHP_RUNKIT_FUNCTION_ADD_REF(fe);
 #ifdef ZEND_ENGINE_2
 		fe->common.scope = dce;
 #endif
-		zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 5, dce, dce, fe, fn, fn_len);
-
 		if (zend_hash_add(&dce->function_table, fn, fn_len + 1, fe, sizeof(zend_function), NULL) == FAILURE) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Failure importing %s::%s()", ce->name, fe->common.function_name);
 			zend_hash_move_forward_ex(&ce->function_table, &pos);
 			continue;
+		} else {
+			fe->op_array.static_variables = NULL;
+			(*fe->op_array.refcount)++;
 		}
+
+		zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 5, dce, dce, fe, fn, fn_len);
 
 		zend_hash_move_forward_ex(&ce->function_table, &pos);
 	}
@@ -234,6 +237,16 @@ static int php_runkit_import_class_static_props(zend_class_entry *dce, zend_clas
 					goto import_st_prop_skip;
 				}
 			}
+
+			if (
+				Z_TYPE_PP(c) == IS_CONSTANT_ARRAY
+#if RUNKIT_ABOVE53
+				|| (Z_TYPE_PP(c) & IS_CONSTANT_TYPE_MASK) == IS_CONSTANT
+#endif
+			) {
+				zval_update_constant_ex(c, (void*) 1, dce TSRMLS_CC);
+			}
+
 			Z_ADDREF_P(*c);
 			if (zend_hash_add_or_update(CE_STATIC_MEMBERS(dce), key, key_len, (void*)c, sizeof(zval*), NULL, action) == FAILURE) {
 				zval_ptr_dtor(c);
@@ -282,6 +295,16 @@ static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry
 					goto import_prop_skip;
 				}
 			}
+
+			if (
+				Z_TYPE_PP(p) == IS_CONSTANT_ARRAY
+#if RUNKIT_ABOVE53
+				|| (Z_TYPE_PP(p) & IS_CONSTANT_TYPE_MASK) == IS_CONSTANT
+#endif
+			) {
+				zval_update_constant_ex(p, (void*) 1, dce TSRMLS_CC);
+			}
+
 			Z_ADDREF_P(*p);
 			if (zend_hash_add_or_update(&dce->default_properties, key, key_len, (void*)p, sizeof(zval*), NULL, action) == FAILURE) {
 				zval_ptr_dtor(p);
