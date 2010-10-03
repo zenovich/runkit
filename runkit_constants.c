@@ -13,6 +13,7 @@
   | license@php.net so we can mail you a copy immediately.               |
   +----------------------------------------------------------------------+
   | Author: Sara Golemon <pollita@php.net>                               |
+  | Modified by Dmitry Zenovich <dzenovich@gmail.com>                    |
   +----------------------------------------------------------------------+
 */
 

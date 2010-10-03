@@ -13,6 +13,7 @@
   | license@php.net so we can mail you a copy immediately.               |
   +----------------------------------------------------------------------+
   | Author: Sara Golemon <pollita@php.net>                               |
+  | Modified by Dmitry Zenovich <dzenovich@gmail.com>                    |
   +----------------------------------------------------------------------+
 */
 
@@ -34,7 +35,7 @@
 #include "Zend/zend_closures.h"
 #endif
 
-#define PHP_RUNKIT_VERSION					"1.0.0-dev"
+#define PHP_RUNKIT_VERSION					"1.0.1-dev"
 #define PHP_RUNKIT_SANDBOX_CLASSNAME		"Runkit_Sandbox"
 #define PHP_RUNKIT_SANDBOX_PARENT_CLASSNAME	"Runkit_Sandbox_Parent"
 

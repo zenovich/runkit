@@ -4,51 +4,59 @@ http://pear.php.net/dtd/tasks-1.0.xsd
 http://pear.php.net/dtd/package-2.0
 http://pear.php.net/dtd/package-2.0.xsd">
  <name>runkit</name>
- <channel>pecl.php.net</channel>
+ <uri>http://github.com/downloads/zenovich/runkit/runkit-1.0.1</uri>
  <summary>For all those things you.... probably shouldn&apos;t have been doing anyway....</summary>
  <description>Replace, rename, and remove user defined functions and classes.
 Define customized superglobal variables for general purpose use.
 Execute code in restricted environment (sandboxing).
  </description>
  <lead>
+  <name>Dmitry Zenovich</name>
+  <user></user>
+  <email>dzenovich@gmail.com</email>
+  <active>yes</active>
+ </lead>
+ <lead>
   <name>Sara Golemon</name>
   <user>pollita</user>
   <email>pollita@php.net</email>
-  <active>yes</active>
+  <active>no</active>
  </lead>
 
-   <date>2006-06-06</date>
+   <date>2010-10-03</date>
    <version>
-    <release>0.9</release>
-    <api>0.8</api>
+    <release>1.0.1</release>
+    <api>1.0.1</api>
    </version>
    <stability>
-    <release>beta</release>
-    <api>beta</api>
+    <release>stable</release>
+    <api>stable</api>
    </stability>
    <license uri="http://www.php.net/license">PHP</license>
-   <notes>Allow building part of runkit while leaving other functionality out.
---enable-runkit works as before, building all runkit features
-Individual features may enabled or disable by using
---enable-runkit-featurename or --disbale-runkit-featurename
-where featurename is any of:
-    modify  - Runtime manipulation
-    super   - Superglobal registration
-    sandbox - Sandboxing
+   <notes>
+     New features:
+         + The patch made by David Sklar was applied to support creation and changing of static methods.
+           The new user-level const &quot;RUNKIT_ACC_STATIC&quot; was introduced.
+         + An ability to import static class properties was added.
+           The new user-level const &quot;RUNKIT_IMPORT_CLASS_STATIC_PROPS&quot; was introduced.
+         + An ability to apply a closure to a sandbox in PHP 5.3+ by calling the call_user_func method was added.
 
-Ex: ./configure --enable-runkit --disable-runkit-modify
-        Enable superglobal registration and sandbox support,
-        but disable runtime manipulation.
-
-    ./configure --disable-runkit --enable-runkit-sandbox
-        Enable only sandboxing support.
-
-This release also:
-- Fixes PHP4 (ZE1) compilation
-- Closes a potential crash-bug in runkit_import()
-  handling of default properties
-- Resolves an output buffering bug in Runkit_Sandbox
-- Resolves Runkit_Sandbox failure when superglobals are defined
+     Main bug-fixes:
+         * Fixes of issues with importing constant arrays into properties and constants
+         * Fixes of issues with importing functions or methods having static variables inside them
+         * The behaviour that old methods had been always overridden by new ones independently from
+           the RUNKIT_IMPORT_OVERRIDE flag was corrected
+         * Compatibility with 5.3+ in zts mode
+         * runkit_function_* functions were fixed with the patch from Keisial at gmail dot com
+           (see the second comment from http://pecl.php.net/bugs/bug.php?id=14086)
+         * The reverting of protected methods via runkit_method_copy was corrected, the segmentation fault
+           on calling restored method was eliminated
+         * Elimination of the segmentation-fault on exit after restoring modified internal functions
+           (see also http://pecl.php.net/bugs/bug.php?id=11632)
+         * Correction for the situation when a method or function having static variables in itself
+           and copied by runkit crashes afterwards on calling if the original method or function was removed
+         * The issue that the runkit used to create new methods with lowercase names was fixed, tests were extended
+         * Methods&apos; prototype detection was fixed
 </notes>
 
  <contents>
@@ -58,16 +66,35 @@ This release also:
     <file name="runkit_class_emancipate.phpt" role="test" />
     <file name="runkit_constant_add.phpt" role="test" />
     <file name="runkit_constant_redefine.phpt" role="test" />
+    <file name="runkit_function_redefine_and_revert.phpt" role="test" />
     <file name="runkit_constant_remove.phpt" role="test" />
     <file name="runkit_function_add.phpt" role="test" />
     <file name="runkit_function_copy.phpt" role="test" />
     <file name="runkit_function_redefine.phpt" role="test" />
     <file name="runkit_function_remove.phpt" role="test" />
     <file name="runkit_function_rename.phpt" role="test" />
+    <file name="runkit_import_class.inc" role="test" />
+    <file name="runkit_import_class.phpt" role="test" />
+    <file name="runkit_import_class_property.inc" role="test" />
+    <file name="runkit_import_class_property.phpt" role="test" />
+    <file name="runkit_import_constant_properties.inc" role="test" />
+    <file name="runkit_import_constant_properties.phpt" role="test" />
+    <file name="runkit_import_constant_static_properties.inc" role="test" />
+    <file name="runkit_import_constant_static_properties.phpt" role="test" />
+    <file name="runkit_import_functions.inc" role="test" />
+    <file name="runkit_import_functions.phpt" role="test" />
+    <file name="runkit_import_function_with_static_var.inc" role="test" />
+    <file name="runkit_import_function_with_static_var.phpt" role="test" />
+    <file name="runkit_import_method_with_closure.inc" role="test" />
+    <file name="runkit_import_method_with_closure.phpt" role="test" />
+    <file name="runkit_import_method_with_static_var.inc" role="test" />
+    <file name="runkit_import_method_with_static_var.phpt" role="test" />
     <file name="runkit_lint.phpt" role="test" />
     <file name="runkit_method_add.phpt" role="test" />
     <file name="runkit_method_copy.phpt" role="test" />
     <file name="runkit_method_redefine.phpt" role="test" />
+    <file name="runkit_method_redefine_protected.phpt" role="test" />
+    <file name="runkit_method_redefine_with_static_vars.phpt" role="test" />
     <file name="runkit_method_remove.phpt" role="test" />
     <file name="runkit_method_rename.phpt" role="test" />
     <file name="runkit_return_value_used.phpt" role="test" />
@@ -90,6 +117,7 @@ This release also:
     <file name="Runkit_Sandbox_Parent__.write.access.phpt" role="test" />
     <file name="Runkit_Sandbox_Parent__.write.phpt" role="test" />
     <file name="Runkit_Sandbox__call.phpt" role="test" />
+    <file name="Runkit_Sandbox__call_user_func_closure.phpt" role="test" />
     <file name="Runkit_Sandbox__die.phpt" role="test" />
     <file name="Runkit_Sandbox__disable_classes.phpt" role="test" />
     <file name="Runkit_Sandbox__disable_functions.phpt" role="test" />
@@ -98,6 +126,10 @@ This release also:
     <file name="Runkit_Sandbox__get.phpt" role="test" />
     <file name="Runkit_Sandbox__grandchild.phpt" role="test" rolw="test" />
     <file name="Runkit_Sandbox__set.phpt" role="test" />
+    <file name="bug10053.phpt" role="test" />
+    <file name="bug10300.phpt" role="test" />
+    <file name="bug4519.inc" role="test" />
+    <file name="bug4519.phpt" role="test" />
    </dir> <!-- //tests -->
    <file name="config.m4" role="src" />
    <file name="config.w32" role="src" />
@@ -130,6 +162,67 @@ This release also:
  <extsrcrelease />
 
  <changelog>
+
+  <release>
+   <date>2010-04-01</date>
+   <version>
+    <release>1.0</release>
+    <api>0.8</api>
+   </version>
+   <stability>
+    <release>beta</release>
+    <api>beta</api>
+   </stability>
+   <license uri="http://www.php.net/license">PHP</license>
+   <notes>This version never was released. It contains all changes from official PHP repository since the release of 0.9:
+    johannes:  function_entry -> zend_function_entry
+    philip:    Fixed test
+    bjori:     Fixed PHP bug#46847 (phpinfo() is missing some settings.)
+    felipe:    'static' was added into ZEND_BEGIN_ARG_INFO_EX macro
+    mlively:   Rework of runkit_import to allow the fixing of 4519.
+    sfox:      Bring the majority of PECL extensions into line with macro/x.x.x versioning.
+    sebastian: Fix #10053: memory exhausted, patch by Stefan Marr.
+               Fix #10300: Segfault when copying __call(), patch by Stefan Marr.
+               Fix #12371. Patch by Stefan Marr &lt;mail@stefan-marr.de&gt;.
+               PHP 5.3+ compatibility.
+    mike:      fix build: use Z_LVAL in assignment as Z_BVAL contains a (zend_bool) cast
+    pollita:   Catch signature change in zend_unmangle_property_name() -- Thanks steph</notes>
+  </release>
+
+  <release>
+   <date>2006-06-06</date>
+   <version>
+    <release>0.9</release>
+    <api>0.8</api>
+   </version>
+   <stability>
+    <release>beta</release>
+    <api>beta</api>
+   </stability>
+   <license uri="http://www.php.net/license">PHP</license>
+   <notes>Allow building part of runkit while leaving other functionality out.
+--enable-runkit works as before, building all runkit features
+Individual features may enabled or disable by using
+--enable-runkit-featurename or --disbale-runkit-featurename
+where featurename is any of:
+    modify  - Runtime manipulation
+    super   - Superglobal registration
+    sandbox - Sandboxing
+
+Ex: ./configure --enable-runkit --disable-runkit-modify
+        Enable superglobal registration and sandbox support,
+        but disable runtime manipulation.
+
+    ./configure --disable-runkit --enable-runkit-sandbox
+        Enable only sandboxing support.
+
+This release also:
+- Fixes PHP4 (ZE1) compilation
+- Closes a potential crash-bug in runkit_import()
+  handling of default properties
+- Resolves an output buffering bug in Runkit_Sandbox
+- Resolves Runkit_Sandbox failure when superglobals are defined</notes>
+  </release>
 
   <release>
    <date>2006-05-20</date>

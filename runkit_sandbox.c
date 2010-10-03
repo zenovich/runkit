@@ -13,7 +13,8 @@
   | license@php.net so we can mail you a copy immediately.               |
   +----------------------------------------------------------------------+
   | Author: Sara Golemon <pollita@php.net>                               |
-  |	Props:  Wez Furlong                                                  |
+  | Props:  Wez Furlong                                                  |
+  | Modified by Dmitry Zenovich <dzenovich@gmail.com>                    |
   +----------------------------------------------------------------------+
 */
 
