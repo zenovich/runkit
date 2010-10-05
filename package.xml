@@ -23,9 +23,9 @@ Execute code in restricted environment (sandboxing).
   <active>no</active>
  </lead>
 
-   <date>2010-10-03</date>
+   <date>2010-10-05</date>
    <version>
-    <release>1.0.1</release>
+    <release>1.0.2</release>
     <api>1.0.1</api>
    </version>
    <stability>
@@ -33,31 +33,7 @@ Execute code in restricted environment (sandboxing).
     <api>stable</api>
    </stability>
    <license uri="http://www.php.net/license">PHP</license>
-   <notes>
-     New features:
-         + The patch made by David Sklar was applied to support creation and changing of static methods.
-           The new user-level const &quot;RUNKIT_ACC_STATIC&quot; was introduced.
-         + An ability to import static class properties was added.
-           The new user-level const &quot;RUNKIT_IMPORT_CLASS_STATIC_PROPS&quot; was introduced.
-         + An ability to apply a closure to a sandbox in PHP 5.3+ by calling the call_user_func method was added.
-
-     Main bug-fixes:
-         * Fixes of issues with importing constant arrays into properties and constants
-         * Fixes of issues with importing functions or methods having static variables inside them
-         * The behaviour that old methods had been always overridden by new ones independently from
-           the RUNKIT_IMPORT_OVERRIDE flag was corrected
-         * Compatibility with 5.3+ in zts mode
-         * runkit_function_* functions were fixed with the patch from Keisial at gmail dot com
-           (see the second comment from http://pecl.php.net/bugs/bug.php?id=14086)
-         * The reverting of protected methods via runkit_method_copy was corrected, the segmentation fault
-           on calling restored method was eliminated
-         * Elimination of the segmentation-fault on exit after restoring modified internal functions
-           (see also http://pecl.php.net/bugs/bug.php?id=11632)
-         * Correction for the situation when a method or function having static variables in itself
-           and copied by runkit crashes afterwards on calling if the original method or function was removed
-         * The issue that the runkit used to create new methods with lowercase names was fixed, tests were extended
-         * Methods&apos; prototype detection was fixed
-</notes>
+   <notes>Disappointing incompatibility issue with php 5.3+ in untested code was fixed.</notes>
 
  <contents>
   <dir name="/">
@@ -163,6 +139,43 @@ Execute code in restricted environment (sandboxing).
  <extsrcrelease />
 
  <changelog>
+
+  <release>
+   <date>2010-10-03</date>
+   <version>
+    <release>1.0.1</release>
+    <api>1.0.1</api>
+   </version>
+   <stability>
+    <release>stable</release>
+    <api>stable</api>
+   </stability>
+   <license uri="http://www.php.net/license">PHP</license>
+   <notes>
+     New features:
+         + The patch made by David Sklar was applied to support creation and changing of static methods.
+           The new user-level const &quot;RUNKIT_ACC_STATIC&quot; was introduced.
+         + An ability to import static class properties was added.
+           The new user-level const &quot;RUNKIT_IMPORT_CLASS_STATIC_PROPS&quot; was introduced.
+         + An ability to apply a closure to a sandbox in PHP 5.3+ by calling the call_user_func method was added.
+
+     Main bug-fixes:
+         * Fixes of issues with importing constant arrays into properties and constants
+         * Fixes of issues with importing functions or methods having static variables inside them
+         * The behaviour that old methods had been always overridden by new ones independently from
+           the RUNKIT_IMPORT_OVERRIDE flag was corrected
+         * Compatibility with 5.3+ in zts mode
+         * runkit_function_* functions were fixed with the patch from Keisial at gmail dot com
+           (see the second comment from http://pecl.php.net/bugs/bug.php?id=14086)
+         * The reverting of protected methods via runkit_method_copy was corrected, the segmentation fault
+           on calling restored method was eliminated
+         * Elimination of the segmentation-fault on exit after restoring modified internal functions
+           (see also http://pecl.php.net/bugs/bug.php?id=11632)
+         * Correction for the situation when a method or function having static variables in itself
+           and copied by runkit crashes afterwards on calling if the original method or function was removed
+         * The issue that the runkit used to create new methods with lowercase names was fixed, tests were extended
+         * Methods&apos; prototype detection was fixed</notes>
+  </release>
 
   <release>
    <date>2010-04-01</date>

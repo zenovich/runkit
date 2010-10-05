@@ -9,14 +9,14 @@ display_errors=on
 <?php
 $a = 1;
 
-var_dump(runkit_zval_inspect(1));
+var_dump(runkit_zval_inspect($a));
 ?>
 --EXPECTF--
 array(4) {
   ["address"]=>
   string(%d) "%s"
   ["refcount"]=>
-  int(1)
+  int(2)
   ["is_ref"]=>
   bool(false)
   ["type"]=>
