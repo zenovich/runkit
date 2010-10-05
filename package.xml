@@ -98,6 +98,7 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_method_remove.phpt" role="test" />
     <file name="runkit_method_rename.phpt" role="test" />
     <file name="runkit_return_value_used.phpt" role="test" />
+    <file name="runkit_zval_inspect.phpt" role="test" />
     <file name="Runkit_Sandbox_.active.phpt" role="test" />
     <file name="Runkit_Sandbox_.output_handler.phpt" role="test" />
     <file name="runkit_sandbox_output_handler.phpt" role="test" />
