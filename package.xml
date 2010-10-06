@@ -49,6 +49,7 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_function_redefine.phpt" role="test" />
     <file name="runkit_function_remove.phpt" role="test" />
     <file name="runkit_function_rename.phpt" role="test" />
+    <file name="runkit_function_rename_redefine_add_remove.phpt" role="test" />
     <file name="runkit_import_class.inc" role="test" />
     <file name="runkit_import_class.phpt" role="test" />
     <file name="runkit_import_class_property.inc" role="test" />

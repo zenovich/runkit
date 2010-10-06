@@ -366,10 +366,8 @@ PHP_FUNCTION(runkit_function_rename)
 		RETURN_FALSE;
 	}
 
-	if (fe->type == ZEND_USER_FUNCTION) {
-		func = *fe;
-		PHP_RUNKIT_FUNCTION_ADD_REF(&func);
-	}
+	func = *fe;
+	PHP_RUNKIT_FUNCTION_ADD_REF(&func);
 
 	if (zend_hash_del(EG(function_table), sfunc, sfunc_len + 1) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error removing reference to old function name %s()", sfunc);
