@@ -15,8 +15,21 @@ echo rand(), "\n";
 runkit_function_remove('rand');
 runkit_function_rename('oldRand', 'rand');
 echo rand(), "\n";
+echo "\n";
+// once again
+runkit_function_rename('rand', 'oldRand');
+echo oldRand(), "\n";
+runkit_function_add('rand', '', 'return "a" . oldRand();');
+echo rand(), "\n";
+runkit_function_remove('rand');
+runkit_function_rename('oldRand', 'rand');
+echo rand(), "\n";
 ?>
 --EXPECTF--
+%d
+a%d
+%d
+
 %d
 a%d
 %d
