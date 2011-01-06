@@ -268,9 +268,6 @@ int php_runkit_update_children_methods(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce
 		}
 	}
 
-	/* Process children of this child */
-	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 5, ancestor_class, ce, fe, fname, fname_len);
-
 	PHP_RUNKIT_FUNCTION_ADD_REF(fe);
 	if (zend_hash_add_or_update(&ce->function_table, fname_lower, fname_len + 1, fe, sizeof(zend_function), NULL, cfe ? HASH_UPDATE : HASH_ADD) ==  FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error updating child class");
@@ -279,6 +276,9 @@ int php_runkit_update_children_methods(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce
 	}
 
 	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, fname, fe);
+
+	/* Process children of this child */
+	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 5, ancestor_class, ce, fe, fname, fname_len);
 
 	efree(fname_lower);
 	return ZEND_HASH_APPLY_KEEP;
@@ -655,6 +655,9 @@ methodname_len);
 
 	efree(newname_lower);
 	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, newname, fe);
+
+	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 5, ce, ce, fe, newname, newname_len);
+
 	RETURN_TRUE;
 }
 /* }}} */
