@@ -76,12 +76,14 @@ typedef struct _php_runkit_sandbox_parent_object {
 static HashTable *php_runkit_sandbox_parent_resolve_symbol_table(php_runkit_sandbox_parent_object *objval TSRMLS_DC)
 {
 	int i;
+	HashTable *oldActiveSymbolTable, *result;
+	zend_execute_data *oldCurExData;
 	zend_execute_data *ex = EG(current_execute_data);
 
 #if (RUNKIT_UNDER53 == 0)
-    if (!EG(active_symbol_table)) {
-        zend_rebuild_symbol_table(TSRMLS_C);
-    }
+	if (!EG(active_symbol_table)) {
+		zend_rebuild_symbol_table(TSRMLS_C);
+	}
 #endif
 
 	if (objval->self->parent_scope <= 0) {
@@ -148,15 +150,15 @@ static HashTable *php_runkit_sandbox_parent_resolve_symbol_table(php_runkit_sand
 #if (RUNKIT_UNDER53)
 	return ex->symbol_table ? ex->symbol_table : &EG(symbol_table);
 #else
-    HashTable *oldActiveSymbolTable = EG(active_symbol_table);
-    EG(active_symbol_table) = NULL;
-    zend_execute_data *oldCurExData = EG(current_execute_data);
-    EG(current_execute_data) = ex;
-    zend_rebuild_symbol_table(TSRMLS_C);
-    HashTable *result = EG(active_symbol_table);
-    EG(active_symbol_table) = oldActiveSymbolTable;
-    EG(current_execute_data) = oldCurExData;
-    return result;
+	oldActiveSymbolTable = EG(active_symbol_table);
+	EG(active_symbol_table) = NULL;
+	oldCurExData = EG(current_execute_data);
+	EG(current_execute_data) = ex;
+	zend_rebuild_symbol_table(TSRMLS_C);
+	result = EG(active_symbol_table);
+	EG(active_symbol_table) = oldActiveSymbolTable;
+	EG(current_execute_data) = oldCurExData;
+	return result;
 #endif
 }
 
@@ -537,7 +539,7 @@ static zval *php_runkit_sandbox_parent_read_property(zval *object, zval *member,
 
 		if (zend_hash_find(php_runkit_sandbox_parent_resolve_symbol_table(objval TSRMLS_CC), Z_STRVAL_P(member), Z_STRLEN_P(member) + 1, (void**)&value) == SUCCESS) {
 			retval = **value;
-			prop_found = 1;				
+			prop_found = 1;
 		}
 	PHP_RUNKIT_SANDBOX_PARENT_END(objval)
 

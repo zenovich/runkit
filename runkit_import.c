@@ -32,16 +32,16 @@ static int php_runkit_import_functions(HashTable *function_table, long flags TSR
 	zend_hash_internal_pointer_reset_ex(function_table, &pos);
 	for(i = 0; i < func_count; i++) {
 		zend_function *fe = NULL;
-		char *key;
-		int key_len, type;
+		char *key, *new_key;
+		int key_len, new_key_len, type;
 		long idx;
 		zend_bool add_function = 1;
 		zend_bool exists = 0;
 
 		zend_hash_get_current_data_ex(function_table, (void**)&fe, &pos);
 
-		char *new_key = fe->common.function_name;
-		int new_key_len = strlen(new_key) + 1;
+		new_key = fe->common.function_name;
+		new_key_len = strlen(new_key) + 1;
 
 		if (((type = zend_hash_get_current_key_ex(function_table, &key, &key_len, &idx, 0, &pos)) != HASH_KEY_NON_EXISTANT) && 
 			fe && fe->type == ZEND_USER_FUNCTION) {
@@ -127,13 +127,14 @@ static int php_runkit_import_class_methods(zend_class_entry *dce, zend_class_ent
 		php_strtolower(fn, fn_len);
 
 		if (zend_hash_find(&dce->function_table, fn, fn_len + 1, (void**)&dfe) == SUCCESS) {
+			zend_class_entry *scope;
 			if (!override) {
 				php_error_docref(NULL TSRMLS_CC, E_NOTICE, "%s::%s() already exists, not importing", dce->name, fe->common.function_name);
 				zend_hash_move_forward_ex(&ce->function_table, &pos);
 				continue;
 			}
 
-			zend_class_entry *scope = php_runkit_locate_scope(dce, dfe, fn, fn_len);
+			scope = php_runkit_locate_scope(dce, dfe, fn, fn_len);
 
 			if (php_runkit_check_call_stack(&dfe->op_array TSRMLS_CC) == FAILURE) {
 				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot override active method %s::%s(). Skipping.", dce->name, fe->common.function_name);
@@ -431,7 +432,7 @@ static zend_op_array *php_runkit_compile_filename(int type, zval *filename TSRML
 	file_handle.free_filename = 0;
 	file_handle.type = ZEND_HANDLE_FILENAME;
 	file_handle.opened_path = NULL;
-#if PHP_MAJOR_VERSION > 5 || (PHP_MINOR_VERSION == 5 && PHP_MINOR_VERSION > 0)
+#if PHP_MAJOR_VERSION > 5 || (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION > 0)
 	file_handle.handle.fp = NULL;
 #endif
 
