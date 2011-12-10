@@ -1,11 +1,23 @@
 // $Id$
 // vim:ft=javascript
 
-ARG_ENABLE("runkit", "enable runkit support", "no");
+ARG_ENABLE("runkit", "Enable runkit support", "no");
+ARG_ENABLE("runkit-modify", "Disable runtime manipulation", "yes");
+ARG_ENABLE("runkit-super", "Disable registration of user-defined autoglobals", "yes");
+ARG_ENABLE("runkit-sandbox", "Disable Runkit_Sandbox (Requires ZTS)", "yes");
 
 if (PHP_RUNKIT != "no") {
-	AC_DEFINE("PHP_RUNKIT_FEATURE_MODIFY", 1, "Runkit Manipulation");
-	AC_DEFINE("PHP_RUNKIT_FEATURE_SUPER", 1, "Runkit Superglobals");
-	AC_DEFINE("PHP_RUNKIT_FEATURE_SANDBOX", 1, "Runkit Sandbox");
+	AC_DEFINE("PHP_RUNKIT_FEATURE_MODIFY", PHP_RUNKIT_MODIFY == "yes", "Runkit Manipulation");
+	AC_DEFINE("PHP_RUNKIT_FEATURE_SUPER", PHP_RUNKIT_SUPER == "yes", "Runkit Superglobals");
+	AC_DEFINE("PHP_RUNKIT_FEATURE_SANDBOX", PHP_RUNKIT_SANDBOX == "yes", "Runkit Sandbox");
+	if (PHP_RUNKIT_MODIFY == "yes") {
+		ADD_FLAG("CFLAGS_RUNKIT", "/D PHP_RUNKIT_FEATURE_MODIFY");
+	}
+	if (PHP_RUNKIT_SUPER == "yes") {
+		ADD_FLAG("CFLAGS_RUNKIT", "/D PHP_RUNKIT_FEATURE_SUPER");
+	}
+	if (PHP_RUNKIT_SANDBOX == "yes") {
+		ADD_FLAG("CFLAGS_RUNKIT", "/D PHP_RUNKIT_FEATURE_SANDBOX");
+	}
 	EXTENSION("runkit", "runkit.c runkit_functions.c runkit_methods.c runkit_constants.c runkit_import.c runkit_classes.c runkit_sandbox.c runkit_sandbox_parent.c runkit_props.c");
 }

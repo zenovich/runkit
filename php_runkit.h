@@ -112,6 +112,7 @@ PHP_FUNCTION(runkit_lint_file);
 typedef struct _php_runkit_sandbox_object php_runkit_sandbox_object;
 #endif /* PHP_RUNKIT_SANDBOX */
 
+#if defined(PHP_RUNKIT_SUPERGLOBALS) || defined(PHP_RUNKIT_SANDBOX) || defined(PHP_RUNKIT_MANIPULATION)
 ZEND_BEGIN_MODULE_GLOBALS(runkit)
 #ifdef PHP_RUNKIT_SUPERGLOBALS
 	HashTable *superglobals;
@@ -125,6 +126,7 @@ ZEND_BEGIN_MODULE_GLOBALS(runkit)
 	zend_bool internal_override;
 #endif
 ZEND_END_MODULE_GLOBALS(runkit)
+#endif
 
 extern ZEND_DECLARE_MODULE_GLOBALS(runkit);
 
@@ -134,13 +136,6 @@ extern ZEND_DECLARE_MODULE_GLOBALS(runkit);
 #else
 #define		RUNKIT_G(v)		(runkit_globals.v)
 #define RUNKIT_TSRMLS_C		NULL
-#endif
-
-#ifdef PHP_RUNKIT_MANIPULATION
-#if defined(ZEND_ENGINE_2) && !defined(zend_hash_add_or_update)
-/* Why doesn't ZE2 define this? */
-#define zend_hash_add_or_update(ht, arKey, nKeyLength, pData, pDataSize, pDest, flag) \
-        _zend_hash_add_or_update((ht), (arKey), (nKeyLength), (pData), (pDataSize), (pDest), (flag) ZEND_FILE_LINE_CC)
 #endif
 
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 3) || (PHP_MAJOR_VERSION >= 6)
@@ -165,12 +160,19 @@ extern ZEND_DECLARE_MODULE_GLOBALS(runkit);
 #     define RUNKIT_ABOVE53                          0
 #endif
 
+#ifdef PHP_RUNKIT_MANIPULATION
+#if defined(ZEND_ENGINE_2) && !defined(zend_hash_add_or_update)
+/* Why doesn't ZE2 define this? */
+#define zend_hash_add_or_update(ht, arKey, nKeyLength, pData, pDataSize, pDest, flag) \
+        _zend_hash_add_or_update((ht), (arKey), (nKeyLength), (pData), (pDataSize), (pDest), (flag) ZEND_FILE_LINE_CC)
+#endif
+
 #ifndef Z_ADDREF_P
 #     define Z_ADDREF_P(x)                           ZVAL_ADDREF(x)
 #endif
 
 /* runkit_functions.c */
-#define RUNKIT_TEMP_FUNCNAME  "__runkit_temporary_function__"  
+#define RUNKIT_TEMP_FUNCNAME  "__runkit_temporary_function__"
 int php_runkit_check_call_stack(zend_op_array *op_array TSRMLS_DC);
 void php_runkit_function_copy_ctor(zend_function *fe, char *newname);
 int php_runkit_generate_lambda_method(char *arguments, int arguments_len, char *phpcode, int phpcode_len, zend_function **pfe TSRMLS_DC);
@@ -198,7 +200,7 @@ int php_runkit_fetch_interface(char *classname, int classname_len, zend_class_en
 #define PHP_RUNKIT_HASH_EXISTS(hash,param)		zend_u_hash_exists(hash, param##_type, (UChar *)param, param##_len + 1)
 #define PHP_RUNKIT_HASH_KEY(hash_key)			((hash_key)->type == HASH_KEY_IS_UNICODE ? (hash_key)->u.unicode : (hash_key)->u.string)
 #define PHP_RUNKIT_HASH_KEYLEN(hash_key)		((hash_key)->type == HASH_KEY_IS_UNICODE ? UBYTES((hash_key)->nKeyLength) : (hash_key)->nKeyLength)
- 
+
 #elif PHP_MAJOR_VERSION >= 5
 #define PHP_RUNKIT_FUNCTION_ADD_REF(f)	function_add_ref(f)
 #define php_runkit_locate_scope(ce, fe, methodname, methodname_len)   fe->common.scope
