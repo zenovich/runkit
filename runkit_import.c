@@ -2,13 +2,13 @@
   +----------------------------------------------------------------------+
   | PHP Version 5                                                        |
   +----------------------------------------------------------------------+
-  | Copyright (c) 1997-2006 The PHP Group                                |
+  | Copyright (c) 1997-2006 The PHP Group, (c) 2008-2012 Dmitry Zenovich |
   +----------------------------------------------------------------------+
-  | This source file is subject to version 3.0 of the PHP license,       |
+  | This source file is subject to the new BSD license,                  |
   | that is bundled with this package in the file LICENSE, and is        |
   | available through the world-wide-web at the following url:           |
-  | http://www.php.net/license/3_0.txt.                                  |
-  | If you did not receive a copy of the PHP license and are unable to   |
+  | http://www.opensource.org/licenses/BSD-3-Clause                      |
+  | If you did not receive a copy of the license and are unable to       |
   | obtain it through the world-wide-web, please send a note to          |
   | license@php.net so we can mail you a copy immediately.               |
   +----------------------------------------------------------------------+
@@ -43,9 +43,9 @@ static int php_runkit_import_functions(HashTable *function_table, long flags TSR
 		new_key = fe->common.function_name;
 		new_key_len = strlen(new_key) + 1;
 
-		if (((type = zend_hash_get_current_key_ex(function_table, &key, &key_len, &idx, 0, &pos)) != HASH_KEY_NON_EXISTANT) && 
+		if (((type = zend_hash_get_current_key_ex(function_table, &key, &key_len, &idx, 0, &pos)) != HASH_KEY_NON_EXISTANT) &&
 			fe && fe->type == ZEND_USER_FUNCTION) {
-		
+
 			if (type == HASH_KEY_IS_STRING) {
 				new_key = key;
 				new_key_len = key_len;
@@ -112,7 +112,7 @@ static int php_runkit_import_class_methods(zend_class_entry *dce, zend_class_ent
 		zend_function *dfe;
 		int fn_len = strlen(fe->common.function_name);
 		zend_class_entry *fe_scope = php_runkit_locate_scope(ce, fe, fe->common.function_name, fn_len);
-				
+
 		if (fe_scope != ce) {
 			/* This is an inhereted function, let's skip it */
 			zend_hash_move_forward_ex(&ce->function_table, &pos);
@@ -354,7 +354,7 @@ static int php_runkit_import_classes(HashTable *class_table, long flags TSRMLS_D
 			return FAILURE;
 		}
 
-		if (((type = zend_hash_get_current_key_ex(EG(class_table), &key, &key_len, &idx, 0, &pos)) != HASH_KEY_NON_EXISTANT) && 
+		if (((type = zend_hash_get_current_key_ex(EG(class_table), &key, &key_len, &idx, 0, &pos)) != HASH_KEY_NON_EXISTANT) &&
 			ce && ce->type == ZEND_USER_CLASS) {
 			zend_class_entry *dce;
 
@@ -366,7 +366,7 @@ static int php_runkit_import_classes(HashTable *class_table, long flags TSRMLS_D
 				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot redeclare class %s", ce->name);
 				continue;
 			}
-			
+
 			if (flags & PHP_RUNKIT_IMPORT_CLASS_METHODS) {
 				php_runkit_import_class_methods(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE) TSRMLS_CC);
 			}
@@ -465,7 +465,7 @@ static zend_op_array *php_runkit_compile_filename(int type, zval *filename TSRML
 /* }}} */
 
 /* {{{ array runkit_import(string filename[, long flags])
-	Import functions and class definitions from a file 
+	Import functions and class definitions from a file
 	Similar to include(), but doesn't execute root op_array, and allows pre-existing functions/methods to be overridden */
 PHP_FUNCTION(runkit_import)
 {
@@ -491,7 +491,7 @@ PHP_FUNCTION(runkit_import)
 	class_table = (HashTable *) emalloc(sizeof(HashTable));
 	zend_hash_init_ex(class_table, 10, NULL, ZEND_CLASS_DTOR, 0, 0);
 	function_table = (HashTable *) emalloc(sizeof(HashTable));
-	zend_hash_init_ex(function_table, 100, NULL, ZEND_FUNCTION_DTOR, 0, 0);	
+	zend_hash_init_ex(function_table, 100, NULL, ZEND_FUNCTION_DTOR, 0, 0);
 
 	current_class_table = CG(class_table);
 	CG(class_table) = class_table;
@@ -499,10 +499,10 @@ PHP_FUNCTION(runkit_import)
 	CG(function_table) = function_table;
 
 	new_op_array = local_compile_filename(ZEND_INCLUDE, filename TSRMLS_CC);
-	
+
 	CG(class_table) = current_class_table;
 	CG(function_table) = current_function_table;
-	
+
 	if (!new_op_array) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Import Failure");
 		RETURN_FALSE;

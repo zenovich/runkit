@@ -2,13 +2,13 @@
   +----------------------------------------------------------------------+
   | PHP Version 5                                                        |
   +----------------------------------------------------------------------+
-  | Copyright (c) 1997-2006 The PHP Group                                |
+  | Copyright (c) 1997-2006 The PHP Group, (c) 2008-2012 Dmitry Zenovich |
   +----------------------------------------------------------------------+
-  | This source file is subject to version 3.0 of the PHP license,       |
+  | This source file is subject to the new BSD license,                  |
   | that is bundled with this package in the file LICENSE, and is        |
   | available through the world-wide-web at the following url:           |
-  | http://www.php.net/license/3_0.txt.                                  |
-  | If you did not receive a copy of the PHP license and are unable to   |
+  | http://www.opensource.org/licenses/BSD-3-Clause                      |
+  | If you did not receive a copy of the license and are unable to       |
   | obtain it through the world-wide-web, please send a note to          |
   | license@php.net so we can mail you a copy immediately.               |
   +----------------------------------------------------------------------+
@@ -387,7 +387,7 @@ PHP_METHOD(Runkit_Sandbox,__call)
 					zend_closure *closure;
 					closure = (zend_closure *) zend_object_store_get_object(*sandbox_args[i], prior_context);
 					zend_object_store_set_object(*sandbox_args[i], closure TSRMLS_CC);
-				} else 
+				} else
 #endif
 					PHP_SANDBOX_CROSS_SCOPE_ZVAL_COPY_CTOR(*sandbox_args[i]);
 			}
@@ -733,7 +733,7 @@ static zval *php_runkit_sandbox_read_property(zval *object, zval *member, int ty
 
 			if (zend_hash_find(&EG(symbol_table), Z_STRVAL_P(member), Z_STRLEN_P(member) + 1, (void**)&value) == SUCCESS) {
 				retval = **value;
-				prop_found = 1;				
+				prop_found = 1;
 			}
 		} zend_catch {
 			/* Almost certainly impossible... */
@@ -984,7 +984,7 @@ static int php_runkit_sandbox_sapi_ub_write(const char *str, uint str_length TSR
 	}
 	tsrm_set_interpreter_context(objval->context);
 
-	return bytes_written;	
+	return bytes_written;
 }
 /* }}} */
 
@@ -1414,7 +1414,7 @@ PHP_FUNCTION(runkit_sandbox_output_handler)
 	}
 	php_error_docref(NULL TSRMLS_CC, E_NOTICE, "Use of runkit_sandbox_output_handler() is deprecated.  Use $sandbox['output_handler'] instead.");
 
-	objval = PHP_RUNKIT_SANDBOX_FETCHBOX(sandbox);	
+	objval = PHP_RUNKIT_SANDBOX_FETCHBOX(sandbox);
 	if (!objval->active) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Current sandbox is no longer active");
 		RETURN_NULL();

@@ -2,13 +2,13 @@
   +----------------------------------------------------------------------+
   | PHP Version 5                                                        |
   +----------------------------------------------------------------------+
-  | Copyright (c) 1997-2006 The PHP Group                                |
+  | Copyright (c) 1997-2006 The PHP Group, (c) 2008-2012 Dmitry Zenovich |
   +----------------------------------------------------------------------+
-  | This source file is subject to version 3.0 of the PHP license,       |
+  | This source file is subject to the new BSD license,                  |
   | that is bundled with this package in the file LICENSE, and is        |
   | available through the world-wide-web at the following url:           |
-  | http://www.php.net/license/3_0.txt.                                  |
-  | If you did not receive a copy of the PHP license and are unable to   |
+  | http://www.opensource.org/licenses/BSD-3-Clause                      |
+  | If you did not receive a copy of the license and are unable to       |
   | obtain it through the world-wide-web, please send a note to          |
   | license@php.net so we can mail you a copy immediately.               |
   +----------------------------------------------------------------------+
@@ -161,7 +161,7 @@ int php_runkit_fetch_interface(char *classname, int classname_len, zend_class_en
 
 /* {{{ php_runkit_fetch_class_method
  */
-static int php_runkit_fetch_class_method(char *classname, int classname_len, char *fname, int fname_len, zend_class_entry **pce, zend_function **pfe 
+static int php_runkit_fetch_class_method(char *classname, int classname_len, char *fname, int fname_len, zend_class_entry **pce, zend_function **pfe
 TSRMLS_DC)
 {
 	HashTable *ftable = EG(function_table);
@@ -434,7 +434,7 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
     }
 #endif
 
-	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 5, ancestor_class, ce, &func, methodname, 
+	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 5, ancestor_class, ce, &func, methodname,
 methodname_len);
 
 	if (zend_hash_add_or_update(&ce->function_table, methodname_lower, methodname_len + 1, &func, sizeof(zend_function), NULL, add_or_update) == FAILURE) {
@@ -493,7 +493,7 @@ static int php_runkit_method_copy(char *dclass, int dclass_len, char *dfunc, int
 	}
 
 	dfe = *sfe;
-	php_runkit_function_copy_ctor(&dfe, estrndup(dfunc, dfunc_len)); 
+	php_runkit_function_copy_ctor(&dfe, estrndup(dfunc, dfunc_len));
 
 #ifdef ZEND_ENGINE_2
 	dfe.common.scope = dce;
@@ -624,7 +624,7 @@ PHP_FUNCTION(runkit_method_rename)
 	}
 
 	ancestor_class = php_runkit_locate_scope(ce, fe, methodname, methodname_len);
-	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_clean_children_methods, 4, ancestor_class, ce, methodname, 
+	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_clean_children_methods, 4, ancestor_class, ce, methodname,
 methodname_len);
 
 	func = *fe;

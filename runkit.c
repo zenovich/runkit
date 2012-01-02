@@ -2,13 +2,13 @@
   +----------------------------------------------------------------------+
   | PHP Version 5                                                        |
   +----------------------------------------------------------------------+
-  | Copyright (c) 1997-2006 The PHP Group                                |
+  | Copyright (c) 1997-2006 The PHP Group, (c) 2008-2012 Dmitry Zenovich |
   +----------------------------------------------------------------------+
-  | This source file is subject to version 3.0 of the PHP license,       |
+  | This source file is subject to the new BSD license,                  |
   | that is bundled with this package in the file LICENSE, and is        |
   | available through the world-wide-web at the following url:           |
-  | http://www.php.net/license/3_0.txt.                                  |
-  | If you did not receive a copy of the PHP license and are unable to   |
+  | http://www.opensource.org/licenses/BSD-3-Clause                      |
+  | If you did not receive a copy of the license and are unable to       |
   | obtain it through the world-wide-web, please send a note to          |
   | license@php.net so we can mail you a copy immediately.               |
   +----------------------------------------------------------------------+
@@ -139,7 +139,7 @@ zend_module_entry runkit_module_entry = {
 	PHP_RSHUTDOWN(runkit),
 	PHP_MINFO(runkit),
 #if ZEND_MODULE_API_NO >= 20010901
-	PHP_RUNKIT_VERSION, 
+	PHP_RUNKIT_VERSION,
 #endif
 	STANDARD_MODULE_PROPERTIES
 };
@@ -174,7 +174,7 @@ static void php_runkit_globals_ctor(zend_runkit_globals *runkit_global TSRMLS_DC
 #define php_runkit_feature_constant(feature, enabled) \
 		_php_runkit_feature_constant("RUNKIT_FEATURE_" #feature, sizeof("RUNKIT_FEATURE_" #feature), (enabled), \
 									CONST_CS | CONST_PERSISTENT, module_number TSRMLS_CC)
-static void _php_runkit_feature_constant(const char *name, size_t name_len, zend_bool enabled, 
+static void _php_runkit_feature_constant(const char *name, size_t name_len, zend_bool enabled,
 									int flags, int module_number TSRMLS_DC)
 {
 	zend_constant c;
