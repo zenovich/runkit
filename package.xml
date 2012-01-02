@@ -4,7 +4,7 @@ http://pear.php.net/dtd/tasks-1.0.xsd
 http://pear.php.net/dtd/package-2.0
 http://pear.php.net/dtd/package-2.0.xsd">
  <name>runkit</name>
- <uri>http://github.com/downloads/zenovich/runkit/runkit-1.0.1</uri>
+ <uri>http://github.com/downloads/zenovich/runkit/runkit-1.0.3</uri>
  <summary>For all those things you.... probably shouldn&apos;t have been doing anyway....</summary>
  <description>Replace, rename, and remove user defined functions and classes.
 Define customized superglobal variables for general purpose use.
@@ -16,24 +16,23 @@ Execute code in restricted environment (sandboxing).
   <email>dzenovich@gmail.com</email>
   <active>yes</active>
  </lead>
- <lead>
-  <name>Sara Golemon</name>
-  <user>pollita</user>
-  <email>pollita@php.net</email>
-  <active>no</active>
- </lead>
 
-   <date>2010-10-05</date>
+   <date>2012-01-02</date>
    <version>
-    <release>1.0.2</release>
+    <release>1.0.3</release>
     <api>1.0.1</api>
    </version>
    <stability>
     <release>stable</release>
     <api>stable</api>
    </stability>
-   <license uri="http://www.php.net/license">PHP</license>
-   <notes>Disappointing incompatibility issue with php 5.3+ in untested code was fixed.</notes>
+   <license uri="http://www.opensource.org/licenses/BSD-3-Clause">BSD License (3 Clause)</license>
+   <notes>
+     License was changed to the BSD License (3 Clause)
+     Main bug-fixes:
+         * Building on windows-platform was fixed.
+         * The issue with inheritance of methods, which have been created by the runkit_method_rename function, was fixed.
+         * Fixed dumb bug in workarounds based on php-version.</notes>
 
  <contents>
   <dir name="/">
@@ -114,6 +113,7 @@ Execute code in restricted environment (sandboxing).
    <file name="config.m4" role="src" />
    <file name="config.w32" role="src" />
    <file name="php_runkit.h" role="src" />
+   <file name="LICENSE" role="doc" />
    <file name="README" role="doc" />
    <file name="runkit.c" role="src" />
    <file name="runkit.dsp" role="src" />
@@ -142,6 +142,20 @@ Execute code in restricted environment (sandboxing).
  <extsrcrelease />
 
  <changelog>
+
+  <release>
+   <date>2010-10-05</date>
+   <version>
+    <release>1.0.2</release>
+    <api>1.0.1</api>
+   </version>
+   <stability>
+    <release>stable</release>
+    <api>stable</api>
+   </stability>
+   <license uri="http://www.php.net/license">PHP</license>
+   <notes>Disappointing incompatibility issue with php 5.3+ in untested code was fixed.</notes>
+  </release>
 
   <release>
    <date>2010-10-03</date>
