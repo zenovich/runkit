@@ -19,7 +19,7 @@ Execute code in restricted environment (sandboxing).
 
    <date>2012-01-02</date>
    <version>
-    <release>1.0.3</release>
+    <release>1.0.4</release>
     <api>1.0.1</api>
    </version>
    <stability>
@@ -27,12 +27,8 @@ Execute code in restricted environment (sandboxing).
     <api>stable</api>
    </stability>
    <license uri="http://www.opensource.org/licenses/BSD-3-Clause">BSD License (3 Clause)</license>
-   <notes>
-     License was changed to the BSD License (3 Clause)
-     Main bug-fixes:
-         * Building on windows-platform was fixed.
-         * The issue with inheritance of methods, which have been created by the runkit_method_rename function, was fixed.
-         * Fixed dumb bug in workarounds based on php-version.</notes>
+   <notes>...
+     </notes>
 
  <contents>
   <dir name="/">
@@ -142,6 +138,24 @@ Execute code in restricted environment (sandboxing).
  <extsrcrelease />
 
  <changelog>
+  <release>
+   <date>2012-01-02</date>
+   <version>
+    <release>1.0.3</release>
+    <api>1.0.1</api>
+   </version>
+   <stability>
+    <release>stable</release>
+    <api>stable</api>
+   </stability>
+   <license uri="http://www.opensource.org/licenses/BSD-3-Clause">BSD License (3 Clause)</license>
+   <notes>
+     License was changed to the BSD License (3 Clause)
+     Main bug-fixes:
+         * Building on windows-platform was fixed.
+         * The issue with inheritance of methods, which have been created by the runkit_method_rename function, was fixed.
+         * Fixed dumb bug in workarounds based on php-version.</notes>
+  </release>
 
   <release>
    <date>2010-10-05</date>
