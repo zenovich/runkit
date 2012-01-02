@@ -35,7 +35,7 @@
 #include "Zend/zend_closures.h"
 #endif
 
-#define PHP_RUNKIT_VERSION					"1.0.3-dev"
+#define PHP_RUNKIT_VERSION			"1.0.3"
 #define PHP_RUNKIT_SANDBOX_CLASSNAME		"Runkit_Sandbox"
 #define PHP_RUNKIT_SANDBOX_PARENT_CLASSNAME	"Runkit_Sandbox_Parent"
 
