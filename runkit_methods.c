@@ -202,6 +202,12 @@ TSRMLS_DC)
 	/* We never promised the calling scope we'd leave classname untouched :) */
 	php_strtolower(classname, classname_len);
 
+	/* Ignore leading "\" */
+	if (classname[0] == '\\') {
+		classname = &classname[1];
+		classname_len--;
+	}
+
 #ifdef ZEND_ENGINE_2
 	if (zend_hash_find(EG(class_table), classname, classname_len + 1, (void**)&ze) == FAILURE ||
 		!ze || !*ze) {
