@@ -39,6 +39,7 @@ Execute code in restricted environment (sandboxing).
      Fixes:
          * Crash on syntax error in source file importing with runkit_import was fixed
          * Adding of non-lowercase default properties was fixed (removed lowercasing)
+         * Skip the leading slash in class names
    </notes>
 
  <contents>
@@ -116,6 +117,7 @@ Execute code in restricted environment (sandboxing).
     <file name="bug10300.phpt" role="test" />
     <file name="bug4519.inc" role="test" />
     <file name="bug4519.phpt" role="test" />
+    <file name="namespaces.phpt" role="test" />
     <file name="runkit_default_property_add.phpt" role="test" />
     <file name="runkit_default_property_add4.phpt" role="test" />
     <file name="runkit_default_property_remove.phpt" role="test" />

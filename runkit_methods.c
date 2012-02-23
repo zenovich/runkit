@@ -100,6 +100,12 @@ int php_runkit_fetch_class_int(char *classname, int classname_len, zend_class_en
 	zend_class_entry **ze;
 #endif
 
+	/* Ignore leading "\" */
+	if (classname[0] == '\\') {
+		++classname;
+		--classname_len;
+	}
+
 	lclass = estrndup(classname, classname_len);
 	if (lclass == NULL) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Not enough memory");
@@ -168,6 +174,12 @@ int php_runkit_fetch_class(char *classname, int classname_len, zend_class_entry 
  */
 int php_runkit_fetch_interface(char *classname, int classname_len, zend_class_entry **pce TSRMLS_DC)
 {
+	/* Ignore leading "\" */
+	if (classname[0] == '\\') {
+		++classname;
+		--classname_len;
+	}
+
 	php_strtolower(classname, classname_len);
 
 	if (zend_hash_find(EG(class_table), classname, classname_len + 1, (void**)&pce) == FAILURE ||
@@ -181,7 +193,7 @@ int php_runkit_fetch_interface(char *classname, int classname_len, zend_class_en
 		return FAILURE;
 	}
 
-    return SUCCESS;
+	return SUCCESS;
 }
 /* }}} */
 #endif
@@ -199,29 +211,9 @@ TSRMLS_DC)
 	zend_class_entry **ze;
 #endif
 
-	/* We never promised the calling scope we'd leave classname untouched :) */
-	php_strtolower(classname, classname_len);
-
-	/* Ignore leading "\" */
-	if (classname[0] == '\\') {
-		classname = &classname[1];
-		classname_len--;
-	}
-
-#ifdef ZEND_ENGINE_2
-	if (zend_hash_find(EG(class_table), classname, classname_len + 1, (void**)&ze) == FAILURE ||
-		!ze || !*ze) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "class %s not found", classname);
+	if (php_runkit_fetch_class_int(classname, classname_len, &ce TSRMLS_CC) == FAILURE) {
 		return FAILURE;
 	}
-	ce = *ze;
-#else
-	if (zend_hash_find(EG(class_table), classname, classname_len + 1, (void**)&ce) == FAILURE ||
-		!ce) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "class %s not found", classname);
-		return FAILURE;
-	}
-#endif
 
 	if (ce->type != ZEND_USER_CLASS) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "class %s is not a user-defined class", classname);
