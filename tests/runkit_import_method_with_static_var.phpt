@@ -2,12 +2,12 @@
 runkit_import() Importing and overriding method with a static variable
 --SKIPIF--
 <?php
-    if(!extension_loaded("runkit")) print "skip"; 
+    if(!extension_loaded("runkit")) print "skip";
 ?>
 --FILE--
 <?php
 class Test {
-    public function f() {
+    function f() {
         static $v = 0;
         $v++;
         echo $v, "\n";

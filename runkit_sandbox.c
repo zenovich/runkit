@@ -1298,21 +1298,6 @@ static void php_runkit_sandbox_sapi_default_post_reader(TSRMLS_D)
 }
 /* }}} */
 
-/* {{{ php_runkit_sandbox_sapi_treat_data
- */
-static void php_runkit_sandbox_sapi_treat_data(int arg, char *str, zval *destArray TSRMLS_DC)
-{
-	if (!RUNKIT_G(current_sandbox)) {
-		/* Not in a sandbox use SAPI's actual handler */
-		php_runkit_sandbox_original_sapi.treat_data(arg, str, destArray TSRMLS_CC);
-		return;
-	}
-
-	/* Do nothing */
-	return;
-}
-/* }}} */
-
 /* {{{ php_runkit_sandbox_sapi_get_fd
  */
 static int php_runkit_sandbox_sapi_get_fd(int *fd TSRMLS_DC)
@@ -1869,7 +1854,6 @@ int php_runkit_init_sandbox(INIT_FUNC_ARGS)
 	PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(block_interruptions)
 	PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(unblock_interruptions)
 	PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(default_post_reader)
-	PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(treat_data)
 	/* php_ini_ignore */
 	PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(get_fd)
 	PHP_RUNKIT_SANDBOX_SAPI_OVERRIDE(force_http_10)

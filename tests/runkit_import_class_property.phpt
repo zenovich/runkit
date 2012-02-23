@@ -1,7 +1,9 @@
 --TEST--
 runkit_import() Importing and overriding class properties
 --SKIPIF--
-<?php if(!extension_loaded("runkit")) print "skip"; ?>
+<?php if(!extension_loaded("runkit")) print "skip";
+      if(array_shift(explode(".", PHP_VERSION)) < 5) print "skip";
+?>
 --FILE--
 <?php
 class Test {

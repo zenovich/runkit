@@ -99,6 +99,7 @@ PHP_FUNCTION(runkit_constant_redefine);
 PHP_FUNCTION(runkit_constant_remove);
 PHP_FUNCTION(runkit_constant_add);
 PHP_FUNCTION(runkit_default_property_add);
+PHP_FUNCTION(runkit_default_property_remove);
 PHP_FUNCTION(runkit_class_emancipate);
 PHP_FUNCTION(runkit_class_adopt);
 PHP_FUNCTION(runkit_import);
@@ -160,6 +161,11 @@ extern ZEND_DECLARE_MODULE_GLOBALS(runkit);
 #     define RUNKIT_ABOVE53                          0
 #endif
 
+#ifndef ALLOC_PERMANENT_ZVAL
+# define ALLOC_PERMANENT_ZVAL(z) \
+    (z) = (zval*)malloc(sizeof(zval))
+#endif
+
 #ifdef PHP_RUNKIT_MANIPULATION
 #if defined(ZEND_ENGINE_2) && !defined(zend_hash_add_or_update)
 /* Why doesn't ZE2 define this? */
@@ -178,9 +184,11 @@ void php_runkit_function_copy_ctor(zend_function *fe, char *newname);
 int php_runkit_generate_lambda_method(char *arguments, int arguments_len, char *phpcode, int phpcode_len, zend_function **pfe TSRMLS_DC);
 int php_runkit_destroy_misplaced_functions(zend_hash_key *hash_key TSRMLS_DC);
 int php_runkit_restore_internal_functions(RUNKIT_53_TSRMLS_ARG(zend_internal_function *fe), int num_args, va_list args, zend_hash_key *hash_key);
+int php_runkit_clean_zval(zval **val TSRMLS_DC);
 
 /* runkit_methods.c */
 int php_runkit_fetch_class(char *classname, int classname_len, zend_class_entry **pce TSRMLS_DC);
+int php_runkit_fetch_class_int(char *classname, int classname_len, zend_class_entry **pce TSRMLS_DC);
 int php_runkit_clean_children_methods(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce), int num_args, va_list args, zend_hash_key *hash_key);
 int php_runkit_update_children_methods(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce), int num_args, va_list args, zend_hash_key *hash_key);
 #ifdef ZEND_ENGINE_2
@@ -335,10 +343,12 @@ struct _php_runkit_sandbox_object {
 	else if ((ce)->__set == (fe))			(ce)->__set			= NULL; \
 	else if ((ce)->__call == (fe))			(ce)->__call		= NULL; \
 }
+#define PHP_RUNKIT_DESTROY_FUNCTION(fe) 	destroy_zend_function(fe TSRMLS_CC);
 #else
+#define PHP_RUNKIT_DESTROY_FUNCTION(fe) 	destroy_zend_function(fe);
 #define PHP_RUNKIT_ADD_MAGIC_METHOD(ce, method, fe)
 #define PHP_RUNKIT_DEL_MAGIC_METHOD(ce, fe)
-#endif
+#endif /* ZEND_ENGINE_2 */
 #endif /* PHP_RUNKIT_MANIPULATION */
 
 #endif	/* PHP_RUNKIT_H */

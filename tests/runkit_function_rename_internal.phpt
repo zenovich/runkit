@@ -3,7 +3,7 @@ runkit_function_rename() function on internal functions
 --SKIPIF--
 <?php if(!extension_loaded("runkit") || !RUNKIT_FEATURE_MANIPULATION) print "skip"; ?>
 --INI--
-runkit.internal_override="1"
+runkit.internal_override=On
 --FILE--
 <?php
 $a = 1;

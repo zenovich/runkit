@@ -9,7 +9,7 @@ display_errors=on
 <?php
 
 class A {
-    public function m() {
+    function m() {
         static $a = 0;
         $a++;
         return $a;

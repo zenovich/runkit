@@ -27,8 +27,19 @@ Execute code in restricted environment (sandboxing).
     <api>stable</api>
    </stability>
    <license uri="http://www.opensource.org/licenses/BSD-3-Clause">BSD License (3 Clause)</license>
-   <notes>...
-     </notes>
+   <notes>
+     New features:
+         * Introduced new function "runkit_default_property_remove" (Thanks to Juhan Kundla)
+         * Ability to add non-scalar default properties was added
+
+     Critical fixes:
+         * Crash on sandbox creation when register_globals is switched on was fixed
+         * Building and working with PHP4 were fixed
+
+     Fixes:
+         * Crash on syntax error in source file importing with runkit_import was fixed
+         * Adding of non-lowercase default properties was fixed (removed lowercasing)
+   </notes>
 
  <contents>
   <dir name="/">
@@ -105,6 +116,17 @@ Execute code in restricted environment (sandboxing).
     <file name="bug10300.phpt" role="test" />
     <file name="bug4519.inc" role="test" />
     <file name="bug4519.phpt" role="test" />
+    <file name="runkit_default_property_add.phpt" role="test" />
+    <file name="runkit_default_property_add4.phpt" role="test" />
+    <file name="runkit_default_property_remove.phpt" role="test" />
+    <file name="runkit_default_property_remove4.phpt" role="test" />
+    <file name="runkit_import_class4.inc" role="test" />
+    <file name="runkit_import_class4.phpt" role="test" />
+    <file name="runkit_import_class_property4.inc" role="test" />
+    <file name="runkit_import_class_property4.phpt" role="test" />
+    <file name="runkit_import_with_syntax_error.inc" role="test" />
+    <file name="runkit_import_with_syntax_error.phpt" role="test" />
+    <file name="runkit_sandbox_with_register_globals.phpt" role="test" />
    </dir> <!-- //tests -->
    <file name="config.m4" role="src" />
    <file name="config.w32" role="src" />

@@ -2,7 +2,8 @@
 runkit_import() Importing and overriding static property with constant array as the value
 --SKIPIF--
 <?php
-    if(!extension_loaded("runkit")) print "skip"; 
+    if(!extension_loaded("runkit")) print "skip";
+    if(array_shift(explode(".", PHP_VERSION)) < 5) print "skip"
 ?>
 --FILE--
 <?php

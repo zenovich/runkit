@@ -5,11 +5,11 @@ Bug #4519 Unable to override class definitions of a derived class
 --FILE--
 <?php
 class Foo extends Bar {
-        public function a() { print "Hello World!\n"; }
+	function a() { print "Hello World!\n"; }
 }
 
 class Bar {
-        public function b() { print "Hello World from Bar!\n"; }
+        function b() { print "Hello World from Bar!\n"; }
 }
 
 

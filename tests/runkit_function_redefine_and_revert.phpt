@@ -5,7 +5,7 @@ runkit_function_redefine() and revert
 --INI--
 error_reporting=E_ALL
 display_errors=on
-runkit.internal_override="1"
+runkit.internal_override=On
 --FILE--
 <?php
 //xdebug_start_code_coverage();

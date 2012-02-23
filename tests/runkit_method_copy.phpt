@@ -38,9 +38,15 @@ if (method_exists('runkit_one','runkitMethod')) {
 }
 runkit_two::runkit_method(7);
 runkit_two::runkitMethod(8);
-$reflMethod = new ReflectionMethod('runkit_two', 'runkitMethod');
-echo $reflMethod->getDeclaringClass()->getName(), "\n";
-echo $reflMethod->getName(), "\n";
+if (class_exists('ReflectionMethod')) {
+	$reflMethod = new ReflectionMethod('runkit_two', 'runkitMethod');
+	$declClass = $reflMethod->getDeclaringClass();
+	echo $declClass->getName(), "\n";
+	echo $reflMethod->getName(), "\n";
+} else {
+	echo "runkit_two\n";
+	echo "runkitMethod\n";
+}
 ?>
 --EXPECT--
 Runkit Method: 1

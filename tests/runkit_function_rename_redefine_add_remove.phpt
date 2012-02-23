@@ -5,7 +5,7 @@ complex test for renaming, adding and removing with internal functions
 --INI--
 error_reporting=E_ALL
 display_errors=on
-runkit.internal_override="1"
+runkit.internal_override=On
 --FILE--
 <?php
 runkit_function_rename('rand', 'oldRand');
