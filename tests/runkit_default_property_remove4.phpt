@@ -32,10 +32,10 @@ $obj = new stdClass();
 runkit_default_property_remove('stdClass', 'str');
 ?>
 --EXPECTF--
-Warning: runkit_default_property_remove(): RunkitClass::publicproperty does not exist in /home/dzenovich/runkit-my/tests/runkit_default_property_remove4.php on line %d
+Warning: runkit_default_property_remove(): RunkitClass::publicproperty does not exist in %s on line %d
 runkitclass Object
 (
     [publicProperty] => 1
 )
 
-Warning: runkit_default_property_remove(): Removing properties from internal classes is not allowed in /home/dzenovich/runkit-my/tests/runkit_default_property_remove4.php on line %d
+Warning: runkit_default_property_remove(): Removing properties from internal classes is not allowed in %s on line %d

@@ -52,7 +52,7 @@ RunkitClass Object
 
 )
 
-Warning: runkit_default_property_add(): Adding properties to internal classes is not allowed in /home/dzenovich/runkit-my/tests/runkit_default_property_add.php on line %d
+Warning: runkit_default_property_add(): Adding properties to internal classes is not allowed in %s on line %d
 stdClass Object
 (
 )
