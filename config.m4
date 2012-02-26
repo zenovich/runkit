@@ -2,16 +2,16 @@ dnl $Id$
 dnl config.m4 for extension runkit
 
 PHP_ARG_ENABLE(runkit, whether to enable runkit support,
-[  --enable-runkit           Enable runkit support])
+[  --enable-runkit           Enable runkit support], no, yes)
 
 PHP_ARG_ENABLE(runkit-modify, wheter to enable runtime manipulation of functions/classes/constants,
-[  --enable-runkit-modify    Enable runtime manipulation], inherit)
+[  --enable-runkit-modify    Enable runtime manipulation], inherit, no)
 
 PHP_ARG_ENABLE(runkit-super, whether to enable registration of user-defined autoglobals,
-[  --enable-runkit-super     Enable registration of user-defined autoglobals], inherit)
+[  --enable-runkit-super     Enable registration of user-defined autoglobals], inherit, no)
 
 PHP_ARG_ENABLE(runkit-sandbox, whether to enable Sandbox support,
-[  --enable-runkit-sandbox   Enable Runkit_Sandbox (Requires ZTS)], inherit)
+[  --enable-runkit-sandbox   Enable Runkit_Sandbox (Requires ZTS)], inherit, no)
 
 if test "$PHP_RUNKIT" != "no"; then
   if test "$PHP_RUNKIT_MODIFY" = "inherit"; then
@@ -41,8 +41,6 @@ if test "$PHP_RUNKIT_MODIFY" = "yes" ||
   if test "$PHP_RUNKIT" != "classkit"; then
     PHP_RUNKIT=yes
   fi
-else
-  PHP_RUNKIT=no
 fi
 
 if test "$PHP_RUNKIT" != "no"; then

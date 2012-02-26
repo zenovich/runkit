@@ -161,6 +161,7 @@ PHP_INI_END()
 ZEND_GET_MODULE(runkit)
 #endif
 
+#if defined(PHP_RUNKIT_SANDBOX) || defined(PHP_RUNKIT_MANIPULATION)
 static void php_runkit_globals_ctor(zend_runkit_globals *runkit_global TSRMLS_DC)
 {
 #ifdef PHP_RUNKIT_SANDBOX
@@ -171,6 +172,7 @@ static void php_runkit_globals_ctor(zend_runkit_globals *runkit_global TSRMLS_DC
 	runkit_global->misplaced_internal_functions = NULL;
 #endif
 }
+#endif
 
 #define php_runkit_feature_constant(feature, enabled) \
 		_php_runkit_feature_constant("RUNKIT_FEATURE_" #feature, sizeof("RUNKIT_FEATURE_" #feature), (enabled), \
@@ -194,7 +196,9 @@ static void _php_runkit_feature_constant(const char *name, size_t name_len, zend
 PHP_MINIT_FUNCTION(runkit)
 {
 #ifdef ZTS
+#if defined(PHP_RUNKIT_SANDBOX) || defined(PHP_RUNKIT_MANIPULATION)
 	ts_allocate_id(&runkit_globals_id, sizeof(zend_runkit_globals), php_runkit_globals_ctor, NULL);
+#endif
 #else
 	php_runkit_globals_ctor(&runkit_globals);
 #endif

@@ -2,8 +2,8 @@
 runkit_import() Importing and overriding method with closure
 --SKIPIF--
 <?php
-    if(!extension_loaded("runkit")) print "skip"; 
-    if(version_compare(PHP_VERSION, '5.3.0', '<')) print "skip"; 
+    if(!extension_loaded("runkit") || !RUNKIT_FEATURE_MANIPULATION) print "skip";
+    if(version_compare(PHP_VERSION, '5.3.0', '<')) print "skip";
 ?>
 --FILE--
 <?php
