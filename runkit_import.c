@@ -459,10 +459,10 @@ static zend_op_array *php_runkit_compile_filename(int type, zval *filename TSRML
 /* }}} */
 
 static HashTable *current_class_table, *tmp_class_table, *tmp_eg_class_table, *current_eg_class_table, *current_function_table, *tmp_function_table;
-ZEND_API void (*php_runkit_old_error_cb)(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args);
+void (*php_runkit_old_error_cb)(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args);
 
 /* {{{ php_runkit_error_cb */
-ZEND_API void php_runkit_error_cb(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args) {
+void php_runkit_error_cb(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args) {
 #ifdef ZEND_ENGINE_2
 	TSRMLS_FETCH();
 #endif
