@@ -1,5 +1,5 @@
 --TEST--
-runkit_method_redefine() function
+runkit_method_add(), runkit_method_redefine(), runkit_method_rename() & runkit_method_copy() functions with namespaces
 --SKIPIF--
 <?php
 	if(!extension_loaded("runkit") || !RUNKIT_FEATURE_MANIPULATION) print "skip";

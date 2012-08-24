@@ -3,10 +3,17 @@ runkit_method_rename() function
 --SKIPIF--
 <?php if(!extension_loaded("runkit") || !RUNKIT_FEATURE_MANIPULATION) print "skip"; ?>
 --INI--
-error_reporting=E_ALL
 display_errors=on
 --FILE--
 <?php
+if (!defined('E_STRICT')) {
+	define('E_STRICT', 0);
+}
+if (!defined('E_DEPRECATED')) {
+	define('E_DEPRECATED', 0);
+}
+ini_set('error_reporting', E_ALL & (~E_DEPRECATED) & (~E_STRICT));
+
 class runkit_class {
 	function runkit_original($a) {
 		echo "Runkit Original: a is $a\n";
@@ -29,9 +36,12 @@ if (method_exists('runkit_class','runkitDuplicate')) {
 	echo "RunkitDuplicate still exists!\n";
 }
 runkit_class::runkit_original(4);
+runkit_class::runkitDuplicate(4);
 ?>
---EXPECT--
+--EXPECTF--
 Runkit Original: a is 1
 Runkit Original: a is 2
 Runkit Original: a is 3
 Runkit Original: a is 4
+
+Fatal error: Call to undefined %s runkit_class::runkit%suplicate() in %s on line %d

@@ -4,17 +4,27 @@ runkit_function_rename() function
 <?php if(!extension_loaded("runkit") || !RUNKIT_FEATURE_MANIPULATION) print "skip"; ?>
 --FILE--
 <?php
-function runkit_sample($n) {
+function runkitSample($n) {
 	echo "Runkit Sample: $n\n";
 }
 
-runkit_sample(1);
-runkit_function_rename('runkit_sample','runkit_newname');
-if (function_exists('runkit_sample')) {
+$oldName = 'runkitSample';
+$newName = 'runkitNewName';
+runkitSample(1);
+runkit_function_rename($oldName, $newName);
+if (function_exists('runkitSample')) {
 	echo "Old function name still exists!\n";
 }
-runkit_newname(2);
+runkitNewName(2);
+echo $oldName, "\n";
+echo $newName, "\n";
+
+runkitSample(2);
 ?>
---EXPECT--
+--EXPECTF--
 Runkit Sample: 1
 Runkit Sample: 2
+runkitSample
+runkitNewName
+
+Fatal error: %s runkit%sample() in %s on line %d
