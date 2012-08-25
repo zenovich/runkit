@@ -60,8 +60,6 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_function_rename_redefine_add_remove.phpt" role="test" />
     <file name="runkit_import_class.inc" role="test" />
     <file name="runkit_import_class.phpt" role="test" />
-    <file name="runkit_import_class_property.inc" role="test" />
-    <file name="runkit_import_class_property.phpt" role="test" />
     <file name="runkit_import_constant_properties.inc" role="test" />
     <file name="runkit_import_constant_properties.phpt" role="test" />
     <file name="runkit_import_constant_static_properties.inc" role="test" />
@@ -120,15 +118,30 @@ Execute code in restricted environment (sandboxing).
     <file name="namespaces.phpt" role="test" />
     <file name="runkit_default_property_add.phpt" role="test" />
     <file name="runkit_default_property_add4.phpt" role="test" />
+    <file name="runkit_default_property_add_to_subclasses.phpt" role="test" />
     <file name="runkit_default_property_remove.phpt" role="test" />
+    <file name="runkit_default_property_remove_from_subclasses.phpt" role="test" />
+    <file name="runkit_default_property_remove_from_subclasses4.phpt" role="test" />
+    <file name="runkit_default_property_remove_inheritance.phpt" role="test" />
     <file name="runkit_default_property_remove4.phpt" role="test" />
     <file name="runkit_import_class4.inc" role="test" />
     <file name="runkit_import_class4.phpt" role="test" />
+    <file name="runkit_import_class_property_not_overriding_subclasses.inc" role="test" />
+    <file name="runkit_import_class_property_not_overriding_subclasses.phpt" role="test" />
+    <file name="runkit_import_class_property_not_overriding_subclasses4.inc" role="test" />
+    <file name="runkit_import_class_property_not_overriding_subclasses4.phpt" role="test" />
+    <file name="runkit_import_class_property.inc" role="test" />
+    <file name="runkit_import_class_property.phpt" role="test" />
     <file name="runkit_import_class_property4.inc" role="test" />
     <file name="runkit_import_class_property4.phpt" role="test" />
+    <file name="runkit_import_static_properties_override.inc" role="test" />
+    <file name="runkit_import_static_properties_override.phpt" role="test" />
     <file name="runkit_import_with_syntax_error.inc" role="test" />
     <file name="runkit_import_with_syntax_error.phpt" role="test" />
     <file name="runkit_sandbox_with_register_globals.phpt" role="test" />
+    <file name="runkit_static_property_add.phpt" role="test" />
+    <file name="runkit_static_property_add_to_subclasses.phpt" role="test" />
+    <file name="runkit_superglobals.phpt" role="test" />
    </dir> <!-- //tests -->
    <file name="config.m4" role="src" />
    <file name="config.w32" role="src" />
