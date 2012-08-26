@@ -162,8 +162,9 @@ ZEND_GET_MODULE(runkit)
 #endif
 
 #if defined(PHP_RUNKIT_SANDBOX) || defined(PHP_RUNKIT_MANIPULATION)
-static void php_runkit_globals_ctor(zend_runkit_globals *runkit_global TSRMLS_DC)
+static void php_runkit_globals_ctor(void *pDest TSRMLS_DC)
 {
+	zend_runkit_globals *runkit_global = (zend_runkit_globals *) pDest;
 #ifdef PHP_RUNKIT_SANDBOX
 	runkit_global->current_sandbox = NULL;
 #endif
@@ -292,10 +293,19 @@ static void php_runkit_register_auto_global(char *s, int len TSRMLS_DC)
 	}
 
 #ifdef ZEND_ENGINE_2
-	if (zend_register_auto_global(s, len, NULL TSRMLS_CC) == SUCCESS) {
+	if (zend_register_auto_global(s, len,
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION >= 6)
+			0,
+#endif
+		    NULL TSRMLS_CC) == SUCCESS) {
 
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION >= 6)
+		zend_activate_auto_globals(TSRMLS_C);
+#else
 		/* This shouldn't be necessary, but it is */
 		zend_auto_global_disable_jit(s, len TSRMLS_CC);
+
+#endif
 #else
 	if (zend_register_auto_global(s, len TSRMLS_CC) == SUCCESS) {
 #endif
@@ -358,8 +368,9 @@ no_superglobals_defined:
 
 #ifdef PHP_RUNKIT_SUPERGLOBALS
 /* {{{ php_runkit_superglobal_dtor */
-static int php_runkit_superglobal_dtor(char *pDest TSRMLS_DC)
+static int php_runkit_superglobal_dtor(void *pDest TSRMLS_DC)
 {
+	char *sName = (char *) pDest;
 	zend_hash_del(CG(auto_globals), pDest, strlen(pDest) + 1);
 
 	return ZEND_HASH_APPLY_REMOVE;

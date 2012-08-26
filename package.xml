@@ -20,7 +20,7 @@ Execute code in restricted environment (sandboxing).
    <date>2012-01-02</date>
    <version>
     <release>1.0.4</release>
-    <api>1.0.1</api>
+    <api>1.0.4</api>
    </version>
    <stability>
     <release>stable</release>
@@ -29,8 +29,9 @@ Execute code in restricted environment (sandboxing).
    <license uri="http://www.opensource.org/licenses/BSD-3-Clause">BSD License (3 Clause)</license>
    <notes>
      New features:
-         * Introduced new function "runkit_default_property_remove" (Thanks to Juhan Kundla)
-         * Ability to add non-scalar default properties was added
+         + PHP 5.4 is now fully supported
+         + Introduced new function "runkit_default_property_remove" (Thanks to Juhan Kundla)
+         + Ability to add non-scalar default properties was added
 
      Critical fixes:
          * Crash on sandbox creation when register_globals is switched on was fixed
@@ -40,6 +41,17 @@ Execute code in restricted environment (sandboxing).
          * Crash on syntax error in source file importing with runkit_import was fixed
          * Adding of non-lowercase default properties was fixed (removed lowercasing)
          * Skip the leading slash in class names
+         * Copying of functions was reworked
+         * Properties adding, removing and importing were corrected for right inheritance
+         * Converting of input parameters (class names & function names) to lowecase was eliminated
+         * Test for correctness of runkit.superglobals feature was added
+         * Tests for correctness of inheritance of properties were added
+         * Tests for correctness of adding static properties were added
+
+     Build system improvements:
+         * Declarations after statement were restricted during compiling
+         * Warnings now will be treated as errors
+         * All tests now succeed under valgrind
    </notes>
 
  <contents>

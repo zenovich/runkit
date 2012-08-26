@@ -50,12 +50,14 @@ static int php_runkit_fetch_const(char *cname, int cname_len, zend_constant **co
 #ifdef ZEND_ENGINE_2
 /* {{{ php_runkit_update_children_consts
 	Scan the class_table for children of the class just updated */
-int php_runkit_update_children_consts(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce), int num_args, va_list args, zend_hash_key *hash_key)
+int php_runkit_update_children_consts(RUNKIT_53_TSRMLS_ARG(void *pDest), int num_args, va_list args, zend_hash_key *hash_key)
 {
+	zend_class_entry *ce = (zend_class_entry *) pDest;
 	zend_class_entry *parent_class =  va_arg(args, zend_class_entry*);
 	zval *c = va_arg(args, zval*);
 	char *cname = va_arg(args, char*);
 	int cname_len = va_arg(args, int);
+	zval *copy;
 	RUNKIT_UNDER53_TSRMLS_FETCH();
 
 /* Redundant I know, but it's too keep these things consistent */
@@ -69,11 +71,13 @@ int php_runkit_update_children_consts(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce)
 	}
 
 	/* Process children of this child */
-	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_consts, 4, ce, c, cname, cname_len);
+	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), php_runkit_update_children_consts, 4, ce, c, cname, cname_len);
 
+	ALLOC_ZVAL(copy);
+	*copy = *c;
+	SEPARATE_ARG_IF_REF(copy);
 	zend_hash_del(&ce->constants_table, cname, cname_len + 1);
-	Z_ADDREF_P(c);
-	if (zend_hash_add(&ce->constants_table, cname, cname_len + 1, &c, sizeof(zval*), NULL) == FAILURE) {
+	if (zend_hash_add(&ce->constants_table, cname, cname_len + 1, &copy, sizeof(zval*), NULL) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error updating child class");
 		return ZEND_HASH_APPLY_KEEP;
 	}
