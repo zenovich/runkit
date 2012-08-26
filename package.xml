@@ -39,6 +39,7 @@ Execute code in restricted environment (sandboxing).
 
      Fixes:
          * Crash on syntax error in source file importing with runkit_import was fixed
+         * Side affect of redefining, adding and removing class constant (Issue #25) was fixed
          * Adding of non-lowercase default properties was fixed (removed lowercasing)
          * Skip the leading slash in class names
          * Copying of functions was reworked
@@ -60,9 +61,12 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_class_adopt.phpt" role="test" />
     <file name="runkit_class_emancipate.phpt" role="test" />
     <file name="runkit_constant_add.phpt" role="test" />
+    <file name="runkit_constant_add_to_class.phpt" role="test" />
     <file name="runkit_constant_redefine.phpt" role="test" />
-    <file name="runkit_function_redefine_and_revert.phpt" role="test" />
+    <file name="runkit_constant_redefine_in_class.phpt" role="test" />
     <file name="runkit_constant_remove.phpt" role="test" />
+    <file name="runkit_constant_remove_from_class.phpt" role="test" />
+    <file name="runkit_function_redefine_and_revert.phpt" role="test" />
     <file name="runkit_function_add.phpt" role="test" />
     <file name="runkit_function_copy.phpt" role="test" />
     <file name="runkit_function_redefine.phpt" role="test" />

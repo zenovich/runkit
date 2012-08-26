@@ -326,7 +326,6 @@ struct _php_runkit_sandbox_object {
 	if ((colon = memchr((pnname), ':', (pnname_len) - 2)) && (colon[1] == ':')) { \
 		(classname) = (pnname); \
 		(classname_len) = colon - (classname); \
-		(classname)[(classname_len)] = '\0'; \
 		(pnname) = colon + 2; \
 		(pnname_len) -= (classname_len) + 2; \
 	} else { \
