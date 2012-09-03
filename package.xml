@@ -44,7 +44,7 @@ Execute code in restricted environment (sandboxing).
          * Skip the leading slash in class names
          * Copying of functions was reworked
          * Properties adding, removing and importing were corrected for right inheritance
-         * Converting of input parameters (class names & function names) to lowecase was eliminated
+         * Converting of input parameters (class names &amp; function names) to lowecase was eliminated
          * Test for correctness of runkit.superglobals feature was added
          * Tests for correctness of inheritance of properties were added
          * Tests for correctness of adding static properties were added
