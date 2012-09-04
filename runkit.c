@@ -29,8 +29,9 @@ PHP_FUNCTION(runkit_superglobals)
 {
 	HashPosition pos;
 	char *sg;
-	int sg_len, type;
-	long idx;
+	uint sg_len;
+	int type;
+	ulong idx;
 
 	array_init(return_value);
 	for(zend_hash_internal_pointer_reset_ex(CG(auto_globals), &pos);
@@ -371,7 +372,7 @@ no_superglobals_defined:
 static int php_runkit_superglobal_dtor(void *pDest TSRMLS_DC)
 {
 	char *sName = (char *) pDest;
-	zend_hash_del(CG(auto_globals), pDest, strlen(pDest) + 1);
+	zend_hash_del(CG(auto_globals), sName, strlen(sName) + 1);
 
 	return ZEND_HASH_APPLY_REMOVE;
 }

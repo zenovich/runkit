@@ -216,9 +216,6 @@ TSRMLS_DC)
 	zend_class_entry *ce;
 	zend_function *fe;
 	char *fname_lower;
-#ifdef ZEND_ENGINE_2
-	zend_class_entry **ze;
-#endif
 
 	if (php_runkit_fetch_class_int(classname, classname_len, &ce TSRMLS_CC) == FAILURE) {
 		return FAILURE;
@@ -387,7 +384,6 @@ int php_runkit_clean_children_methods(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce)
 int php_runkit_clear_function_runtime_cache(void *pDest TSRMLS_DC)
 {
 	zend_function *f = (zend_function *) pDest;
-	int i;
 
 	if (pDest == NULL || f->type == ZEND_INTERNAL_FUNCTION ||
 	    f->op_array.last_cache_slot == 0 || f->op_array.run_time_cache == NULL) {
@@ -419,7 +415,6 @@ void php_runkit_clear_all_functions_runtime_cache(TSRMLS_D)
 	}
 
 	for (ptr = EG(current_execute_data); ptr != NULL; ptr = ptr->prev_execute_data) {
-		int i;
 		if (ptr->op_array == NULL || ptr->op_array->last_cache_slot == 0 || ptr->op_array->run_time_cache == NULL) {
 			continue;
 		}

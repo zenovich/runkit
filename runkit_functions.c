@@ -61,7 +61,7 @@ static int php_runkit_fetch_function(int fname_type, const char *fname, int fnam
 
 	fname_lower = estrndup(fname, fname_len);
 	if (fname_lower == NULL) {
-		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory", fname);
+		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
 		return FAILURE;
 	}
 	PHP_RUNKIT_STRTOLOWER(fname_lower);
@@ -156,7 +156,9 @@ void php_runkit_function_copy_ctor(zend_function *fe, const char *newname, int n
 
 		if (fe->op_array.static_variables) {
 			HashTable *static_variables = fe->op_array.static_variables;
+#if !((PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION >= 6))
 			zval *tmpZval;
+#endif
 
 			ALLOC_HASHTABLE(fe->op_array.static_variables);
 			zend_hash_init(fe->op_array.static_variables, zend_hash_num_elements(static_variables), NULL, ZVAL_PTR_DTOR, 0);
@@ -227,7 +229,7 @@ void php_runkit_function_copy_ctor(zend_function *fe, const char *newname, int n
 			i = fe->op_array.last_literal;
 			literals = safe_emalloc(fe->op_array.last_literal, sizeof(zend_literal), 0);
 			while (i > 0) {
-				zval *tmpZval, *oldConst;
+				zval *tmpZval;
 				int k;
 
 				i--;
@@ -341,8 +343,11 @@ int php_runkit_destroy_misplaced_functions(void *pDest TSRMLS_DC)
 int php_runkit_restore_internal_functions(RUNKIT_53_TSRMLS_ARG(void *pDest), int num_args, va_list args, zend_hash_key *hash_key)
 {
 	zend_internal_function *fe = (zend_internal_function *) pDest;
+
+#ifdef ZTS
 #if (RUNKIT_UNDER53)
 	void ***tsrm_ls = va_arg(args, void***); /* NULL when !defined(ZTS) */
+#endif
 #endif
 
 	if (!hash_key->nKeyLength) {
@@ -552,7 +557,8 @@ PHP_FUNCTION(runkit_function_redefine)
 		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
 		RETURN_FALSE;
 	}
-	php_strtolower(funcname_lower, funcname_len);
+	funcname_lower_len = funcname_len;
+	PHP_RUNKIT_STRTOLOWER(funcname_lower);
 
 	if (zend_hash_del(EG(function_table), funcname_lower, funcname_len + 1) == FAILURE) {
 		efree(funcname_lower);

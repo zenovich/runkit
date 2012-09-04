@@ -34,10 +34,7 @@ int php_runkit_update_children_def_props(RUNKIT_53_TSRMLS_ARG(zend_class_entry *
 	int access_type = va_arg(args, int);
 	zend_class_entry *definer_class = va_arg(args, zend_class_entry*);
 	int override = va_arg(args, int);
-#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
-	zend_property_info property_info, *property_info_ptr;
-	ulong h;
-#endif
+
 	RUNKIT_UNDER53_TSRMLS_FETCH();
 
 #ifdef ZEND_ENGINE_2
@@ -62,10 +59,7 @@ int php_runkit_remove_children_def_props(RUNKIT_53_TSRMLS_ARG(zend_class_entry *
 	char *pname = va_arg(args, char*);
 	int pname_len = va_arg(args, int);
 	zend_class_entry *definer_class = va_arg(args, zend_class_entry*);
-#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
-	zend_property_info *property_info_ptr;
-	ulong h;
-#endif
+
 	RUNKIT_UNDER53_TSRMLS_FETCH();
 
 #ifdef ZEND_ENGINE_2
@@ -86,8 +80,12 @@ int php_runkit_remove_children_def_props(RUNKIT_53_TSRMLS_ARG(zend_class_entry *
 int php_runkit_def_prop_add_int(zend_class_entry *ce, const char *propname, int propname_len, zval *copyval, long visibility,
 				const char *doc_comment, int doc_comment_len, zend_class_entry *definer_class, int override TSRMLS_DC)
 {
+#if PHP_MAJOR_VERSION >= 5
 	int i;
+#endif
+#if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION <= 3
 	HashTable *symt;
+#endif
 #if PHP_MAJOR_VERSION >= 5
 	zend_property_info *prop_info_ptr;
 	long h = zend_get_hash_value((char *) propname, propname_len + 1);
@@ -157,9 +155,13 @@ int php_runkit_def_prop_add_int(zend_class_entry *ce, const char *propname, int 
 			return FAILURE;
 		}
 		if (visibility & ZEND_ACC_PRIVATE) {
-			char *oldkey, *newkey;
-			int oldkey_len, newkey_len;
+			char *newkey;
+			int newkey_len;
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION <= 3) || (PHP_MAJOR_VERSION < 5)
+			char *oldkey;
+			int oldkey_len;
 			zval **prop;
+#endif
 			zend_mangle_property_name(&newkey, &newkey_len, definer_class->name, definer_class->name_length, (char *) propname, propname_len, ce->type & ZEND_INTERNAL_CLASS);
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION <= 3) || (PHP_MAJOR_VERSION < 5)
 			zend_mangle_property_name(&oldkey, &oldkey_len, ce->name, ce->name_length, (char *) propname, propname_len, ce->type & ZEND_INTERNAL_CLASS);
@@ -201,7 +203,6 @@ int php_runkit_def_prop_add_int(zend_class_entry *ce, const char *propname, int 
 			object = (zend_object *) EG(objects_store).object_buckets[i].bucket.obj.object;
 			if (object->ce == ce) {
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
-				int prop_count, our_element;
 				if (!object->properties_table) {
 					object->properties_table = pemalloc(sizeof(void *) * ce->default_properties_count, 0);
 				} else {
@@ -212,7 +213,6 @@ int php_runkit_def_prop_add_int(zend_class_entry *ce, const char *propname, int 
 					Z_ADDREF_P(object->properties_table[ce->default_properties_count-1]);
 				}
 #else
-				int prop_count, our_element;
 				if (!object->properties) {
 					ALLOC_HASHTABLE(object->properties);
 					zend_hash_init(object->properties, 0, NULL, ZVAL_PTR_DTOR, 0);
@@ -236,9 +236,14 @@ static int php_runkit_def_prop_add(char *classname, int classname_len, char *pro
 {
 	zend_class_entry *ce;
 	zval *copyval;
-	char *temp, *key = propname;
-	int temp_len, key_len = propname_len;
-	zend_uint i;
+	char *key = propname;
+	int key_len = propname_len;
+#ifdef ZEND_ENGINE_2
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION <= 3)
+	char *temp;
+	int temp_len;
+#endif
+#endif
 
 	if (php_runkit_fetch_class_int(classname, classname_len, &ce TSRMLS_CC)==FAILURE) {
 		return FAILURE;
@@ -269,6 +274,7 @@ static int php_runkit_def_prop_add(char *classname, int classname_len, char *pro
 	}
 #endif // (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION >= 6)
 
+#if PHP_MAJOR_VERSION >= 5
 	if (
 	    Z_TYPE_P(copyval) == IS_CONSTANT_ARRAY
 #if RUNKIT_ABOVE53
@@ -277,6 +283,7 @@ static int php_runkit_def_prop_add(char *classname, int classname_len, char *pro
 	) {
 		zval_update_constant_ex(&copyval, (void*) 1, ce TSRMLS_CC);
 	}
+#endif
 
 #ifdef ZEND_ENGINE_2
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION <= 3)
@@ -316,8 +323,6 @@ static int php_runkit_def_prop_add(char *classname, int classname_len, char *pro
 /* {{{ php_runkit_def_prop_remove */
 int php_runkit_def_prop_remove_int(zend_class_entry *ce, const char *propname, int propname_len, zend_class_entry *definer_class TSRMLS_DC)
 {
-	int i;
-	long h;
 #if PHP_MAJOR_VERSION == 4
 	/* Resolve the property's name */
 	if (!zend_hash_exists(&ce->default_properties, (char *) propname, propname_len + 1)) {
@@ -330,6 +335,8 @@ int php_runkit_def_prop_remove_int(zend_class_entry *ce, const char *propname, i
 	}
 	zend_hash_apply_with_arguments(EG(class_table), (apply_func_args_t)php_runkit_remove_children_def_props, 4, ce, propname, propname_len, NULL);
 #else
+	int i;
+	long h;
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 	int offset;
 #endif
@@ -337,7 +344,6 @@ int php_runkit_def_prop_remove_int(zend_class_entry *ce, const char *propname, i
 
 	h = zend_get_hash_value((char *) propname, propname_len + 1);
 	if (zend_hash_quick_find(&ce->properties_info, (char *) propname, propname_len + 1, h, (void**)&property_info_ptr) == SUCCESS) {
-		int access = property_info_ptr->flags & ZEND_ACC_PPP_MASK;
 		if (definer_class && property_info_ptr->ce != definer_class) {
 #if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4
 			char *private;
@@ -430,12 +436,6 @@ int php_runkit_def_prop_remove_int(zend_class_entry *ce, const char *propname, i
 static int php_runkit_def_prop_remove(char *classname, int classname_len, char *propname, int propname_len TSRMLS_DC)
 {
 	zend_class_entry *ce;
-	char *protected=0, *private=0, *key = 0;
-	int protected_len, private_len, key_len = 0;
-	zval **actual_value;
-	int is_private = 0;
-#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
-#endif
 
 	if (php_runkit_fetch_class_int(classname, classname_len, &ce TSRMLS_CC) == FAILURE) {
 		return FAILURE;

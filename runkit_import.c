@@ -34,8 +34,9 @@ static int php_runkit_import_functions(HashTable *function_table, long flags TSR
 		zend_function *fe = NULL;
 		char *key;
 		const char *new_key;
-		int key_len, new_key_len, type;
-		long idx;
+		uint key_len, new_key_len;
+		int type;
+		ulong idx;
 		zend_bool add_function = 1;
 		zend_bool exists = 0;
 
@@ -175,8 +176,8 @@ static int php_runkit_import_class_consts(zend_class_entry *dce, zend_class_entr
 {
 	HashPosition pos;
 	char *key;
-	int key_len;
-	long idx;
+	uint key_len;
+	ulong idx;
 	zval **c;
 
 	zend_hash_internal_pointer_reset_ex(&ce->constants_table, &pos);
@@ -227,8 +228,8 @@ static int php_runkit_import_class_static_props(zend_class_entry *dce, zend_clas
 {
 	HashPosition pos;
 	char *key;
-	int key_len;
-	long idx;
+	uint key_len;
+	ulong idx;
 	zend_property_info *property_info_ptr = NULL;
 
 	zend_hash_internal_pointer_reset_ex(&ce->properties_info, &pos);
@@ -255,7 +256,6 @@ static int php_runkit_import_class_static_props(zend_class_entry *dce, zend_clas
 			if (zend_hash_find(&dce->properties_info, key, key_len, (void **) &ex_property_info_ptr) == SUCCESS && ex_property_info_ptr) {
 				if (override) {
 					if (!(ex_property_info_ptr->flags & ZEND_ACC_STATIC)) {
-						int result;
 						if (php_runkit_def_prop_remove_int(dce, key, key_len - 1, NULL TSRMLS_CC) != SUCCESS) {
 							php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to import %s::$%s (cannot remove old member)", dce->name, key);
 							goto import_st_prop_skip;
@@ -323,9 +323,9 @@ static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry
 {
 	HashPosition pos;
 	char *key;
-	int key_len;
+	uint key_len;
 	zval **p;
-	long idx;
+	ulong idx;
 
 #if PHP_MAJOR_VERSION >= 5
 	zend_property_info *property_info_ptr;
@@ -394,10 +394,6 @@ import_st54_prop_skip:
 				}
 			}
 
-			if (Z_TYPE_PP(p) == IS_CONSTANT_ARRAY) {
-				zval_update_constant_ex(p, (void*) 1, dce TSRMLS_CC);
-			}
-
 			php_runkit_def_prop_add_int(dce, key, key_len - 1, *p, 0, NULL, 0, dce, override TSRMLS_CC);
 		} else {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Property has invalid key name");
@@ -423,8 +419,9 @@ static int php_runkit_import_classes(HashTable *class_table, long flags TSRMLS_D
 	for(i = 0; i < class_count; i++) {
 		zend_class_entry *ce = NULL;
 		char *key;
-		int key_len, type;
-		long idx;
+		uint key_len;
+		int type;
+		ulong idx;
 
 		zend_hash_get_current_data_ex(class_table, (void**)&ce, &pos);
 #ifdef ZEND_ENGINE_2

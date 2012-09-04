@@ -24,6 +24,7 @@
 
 #ifdef PHP_RUNKIT_SANDBOX
 #include "SAPI.h"
+#include "php_main.h"
 
 static zend_object_handlers php_runkit_sandbox_object_handlers;
 static zend_class_entry *php_runkit_sandbox_class_entry;
@@ -101,8 +102,12 @@ int php_runkit_sandbox_array_deep_copy(RUNKIT_53_TSRMLS_ARG(zval **value), int n
  */
 inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_object *objval, HashTable *options TSRMLS_DC)
 {
-	zend_bool safe_mode, safe_mode_gid, allow_url_fopen;
-	char open_basedir[MAXPATHLEN] = {0}, safe_mode_include_dir[MAXPATHLEN] = {0};
+	zend_bool allow_url_fopen;
+	char open_basedir[MAXPATHLEN] = {0};
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4) || (PHP_MAJOR_VERSION < 5)
+	zend_bool safe_mode, safe_mode_gid;
+	char safe_mode_include_dir[MAXPATHLEN] = {0};
+#endif
 	zval **tmpzval;
 
 	/* Collect up parent values */
@@ -345,14 +350,15 @@ PHP_METHOD(Runkit_Sandbox,__construct)
 }
 /* }}} */
 
-
+#if RUNKIT_ABOVE53
 /* {{{ php_runkit_zend_object_store_get_obj */
 static zend_object_store_bucket *php_runkit_zend_object_store_get_obj(const zval *zobject TSRMLS_DC)
 {
 	zend_object_handle handle = Z_OBJ_HANDLE_P(zobject);
 	return &EG(objects_store).object_buckets[handle];
 }
-/* }}}
+/* }}} */
+#endif
 
 /* {{{ proto Runkit_Sandbox::__call(mixed function_name, array args)
 	Call User Function */
@@ -463,6 +469,7 @@ PHP_METHOD(Runkit_Sandbox,__call)
 
 	if (retval) {
 		PHP_RUNKIT_SANDBOX_BEGIN(objval)
+		(void)(TSRMLS_C);
 		zval_ptr_dtor(&retval);
 		PHP_RUNKIT_SANDBOX_END(objval)
 	}
@@ -563,6 +570,7 @@ static void php_runkit_sandbox_include_or_eval(INTERNAL_FUNCTION_PARAMETERS, int
 	/* Don't confuse the memory manager */
 	if (retval) {
 		PHP_RUNKIT_SANDBOX_BEGIN(objval)
+		(void)(TSRMLS_C);
 		zval_ptr_dtor(&retval);
 		PHP_RUNKIT_SANDBOX_END(objval)
 	}
@@ -1144,6 +1152,7 @@ static void php_runkit_sandbox_sapi_sapi_error(int type, const char *error_msg, 
 		tsrm_set_interpreter_context(objval->parent_context);
 		{
 			TSRMLS_FETCH();
+			(void)(TSRMLS_C);
 
 			php_runkit_sandbox_original_sapi.sapi_error(type, "%s", message);
 		}

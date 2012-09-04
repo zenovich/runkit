@@ -76,8 +76,10 @@ typedef struct _php_runkit_sandbox_parent_object {
 static HashTable *php_runkit_sandbox_parent_resolve_symbol_table(php_runkit_sandbox_parent_object *objval TSRMLS_DC)
 {
 	int i;
+#if (RUNKIT_ABOVE53)
 	HashTable *oldActiveSymbolTable, *result;
 	zend_execute_data *oldCurExData;
+#endif
 	zend_execute_data *ex = EG(current_execute_data);
 
 #if (RUNKIT_UNDER53 == 0)
