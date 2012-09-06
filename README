@@ -120,6 +120,6 @@ configure --enable-runkit
 
 After all run
 
-nmake
+make
 
 Now you should have the "php_runkit.dll" file.
