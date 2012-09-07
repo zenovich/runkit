@@ -10,4 +10,4 @@ $php = new Runkit_Sandbox(array('disable_classes'=>'stdClass'));
 $php->ini_set('html_errors',false);
 $php->eval('$a = new stdClass();');
 --EXPECTF--
-Warning: stdclass() has been disabled for security reasons in Unknown(0) : Runkit_Sandbox Eval Code on line 1
+Warning: %s() has been disabled for security reasons in Unknown(0) : Runkit_Sandbox Eval Code on line 1
