@@ -43,6 +43,9 @@ if test "$PHP_RUNKIT_MODIFY" = "yes" ||
   fi
 fi
 
+CFLAGS="$CFLAGS -fgnu89-inline"
+LDFLAGS="$LDFLAGS -fgnu89-inine"
+
 if test "$PHP_RUNKIT" != "no"; then
   if test "$PHP_RUNKIT" = "classkit"; then
     AC_DEFINE(PHP_RUNKIT_CLASSKIT_COMPAT, 1, [Whether to export classkit compatable function aliases])
