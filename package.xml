@@ -53,6 +53,8 @@ Execute code in restricted environment (sandboxing).
          * Declarations after statement were restricted during compiling
          * Warnings now will be treated as errors
          * All tests now succeed under valgrind
+         * A compilation bug (with gcc 4.3+), caused by wrong definition of internal function,
+           was fixed (Thanks to Reeze Xia)
    </notes>
 
  <contents>
