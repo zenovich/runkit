@@ -159,6 +159,7 @@ extern ZEND_DECLARE_MODULE_GLOBALS(runkit);
 #     define RUNKIT_UNDER53_TSRMLS_FETCH()           TSRMLS_FETCH()
 #     define RUNKIT_UNDER53                          1
 #     define RUNKIT_ABOVE53                          0
+#     define zend_hash_quick_del(ht, key, key_len, h) zend_hash_del(ht, key, key_len)
 #endif
 
 #ifndef ALLOC_PERMANENT_ZVAL
@@ -180,19 +181,19 @@ extern ZEND_DECLARE_MODULE_GLOBALS(runkit);
 /* runkit_functions.c */
 #define RUNKIT_TEMP_FUNCNAME  "__runkit_temporary_function__"
 int php_runkit_check_call_stack(zend_op_array *op_array TSRMLS_DC);
-void php_runkit_function_copy_ctor(zend_function *fe, char *newname);
-int php_runkit_generate_lambda_method(char *arguments, int arguments_len, char *phpcode, int phpcode_len, zend_function **pfe TSRMLS_DC);
-int php_runkit_destroy_misplaced_functions(zend_hash_key *hash_key TSRMLS_DC);
-int php_runkit_restore_internal_functions(RUNKIT_53_TSRMLS_ARG(zend_internal_function *fe), int num_args, va_list args, zend_hash_key *hash_key);
+void php_runkit_function_copy_ctor(zend_function *fe, const char *newname, int newname_len TSRMLS_DC);
+int php_runkit_generate_lambda_method(const char *arguments, int arguments_len, const char *phpcode, int phpcode_len, zend_function **pfe TSRMLS_DC);
+int php_runkit_destroy_misplaced_functions(void *pDest TSRMLS_DC);
+int php_runkit_restore_internal_functions(RUNKIT_53_TSRMLS_ARG(void *pDest), int num_args, va_list args, zend_hash_key *hash_key);
 int php_runkit_clean_zval(zval **val TSRMLS_DC);
 
 /* runkit_methods.c */
-int php_runkit_fetch_class(char *classname, int classname_len, zend_class_entry **pce TSRMLS_DC);
-int php_runkit_fetch_class_int(char *classname, int classname_len, zend_class_entry **pce TSRMLS_DC);
+int php_runkit_fetch_class(const char *classname, int classname_len, zend_class_entry **pce TSRMLS_DC);
+int php_runkit_fetch_class_int(const char *classname, int classname_len, zend_class_entry **pce TSRMLS_DC);
 int php_runkit_clean_children_methods(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce), int num_args, va_list args, zend_hash_key *hash_key);
 int php_runkit_update_children_methods(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce), int num_args, va_list args, zend_hash_key *hash_key);
 #ifdef ZEND_ENGINE_2
-int php_runkit_fetch_interface(char *classname, int classname_len, zend_class_entry **pce TSRMLS_DC);
+int php_runkit_fetch_interface(const char *classname, int classname_len, zend_class_entry **pce TSRMLS_DC);
 #endif
 
 #if PHP_MAJOR_VERSION >= 6
@@ -225,8 +226,8 @@ int php_runkit_fetch_interface(char *classname, int classname_len, zend_class_en
 
 #else /* PHP4 */
 #define PHP_RUNKIT_FUNCTION_ADD_REF(f)			function_add_ref(f)
-zend_class_entry *_php_runkit_locate_scope(zend_class_entry *ce, zend_function *fe, char *methodname, int methodname_len);
-#define php_runkit_locate_scope(ce, fe, 		methodname, methodname_len)   _php_runkit_locate_scope((ce), (fe), (methodname), (methodname_len))
+zend_class_entry *_php_runkit_locate_scope(zend_class_entry *ce, zend_function *fe, const char *methodname, int methodname_len TSRMLS_DC);
+#define php_runkit_locate_scope(ce, fe, 		methodname, methodname_len)   _php_runkit_locate_scope((ce), (fe), (methodname), (methodname_len) TSRMLS_CC)
 #define PHP_RUNKIT_DECL_STRING_PARAM(p)			char *p; int p##_len;
 #define PHP_RUNKIT_STRING_SPEC					"s"
 #define PHP_RUNKIT_STRING_PARAM(p)				&p, &p##_len
@@ -242,11 +243,19 @@ zend_class_entry *_php_runkit_locate_scope(zend_class_entry *ce, zend_function *
 #endif /* Version Agnosticism */
 
 /* runkit_constants.c */
-int php_runkit_update_children_consts(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce), int num_args, va_list args, zend_hash_key *hash_key);
+int php_runkit_update_children_consts(RUNKIT_53_TSRMLS_ARG(void *pDest), int num_args, va_list args, zend_hash_key *hash_key);
 
 /* runkit_props.c */
 int php_runkit_update_children_def_props(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce), int num_args, va_list args, zend_hash_key *hash_key);
-int php_runkit_update_children_static_props(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce), int num_args, va_list args, zend_hash_key *hash_key);
+int php_runkit_def_prop_add_int(zend_class_entry *ce, const char *propname, int propname_len, zval *copyval, long visibility, const char *doc_comment, int doc_comment_len, zend_class_entry *definer_class, int override TSRMLS_DC);
+int php_runkit_def_prop_remove_int(zend_class_entry *ce, const char *propname, int propname_len, zend_class_entry *definer_class TSRMLS_DC);
+
+typedef struct _zend_closure {
+    zend_object    std;
+    zend_function  func;
+    HashTable     *debug_info;
+} zend_closure;
+
 #endif /* PHP_RUNKIT_MANIPULATION */
 
 #ifdef PHP_RUNKIT_SANDBOX
@@ -285,6 +294,7 @@ struct _php_runkit_sandbox_object {
 	int parent_scope_namelen;
 };
 
+
 /* TODO: It'd be nice if objects and resources could make it across... */
 #define PHP_SANDBOX_CROSS_SCOPE_ZVAL_COPY_CTOR(pzv) \
 { \
@@ -316,7 +326,6 @@ struct _php_runkit_sandbox_object {
 	if ((colon = memchr((pnname), ':', (pnname_len) - 2)) && (colon[1] == ':')) { \
 		(classname) = (pnname); \
 		(classname_len) = colon - (classname); \
-		(classname)[(classname_len)] = '\0'; \
 		(pnname) = colon + 2; \
 		(pnname_len) -= (classname_len) + 2; \
 	} else { \

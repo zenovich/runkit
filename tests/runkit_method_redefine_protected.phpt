@@ -9,8 +9,11 @@ display_errors=on
 --FILE--
 <?php
 class runkit_class {
+	protected $a = 'a';
+	protected $b = 'b';
 	protected function runkit_method_int($a) {
-		echo "a is $a\n";
+		static $is = "is";
+		echo "{$this->a} $is $a\n";
 	}
 	public function runkit_method($a) {
 		return $this->runkit_method_int($a);
@@ -19,7 +22,7 @@ class runkit_class {
 $obj = new runkit_class();
 $obj->runkit_method('foo');
 runkit_method_copy('runkit_class','runkit_method_old','runkit_class','runkit_method_int');
-runkit_method_redefine('runkit_class','runkit_method_int','$b', 'echo "b is $b\n";');
+runkit_method_redefine('runkit_class','runkit_method_int','$b', 'static $is="is"; echo "{$this->b} $is $b\n";');
 $obj->runkit_method('bar');
 runkit_method_remove('runkit_class','runkit_method_int');
 runkit_method_copy('runkit_class','runkit_method_int','runkit_class','runkit_method_old');

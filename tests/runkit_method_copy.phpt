@@ -3,10 +3,17 @@ runkit_method_copy() function
 --SKIPIF--
 <?php if(!extension_loaded("runkit") || !RUNKIT_FEATURE_MANIPULATION) print "skip"; ?>
 --INI--
-error_reporting=E_ALL
 display_errors=on
 --FILE--
 <?php
+if (!defined('E_STRICT')) {
+	define('E_STRICT', 0);
+}
+if (!defined('E_DEPRECATED')) {
+	define('E_DEPRECATED', 0);
+}
+ini_set('error_reporting', E_ALL & (~E_DEPRECATED) & (~E_STRICT));
+
 class runkit_one {
 	function runkit_method($n) {
 		echo "Runkit Method: $n\n";

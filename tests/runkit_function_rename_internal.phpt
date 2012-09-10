@@ -13,7 +13,10 @@ if (function_exists('var_dump')) {
 	echo "Old function name still exists!\n";
 }
 qwerty($a);
+var_dump($a);
 ?>
---EXPECT--
+--EXPECTF--
 int(1)
 int(1)
+
+Fatal error: %s var_dump() in %s on line %d

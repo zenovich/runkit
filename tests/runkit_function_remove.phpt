@@ -4,16 +4,22 @@ runkit_function_remove() function
 <?php if(!extension_loaded("runkit") || !RUNKIT_FEATURE_MANIPULATION) print "skip"; ?>
 --FILE--
 <?php
-function runkit_sample() {
+function runkitSample() {
 	echo "Function Exists\n";
 }
 
-runkit_sample();
-runkit_function_remove('runkit_sample');
-if (!function_exists('runkit_sample')) {
+$name = 'runkitSample';
+runkitSample();
+runkit_function_remove($name);
+if (!function_exists('runkitSample')) {
 	echo "Function Removed\n";
 }
+echo $name, "\n";
+runkitSample();
 ?>
---EXPECT--
+--EXPECTF--
 Function Exists
 Function Removed
+runkitSample
+
+Fatal error: %s runkit%sample() in %s on line %d

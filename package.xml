@@ -20,7 +20,7 @@ Execute code in restricted environment (sandboxing).
    <date>2012-01-02</date>
    <version>
     <release>1.0.4</release>
-    <api>1.0.1</api>
+    <api>1.0.4</api>
    </version>
    <stability>
     <release>stable</release>
@@ -29,8 +29,9 @@ Execute code in restricted environment (sandboxing).
    <license uri="http://www.opensource.org/licenses/BSD-3-Clause">BSD License (3 Clause)</license>
    <notes>
      New features:
-         * Introduced new function "runkit_default_property_remove" (Thanks to Juhan Kundla)
-         * Ability to add non-scalar default properties was added
+         + PHP 5.4 is now fully supported
+         + Introduced new function "runkit_default_property_remove" (Thanks to Juhan Kundla)
+         + Ability to add non-scalar default properties was added
 
      Critical fixes:
          * Crash on sandbox creation when register_globals is switched on was fixed
@@ -38,8 +39,20 @@ Execute code in restricted environment (sandboxing).
 
      Fixes:
          * Crash on syntax error in source file importing with runkit_import was fixed
+         * Side affect of redefining, adding and removing class constant (Issue #25) was fixed
          * Adding of non-lowercase default properties was fixed (removed lowercasing)
          * Skip the leading slash in class names
+         * Copying of functions was reworked
+         * Properties adding, removing and importing were corrected for right inheritance
+         * Converting of input parameters (class names &amp; function names) to lowecase was eliminated
+         * Test for correctness of runkit.superglobals feature was added
+         * Tests for correctness of inheritance of properties were added
+         * Tests for correctness of adding static properties were added
+
+     Build system improvements:
+         * Declarations after statement were restricted during compiling
+         * Warnings now will be treated as errors
+         * All tests now succeed under valgrind
    </notes>
 
  <contents>
@@ -48,9 +61,12 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_class_adopt.phpt" role="test" />
     <file name="runkit_class_emancipate.phpt" role="test" />
     <file name="runkit_constant_add.phpt" role="test" />
+    <file name="runkit_constant_add_to_class.phpt" role="test" />
     <file name="runkit_constant_redefine.phpt" role="test" />
-    <file name="runkit_function_redefine_and_revert.phpt" role="test" />
+    <file name="runkit_constant_redefine_in_class.phpt" role="test" />
     <file name="runkit_constant_remove.phpt" role="test" />
+    <file name="runkit_constant_remove_from_class.phpt" role="test" />
+    <file name="runkit_function_redefine_and_revert.phpt" role="test" />
     <file name="runkit_function_add.phpt" role="test" />
     <file name="runkit_function_copy.phpt" role="test" />
     <file name="runkit_function_redefine.phpt" role="test" />
@@ -60,8 +76,6 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_function_rename_redefine_add_remove.phpt" role="test" />
     <file name="runkit_import_class.inc" role="test" />
     <file name="runkit_import_class.phpt" role="test" />
-    <file name="runkit_import_class_property.inc" role="test" />
-    <file name="runkit_import_class_property.phpt" role="test" />
     <file name="runkit_import_constant_properties.inc" role="test" />
     <file name="runkit_import_constant_properties.phpt" role="test" />
     <file name="runkit_import_constant_static_properties.inc" role="test" />
@@ -120,15 +134,30 @@ Execute code in restricted environment (sandboxing).
     <file name="namespaces.phpt" role="test" />
     <file name="runkit_default_property_add.phpt" role="test" />
     <file name="runkit_default_property_add4.phpt" role="test" />
+    <file name="runkit_default_property_add_to_subclasses.phpt" role="test" />
     <file name="runkit_default_property_remove.phpt" role="test" />
+    <file name="runkit_default_property_remove_from_subclasses.phpt" role="test" />
+    <file name="runkit_default_property_remove_from_subclasses4.phpt" role="test" />
+    <file name="runkit_default_property_remove_inheritance.phpt" role="test" />
     <file name="runkit_default_property_remove4.phpt" role="test" />
     <file name="runkit_import_class4.inc" role="test" />
     <file name="runkit_import_class4.phpt" role="test" />
+    <file name="runkit_import_class_property_not_overriding_subclasses.inc" role="test" />
+    <file name="runkit_import_class_property_not_overriding_subclasses.phpt" role="test" />
+    <file name="runkit_import_class_property_not_overriding_subclasses4.inc" role="test" />
+    <file name="runkit_import_class_property_not_overriding_subclasses4.phpt" role="test" />
+    <file name="runkit_import_class_property.inc" role="test" />
+    <file name="runkit_import_class_property.phpt" role="test" />
     <file name="runkit_import_class_property4.inc" role="test" />
     <file name="runkit_import_class_property4.phpt" role="test" />
+    <file name="runkit_import_static_properties_override.inc" role="test" />
+    <file name="runkit_import_static_properties_override.phpt" role="test" />
     <file name="runkit_import_with_syntax_error.inc" role="test" />
     <file name="runkit_import_with_syntax_error.phpt" role="test" />
     <file name="runkit_sandbox_with_register_globals.phpt" role="test" />
+    <file name="runkit_static_property_add.phpt" role="test" />
+    <file name="runkit_static_property_add_to_subclasses.phpt" role="test" />
+    <file name="runkit_superglobals.phpt" role="test" />
    </dir> <!-- //tests -->
    <file name="config.m4" role="src" />
    <file name="config.w32" role="src" />

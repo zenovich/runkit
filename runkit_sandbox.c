@@ -24,6 +24,7 @@
 
 #ifdef PHP_RUNKIT_SANDBOX
 #include "SAPI.h"
+#include "php_main.h"
 
 static zend_object_handlers php_runkit_sandbox_object_handlers;
 static zend_class_entry *php_runkit_sandbox_class_entry;
@@ -101,8 +102,12 @@ int php_runkit_sandbox_array_deep_copy(RUNKIT_53_TSRMLS_ARG(zval **value), int n
  */
 inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_object *objval, HashTable *options TSRMLS_DC)
 {
-	zend_bool safe_mode, safe_mode_gid, allow_url_fopen;
-	char open_basedir[MAXPATHLEN] = {0}, safe_mode_include_dir[MAXPATHLEN] = {0};
+	zend_bool allow_url_fopen;
+	char open_basedir[MAXPATHLEN] = {0};
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4) || (PHP_MAJOR_VERSION < 5)
+	zend_bool safe_mode, safe_mode_gid;
+	char safe_mode_include_dir[MAXPATHLEN] = {0};
+#endif
 	zval **tmpzval;
 
 	/* Collect up parent values */
@@ -110,7 +115,7 @@ inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_object *objval, H
 	{
 		/* Check current settings in parent context */
 		TSRMLS_FETCH_FROM_CTX(objval->parent_context);
-
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4) || (PHP_MAJOR_VERSION < 5)
 		safe_mode = PG(safe_mode);
 		safe_mode_gid = PG(safe_mode_gid);
 		if (PG(open_basedir) && *PG(open_basedir)) {
@@ -119,10 +124,12 @@ inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_object *objval, H
 		if (PG(safe_mode_include_dir) && *PG(safe_mode_include_dir)) {
 			VCWD_REALPATH(PG(safe_mode_include_dir), safe_mode_include_dir);
 		}
+#endif
 		allow_url_fopen = PG(allow_url_fopen);
 	}
 	tsrm_set_interpreter_context(objval->context);
 
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4) || (PHP_MAJOR_VERSION < 5)
 	/* safe_mode only goes on */
 	if (!safe_mode &&
 		zend_hash_find(options, "safe_mode", sizeof("safe_mode"), (void**)&tmpzval) == SUCCESS) {
@@ -178,7 +185,7 @@ inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_object *objval, H
 			}
 		}
 	}
-
+#endif
 	/* open_basedir goes deeper only */
 	if (zend_hash_find(options, "open_basedir", sizeof("open_basedir"), (void**)&tmpzval) == SUCCESS &&
 		Z_TYPE_PP(tmpzval) == IS_STRING) {
@@ -261,15 +268,29 @@ inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_object *objval, H
 		while ((p = strchr(s, ','))) {
 			if (p - s) {
 				*p = '\0';
-				zend_register_auto_global(s, p - s, NULL TSRMLS_CC);
+				zend_register_auto_global(s, p - s,
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION >= 6)
+							0,
+#endif
+							NULL TSRMLS_CC);
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION >= 6)
+				zend_activate_auto_globals(TSRMLS_C);
+#else
 				zend_auto_global_disable_jit(s, p - s TSRMLS_CC);
+#endif
 				*p = ',';
 			}
 			s = p + 1;
 		}
 		len = strlen(s);
-		zend_register_auto_global(s, len, NULL TSRMLS_CC);
+		zend_register_auto_global(s, len,
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION >= 6)
+						0,
+#endif
+						NULL TSRMLS_CC);
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4) || (PHP_MAJOR_VERSION < 5)
 		zend_auto_global_disable_jit(s, len TSRMLS_CC);
+#endif
 	}
 
 	/* May only turn off */
@@ -329,11 +350,15 @@ PHP_METHOD(Runkit_Sandbox,__construct)
 }
 /* }}} */
 
-typedef struct _zend_closure {
-    zend_object    std;
-    zend_function  func;
-    HashTable     *debug_info;
-} zend_closure;
+#if RUNKIT_ABOVE53
+/* {{{ php_runkit_zend_object_store_get_obj */
+static zend_object_store_bucket *php_runkit_zend_object_store_get_obj(const zval *zobject TSRMLS_DC)
+{
+	zend_object_handle handle = Z_OBJ_HANDLE_P(zobject);
+	return &EG(objects_store).object_buckets[handle];
+}
+/* }}} */
+#endif
 
 /* {{{ proto Runkit_Sandbox::__call(mixed function_name, array args)
 	Call User Function */
@@ -385,8 +410,10 @@ PHP_METHOD(Runkit_Sandbox,__call)
 #if RUNKIT_ABOVE53
 				if (Z_TYPE_P(*sandbox_args[i]) == IS_OBJECT && zend_get_class_entry(*sandbox_args[i], prior_context) == zend_ce_closure) {
 					zend_closure *closure;
-					closure = (zend_closure *) zend_object_store_get_object(*sandbox_args[i], prior_context);
-					zend_object_store_set_object(*sandbox_args[i], closure TSRMLS_CC);
+					zend_object_store_bucket *bucket;
+					bucket = php_runkit_zend_object_store_get_obj(*sandbox_args[i], prior_context);
+					closure = (zend_closure *) bucket->bucket.obj.object;
+					(*sandbox_args[i])->value.obj.handle = zend_objects_store_put(closure, NULL, NULL, bucket->bucket.obj.clone TSRMLS_CC);
 				} else
 #endif
 					PHP_SANDBOX_CROSS_SCOPE_ZVAL_COPY_CTOR(*sandbox_args[i]);
@@ -415,9 +442,11 @@ PHP_METHOD(Runkit_Sandbox,__call)
 
 			for(i = 0; i < argc; i++) {
 #if RUNKIT_ABOVE53
-				if (Z_TYPE_P(*sandbox_args[i]) == IS_OBJECT && zend_get_class_entry(*sandbox_args[i], prior_context) == zend_ce_closure) {
+				if (Z_TYPE_P(*sandbox_args[i]) == IS_OBJECT && zend_get_class_entry(*sandbox_args[i] TSRMLS_CC) == zend_ce_closure) {
+					zend_object_store_bucket *bucket = php_runkit_zend_object_store_get_obj(*sandbox_args[i] TSRMLS_CC);
 					zend_objects_store_del_ref(*sandbox_args[i] TSRMLS_CC);
 					zval_ptr_dtor(sandbox_args[i]);
+					bucket->bucket.obj.object = NULL;
 				}
 #endif
 				zval_ptr_dtor(sandbox_args[i]);
@@ -440,6 +469,7 @@ PHP_METHOD(Runkit_Sandbox,__call)
 
 	if (retval) {
 		PHP_RUNKIT_SANDBOX_BEGIN(objval)
+		(void)(TSRMLS_C);
 		zval_ptr_dtor(&retval);
 		PHP_RUNKIT_SANDBOX_END(objval)
 	}
@@ -540,6 +570,7 @@ static void php_runkit_sandbox_include_or_eval(INTERNAL_FUNCTION_PARAMETERS, int
 	/* Don't confuse the memory manager */
 	if (retval) {
 		PHP_RUNKIT_SANDBOX_BEGIN(objval)
+		(void)(TSRMLS_C);
 		zval_ptr_dtor(&retval);
 		PHP_RUNKIT_SANDBOX_END(objval)
 	}
@@ -706,7 +737,11 @@ PHP_METHOD(Runkit_Sandbox,die)
 
 /* {{{ php_runkit_sandbox_read_property
 	read_property handler */
-static zval *php_runkit_sandbox_read_property(zval *object, zval *member, int type TSRMLS_DC)
+static zval *php_runkit_sandbox_read_property(zval *object, zval *member, int type
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 6)
+	, const zend_literal *key
+#endif
+	TSRMLS_DC)
 {
 	php_runkit_sandbox_object *objval = PHP_RUNKIT_SANDBOX_FETCHBOX(object);
 	zval *tmp_member = NULL;
@@ -765,7 +800,11 @@ static zval *php_runkit_sandbox_read_property(zval *object, zval *member, int ty
 
 /* {{{ php_runkit_sandbox_write_property
 	write_property handler */
-static void php_runkit_sandbox_write_property(zval *object, zval *member, zval *value TSRMLS_DC)
+static void php_runkit_sandbox_write_property(zval *object, zval *member, zval *value
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 6)
+	, const zend_literal *key
+#endif
+	TSRMLS_DC)
 {
 	php_runkit_sandbox_object *objval = PHP_RUNKIT_SANDBOX_FETCHBOX(object);
 	zval *tmp_member = NULL;
@@ -806,7 +845,11 @@ static void php_runkit_sandbox_write_property(zval *object, zval *member, zval *
 
 /* {{{ php_runkit_sandbox_has_property
 	has_property handler */
-static int php_runkit_sandbox_has_property(zval *object, zval *member, int has_set_exists TSRMLS_DC)
+static int php_runkit_sandbox_has_property(zval *object, zval *member, int has_set_exists
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 6)
+	, const zend_literal *key
+#endif
+	TSRMLS_DC)
 {
 	php_runkit_sandbox_object* objval;
 	zval member_copy;
@@ -883,7 +926,11 @@ static int php_runkit_sandbox_has_property(zval *object, zval *member, int has_s
 
 /* {{{ php_runkit_sandbox_unset_property
 	unset_property handler */
-static void php_runkit_sandbox_unset_property(zval *object, zval *member TSRMLS_DC)
+static void php_runkit_sandbox_unset_property(zval *object, zval *member
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 6)
+	, const zend_literal *key
+#endif
+	TSRMLS_DC)
 {
 	php_runkit_sandbox_object *objval;
 	zval member_copy;
@@ -1105,6 +1152,7 @@ static void php_runkit_sandbox_sapi_sapi_error(int type, const char *error_msg, 
 		tsrm_set_interpreter_context(objval->parent_context);
 		{
 			TSRMLS_FETCH();
+			(void)(TSRMLS_C);
 
 			php_runkit_sandbox_original_sapi.sapi_error(type, "%s", message);
 		}
@@ -1217,13 +1265,23 @@ static void php_runkit_sandbox_sapi_register_server_variables(zval *track_vars_a
 
 /* {{{ php_runkit_sandbox_sapi_log_message
  */
-static void php_runkit_sandbox_sapi_log_message(char *message)
+static void php_runkit_sandbox_sapi_log_message(char *message
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 6)
+	TSRMLS_DC
+#endif
+	)
 {
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4) || (PHP_MAJOR_VERSION < 5)
 	TSRMLS_FETCH();
+#endif
 
 	if (!RUNKIT_G(current_sandbox)) {
 		/* Not in a sandbox use SAPI's actual handler */
-		php_runkit_sandbox_original_sapi.log_message(message);
+		php_runkit_sandbox_original_sapi.log_message(message
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 6)
+								TSRMLS_CC
+#endif
+			);
 		return;
 	}
 
@@ -1234,7 +1292,13 @@ static void php_runkit_sandbox_sapi_log_message(char *message)
 
 /* {{{ php_runkit_sandbox_sapi_get_request_time
  */
-static time_t php_runkit_sandbox_sapi_get_request_time(TSRMLS_D)
+static
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 6)
+	double
+#else
+	time_t
+#endif
+	php_runkit_sandbox_sapi_get_request_time(TSRMLS_D)
 {
 	if (!RUNKIT_G(current_sandbox)) {
 		/* Not in a sandbox use SAPI's actual handler */
@@ -1464,10 +1528,10 @@ PHP_FUNCTION(runkit_sandbox_output_handler)
    * Dimension Handlers *
    ********************** */
 
-#define PHP_RUNKIT_SANDBOX_SETTING_ENTRY(name, get, set)	{ #name, sizeof(#name) - 1, get, set },
-#define PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RW(name)			{ #name, sizeof(#name) - 1, php_runkit_sandbox_ ## name ## _getter, php_runkit_sandbox_ ## name ## _setter },
-#define PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RD(name)	{ #name, sizeof(#name) - 1, php_runkit_sandbox_ ## name ## _getter, NULL },
-#define PHP_RUNKIT_SANDBOX_SETTING_ENTRY_WR(name)	{ #name, sizeof(#name) - 1, NULL, php_runkit_sandbox_ ## name ## _setter },
+#define PHP_RUNKIT_SANDBOX_SETTING_ENTRY(name, get, set)	{ #name, sizeof(#name) - 1, (zval *(*)(php_runkit_sandbox_object *objval TSRMLS_DC)) get, (int (*)(php_runkit_sandbox_object *objval, zval *value TSRMLS_DC)) set },
+#define PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RW(name)			{ #name, sizeof(#name) - 1, (zval *(*)(php_runkit_sandbox_object *objval TSRMLS_DC)) php_runkit_sandbox_ ## name ## _getter, (int (*)(php_runkit_sandbox_object *objval, zval *value TSRMLS_DC)) php_runkit_sandbox_ ## name ## _setter },
+#define PHP_RUNKIT_SANDBOX_SETTING_ENTRY_RD(name)	{ #name, sizeof(#name) - 1, (zval *(*)(php_runkit_sandbox_object *objval TSRMLS_DC)) php_runkit_sandbox_ ## name ## _getter, NULL },
+#define PHP_RUNKIT_SANDBOX_SETTING_ENTRY_WR(name)	{ #name, sizeof(#name) - 1, NULL, (int (*)(php_runkit_sandbox_object *objval, zval *value TSRMLS_DC)) php_runkit_sandbox_ ## name ## _setter },
 #define PHP_RUNKIT_SANDBOX_SETTING_SETTER(name)		static void php_runkit_sandbox_ ## name ## _setter(php_runkit_sandbox_object *objval, zval *value TSRMLS_DC)
 #define PHP_RUNKIT_SANDBOX_SETTING_GETTER(name)		static zval* php_runkit_sandbox_ ## name ## _getter(php_runkit_sandbox_object *objval TSRMLS_DC)
 
