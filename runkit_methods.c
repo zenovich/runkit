@@ -270,6 +270,8 @@ int php_runkit_update_children_methods(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce
 	zend_function *fe =  va_arg(args, zend_function*);
 	char *fname = va_arg(args, char*);
 	int fname_len = va_arg(args, int);
+	zend_function *orig_fe = va_arg(args, zend_function*);
+	int add_or_update = va_arg(args, int);
 	zend_function *cfe = NULL;
 	char *fname_lower;
 	RUNKIT_UNDER53_TSRMLS_FETCH();
@@ -312,10 +314,29 @@ int php_runkit_update_children_methods(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce
 	}
 	PHP_RUNKIT_FUNCTION_ADD_REF(fe);
 
-	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, fname, fe);
+	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, fname, fe, orig_fe);
 
 	/* Process children of this child */
-	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 5, ancestor_class, ce, fe, fname, fname_len);
+	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 7, ancestor_class, ce, fe, fname, fname_len, orig_fe, add_or_update);
+
+	if (add_or_update == HASH_ADD && ce->parent->constructor == fe) {
+		/* special case for old-style Foo::Foo() constructors */
+		zend_function *ctor;
+		char *lc_class_name;
+
+		lc_class_name = estrndup(ce->name, ce->name_length);
+		php_strtolower(lc_class_name, ce->name_length);
+
+		if (zend_hash_find(&ce->function_table, "__constructor", sizeof("__constructor"), (void **)&ctor)==SUCCESS) {
+			/* if the class has it's own ctor, we don't have to do anything at all */
+		} else if (zend_hash_find(&ce->function_table, lc_class_name, ce->name_length + 1, (void **)&ctor)==SUCCESS) {
+			/* --//-- */
+		} else {
+			/* if not, then we have inherit parent class ctor */
+			ce->constructor = ce->parent->constructor;
+		}
+		efree(lc_class_name);
+	}
 
 	efree(fname_lower);
 
@@ -332,6 +353,7 @@ int php_runkit_clean_children_methods(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce)
 	zend_class_entry *scope;
 	char *fname = va_arg(args, char*);
 	int fname_len = va_arg(args, int);
+	zend_function *orig_cfe = va_arg(args, zend_function *);
 	zend_function *cfe = NULL;
 	char *fname_lower;
 	RUNKIT_UNDER53_TSRMLS_FETCH();
@@ -368,11 +390,11 @@ int php_runkit_clean_children_methods(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce)
 	}
 
 	/* Process children of this child */
-	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_clean_children_methods, 4, ancestor_class, ce, fname, fname_len);
+	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_clean_children_methods, 5, ancestor_class, ce, fname, fname_len, orig_cfe);
 
 	zend_hash_del(&ce->function_table, fname_lower, fname_len + 1);
 
-	PHP_RUNKIT_DEL_MAGIC_METHOD(ce, cfe);
+	PHP_RUNKIT_DEL_MAGIC_METHOD(ce, orig_cfe);
 
 	efree(fname_lower);
 	return ZEND_HASH_APPLY_KEEP;
@@ -447,7 +469,7 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 	const char *classname, *methodname, *arguments, *phpcode;
 	int classname_len, methodname_len, arguments_len, phpcode_len;
 	zend_class_entry *ce, *ancestor_class = NULL;
-	zend_function func, *fe;
+	zend_function func, *fe, *orig_fe = NULL;
 	char *methodname_lower;
 	long argc = ZEND_NUM_ARGS();
 #ifdef ZEND_ENGINE_2
@@ -489,6 +511,7 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 			RETURN_FALSE;
 		}
 		ancestor_class = php_runkit_locate_scope(ce, fe, methodname, methodname_len);
+		orig_fe = fe;
 
 		if (php_runkit_check_call_stack(&fe->op_array TSRMLS_CC) == FAILURE) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot redefine a method while that method is active.");
@@ -534,11 +557,7 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 	}
 #endif
 
-	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 5,
-	                               ancestor_class, ce, &func, methodname, methodname_len);
-
-
-	if (zend_hash_add_or_update(&ce->function_table, methodname_lower, methodname_len + 1, &func, sizeof(zend_op_array), NULL, add_or_update) == FAILURE) {
+	if (zend_hash_add_or_update(&ce->function_table, methodname_lower, methodname_len + 1, &func, sizeof(zend_function), NULL, add_or_update) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to add method to class");
 		efree(methodname_lower);
 		RETURN_FALSE;
@@ -557,7 +576,10 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 		RETURN_FALSE;
 	}
 
-	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, methodname, fe);
+	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, methodname, fe, orig_fe);
+	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 7,
+	                               ancestor_class, ce, fe, methodname, methodname_len, orig_fe, add_or_update);
+
 	efree(methodname_lower);
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 	php_runkit_clear_all_functions_runtime_cache(TSRMLS_C);
@@ -611,9 +633,9 @@ static int php_runkit_method_copy(const char *dclass, int dclass_len, const char
 		return FAILURE;
 	}
 
-	PHP_RUNKIT_ADD_MAGIC_METHOD(dce, dfunc, dfeInHashTable);
+	PHP_RUNKIT_ADD_MAGIC_METHOD(dce, dfunc, dfeInHashTable, NULL);
 
-	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 5, dce, dce, &dfe, dfunc_lower, dfunc_len);
+	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 7, dce, dce, &dfe, dfunc_lower, dfunc_len, NULL, HASH_ADD);
 
 	efree(dfunc_lower);
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
@@ -678,7 +700,7 @@ PHP_FUNCTION(runkit_method_remove)
 	}
 	php_strtolower(methodname_lower, methodname_len);
 
-	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_clean_children_methods, 4, ancestor_class, ce, methodname, methodname_len);
+	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_clean_children_methods, 5, ancestor_class, ce, methodname, methodname_len, fe);
 
 	if (zend_hash_del(&ce->function_table, methodname_lower, methodname_len + 1) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to remove method from class");
@@ -777,9 +799,9 @@ PHP_FUNCTION(runkit_method_rename)
 
 	efree(newname_lower);
 	efree(methodname_lower);
-	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, newname, fe);
+	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, newname, fe, NULL);
 
-	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 5, ce, ce, fe, newname, newname_len);
+	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 7, ce, ce, fe, newname, newname_len, NULL, HASH_UPDATE);
 
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 	php_runkit_clear_all_functions_runtime_cache(TSRMLS_C);
