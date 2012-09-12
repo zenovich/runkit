@@ -335,9 +335,10 @@ struct _php_runkit_sandbox_object {
 }
 
 #ifdef ZEND_ENGINE_2
-#define PHP_RUNKIT_ADD_MAGIC_METHOD(ce, method, fe) { \
-	if ((strcmp((method), (ce)->name) == 0) || \
-		(strcmp((method), "__construct") == 0)) {	(ce)->constructor	= (fe); (fe)->common.fn_flags = ZEND_ACC_CTOR; } \
+#define PHP_RUNKIT_ADD_MAGIC_METHOD(ce, method, fe, orig_fe) { \
+	if ((strcasecmp((method), (ce)->name) == 0) || \
+		(strcmp((method), "__construct") == 0)) {	(ce)->constructor = (fe); (fe)->common.fn_flags = ZEND_ACC_CTOR; } \
+	else if ((ce)->constructor && (ce)->constructor == orig_fe) {	(ce)->constructor = (fe); (fe)->common.fn_flags = ZEND_ACC_CTOR; } \
 	else if (strcmp((method), "__destruct") == 0) {	(ce)->destructor	= (fe); (fe)->common.fn_flags = ZEND_ACC_DTOR; } \
 	else if (strcmp((method), "__clone") == 0)  {	(ce)->clone			= (fe); (fe)->common.fn_flags = ZEND_ACC_CLONE; } \
 	else if (strcmp((method), "__get") == 0)		(ce)->__get			= (fe); \
@@ -355,7 +356,7 @@ struct _php_runkit_sandbox_object {
 #define PHP_RUNKIT_DESTROY_FUNCTION(fe) 	destroy_zend_function(fe TSRMLS_CC);
 #else
 #define PHP_RUNKIT_DESTROY_FUNCTION(fe) 	destroy_zend_function(fe);
-#define PHP_RUNKIT_ADD_MAGIC_METHOD(ce, method, fe)
+#define PHP_RUNKIT_ADD_MAGIC_METHOD(ce, method, fe, orig_fe)
 #define PHP_RUNKIT_DEL_MAGIC_METHOD(ce, fe)
 #endif /* ZEND_ENGINE_2 */
 #endif /* PHP_RUNKIT_MANIPULATION */

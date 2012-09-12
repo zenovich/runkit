@@ -95,7 +95,7 @@ static int php_runkit_inherit_methods(zend_function *fe, zend_class_entry *ce TS
 	}
 	efree(lower_function_name);
 
-	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, fe->common.function_name, fe);
+	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, fe->common.function_name, fe, NULL);
 
 	return ZEND_HASH_APPLY_KEEP;
 }
