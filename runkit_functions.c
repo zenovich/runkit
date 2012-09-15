@@ -289,6 +289,67 @@ void php_runkit_function_copy_ctor(zend_function *fe, const char *newname, int n
 }
 /* }}}} */
 
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+/* {{{ php_runkit_clear_function_runtime_cache */
+static int php_runkit_clear_function_runtime_cache(void *pDest TSRMLS_DC)
+{
+	zend_function *f = (zend_function *) pDest;
+
+	if (pDest == NULL || f->type != ZEND_USER_FUNCTION ||
+	    f->op_array.last_cache_slot == 0 || f->op_array.run_time_cache == NULL) {
+		return ZEND_HASH_APPLY_KEEP;
+	}
+
+	memset(f->op_array.run_time_cache, 0, (f->op_array.last_cache_slot) * sizeof(void *));
+
+	return ZEND_HASH_APPLY_KEEP;
+}
+/* }}} */
+
+/* {{{ php_runkit_clear_all_functions_runtime_cache */
+void php_runkit_clear_all_functions_runtime_cache(TSRMLS_D)
+{
+	int i, count;
+	zend_execute_data *ptr;
+	HashPosition pos;
+
+	zend_hash_apply(EG(function_table), php_runkit_clear_function_runtime_cache TSRMLS_CC);
+
+	zend_hash_internal_pointer_reset_ex(EG(class_table), &pos);
+	count = zend_hash_num_elements(EG(class_table));
+	for (i = 0; i < count; ++i) {
+		zend_class_entry **curce;
+		zend_hash_get_current_data_ex(EG(class_table), (void**)&curce, &pos);
+		zend_hash_apply(&(*curce)->function_table, php_runkit_clear_function_runtime_cache TSRMLS_CC);
+		zend_hash_move_forward_ex(EG(class_table), &pos);
+	}
+
+	for (ptr = EG(current_execute_data); ptr != NULL; ptr = ptr->prev_execute_data) {
+		if (ptr->op_array == NULL || ptr->op_array->last_cache_slot == 0 || ptr->op_array->run_time_cache == NULL) {
+			continue;
+		}
+		memset(ptr->op_array->run_time_cache, 0, (ptr->op_array->last_cache_slot) * sizeof(void*));
+	}
+
+	if (!EG(objects_store).object_buckets) {
+		return;
+	}
+
+	for (i = 1; i < EG(objects_store).top ; i++) {
+		if (EG(objects_store).object_buckets[i].valid && (!EG(objects_store).object_buckets[i].destructor_called) &&
+		   EG(objects_store).object_buckets[i].bucket.obj.object) {
+			zend_object *object;
+			object = (zend_object *) EG(objects_store).object_buckets[i].bucket.obj.object;
+			if (object->ce == zend_ce_closure) {
+				zend_closure *cl = (zend_closure *) object;
+				php_runkit_clear_function_runtime_cache((void*) &cl->func TSRMLS_CC);
+			}
+		}
+	}
+}
+/* }}} */
+#endif
+
 /* {{{ php_runkit_generate_lambda_method
 	Heavily borrowed from ZEND_FUNCTION(create_function) */
 int php_runkit_generate_lambda_method(const char *arguments, int arguments_len, const char *phpcode, int phpcode_len, zend_function **pfe TSRMLS_DC)
@@ -451,6 +512,10 @@ PHP_FUNCTION(runkit_function_remove)
 	result = (zend_hash_del(EG(function_table), funcname_lower, funcname_len + 1) == SUCCESS);
 	efree(funcname_lower);
 
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+	php_runkit_clear_all_functions_runtime_cache(TSRMLS_C);
+#endif
+
 	RETURN_BOOL(result);
 }
 /* }}} */
@@ -524,6 +589,10 @@ PHP_FUNCTION(runkit_function_rename)
 	}
 	efree(dfunc_lower);
 
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+	php_runkit_clear_all_functions_runtime_cache(TSRMLS_C);
+#endif
+
 	RETURN_TRUE;
 }
 /* }}} */
@@ -577,6 +646,10 @@ PHP_FUNCTION(runkit_function_redefine)
 	retval = zend_eval_string(delta, NULL, delta_desc TSRMLS_CC);
 	efree(delta_desc);
 	efree(delta);
+
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+	php_runkit_clear_all_functions_runtime_cache(TSRMLS_C);
+#endif
 
 	RETURN_BOOL(retval == SUCCESS);
 }

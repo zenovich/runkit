@@ -181,6 +181,9 @@ extern ZEND_DECLARE_MODULE_GLOBALS(runkit);
 /* runkit_functions.c */
 #define RUNKIT_TEMP_FUNCNAME  "__runkit_temporary_function__"
 int php_runkit_check_call_stack(zend_op_array *op_array TSRMLS_DC);
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+void php_runkit_clear_all_functions_runtime_cache(TSRMLS_D);
+#endif
 void php_runkit_function_copy_ctor(zend_function *fe, const char *newname, int newname_len TSRMLS_DC);
 int php_runkit_generate_lambda_method(const char *arguments, int arguments_len, const char *phpcode, int phpcode_len, zend_function **pfe TSRMLS_DC);
 int php_runkit_destroy_misplaced_functions(void *pDest TSRMLS_DC);

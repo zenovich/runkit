@@ -72,10 +72,13 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_function_add.phpt" role="test" />
     <file name="runkit_function_copy.phpt" role="test" />
     <file name="runkit_function_redefine.phpt" role="test" />
+    <file name="runkit_function_redefine_from_anonymous.phpt" role="test" />
     <file name="runkit_function_remove.phpt" role="test" />
     <file name="runkit_function_rename.phpt" role="test" />
     <file name="runkit_function_rename_internal.phpt" role="test" />
     <file name="runkit_function_rename_redefine_add_remove.phpt" role="test" />
+    <file name="runkit_functions_redefining_and_cache.inc" role="test" />
+    <file name="runkit_functions_redefining_and_cache.phpt" role="test" />
     <file name="runkit_import_class.inc" role="test" />
     <file name="runkit_import_class.phpt" role="test" />
     <file name="runkit_import_constant_properties.inc" role="test" />
@@ -99,6 +102,8 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_method_remove.phpt" role="test" />
     <file name="runkit_method_rename.phpt" role="test" />
     <file name="runkit_method_rename_inheritance.phpt" role="test" />
+    <file name="runkit_methods_redefining_and_cache.inc" role="test" />
+    <file name="runkit_methods_redefining_and_cache.phpt" role="test" />
     <file name="runkit_return_value_used.phpt" role="test" />
     <file name="runkit_zval_inspect.phpt" role="test" />
     <file name="Runkit_Sandbox_.active.phpt" role="test" />
