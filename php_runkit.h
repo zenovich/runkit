@@ -326,7 +326,7 @@ struct _php_runkit_sandbox_object {
 #define PHP_RUNKIT_SPLIT_PN(classname, classname_len, pnname, pnname_len) { \
 	char *colon; \
 \
-	if ((colon = memchr((pnname), ':', (pnname_len) - 2)) && (colon[1] == ':')) { \
+	if ((pnname_len) > 3 && (colon = memchr((pnname), ':', (pnname_len) - 2)) && (colon[1] == ':')) { \
 		(classname) = (pnname); \
 		(classname_len) = colon - (classname); \
 		(pnname) = colon + 2; \
