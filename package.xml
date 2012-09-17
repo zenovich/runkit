@@ -32,6 +32,8 @@ Execute code in restricted environment (sandboxing).
          + PHP 5.4 is now fully supported
          + Introduced new function "runkit_default_property_remove" (Thanks to Juhan Kundla)
          + Ability to add non-scalar default properties was added
+         + Magic methods __isset, __unset, __callStatic, and __toString are now supported.
+         + Functions runkit_class_adopt &amp; runkit_class_emancipate now change class-hierarchy (issue #13)
 
      Critical fixes:
          * Crash on sandbox creation when register_globals is switched on was fixed
@@ -39,6 +41,8 @@ Execute code in restricted environment (sandboxing).
 
      Fixes:
          * Crash on syntax error in source file importing with runkit_import was fixed
+         * All ways of adding and removing magic methods and old-style constructors
+           were reworked and corrected (Thanks to Anthony Dovgal for issue #35).
          * Side affect of redefining, adding and removing class constant (Issue #25) was fixed
          * Adding of non-lowercase default properties was fixed (removed lowercasing)
          * Skip the leading slash in class names
@@ -60,6 +64,14 @@ Execute code in restricted environment (sandboxing).
  <contents>
   <dir name="/">
    <dir name="tests">
+    <file name="runkit_add_magic_methods.phpt" role="test" />
+    <file name="runkit_add_old_style_ctor.phpt" role="test" />
+    <file name="runkit_add_old_style_ctor1.phpt" role="test" />
+    <file name="runkit_add_old_style_ctor_by_adopting.phpt" role="test" />
+    <file name="runkit_add_old_style_ctor_by_copying.phpt" role="test" />
+    <file name="runkit_add_old_style_ctor_by_importing.inc" role="test" />
+    <file name="runkit_add_old_style_ctor_by_importing.phpt" role="test" />
+    <file name="runkit_adopt_emancipate_and_inheritance.phpt" role="test" />
     <file name="runkit_class_adopt.phpt" role="test" />
     <file name="runkit_class_emancipate.phpt" role="test" />
     <file name="runkit_constant_add.phpt" role="test" />
