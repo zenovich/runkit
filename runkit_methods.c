@@ -407,7 +407,7 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 #ifdef ZEND_ENGINE_2
 	long flags = ZEND_ACC_PUBLIC;
 #else
-	long flags; /* dummy variable */
+	long flags = 0;
 #endif
 
 	if (zend_parse_parameters(argc TSRMLS_CC, "s/s/ss|l",
@@ -418,12 +418,6 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 	                          &flags) == FAILURE) {
 		RETURN_FALSE;
 	}
-
-#ifndef ZEND_ENGINE_2
-	if (argc > 4) {
-		php_error_docref(NULL TSRMLS_CC, E_NOTICE, "Flags parameter ignored in PHP versions prior to 5.0.0");
-	}
-#endif
 
 	if (!classname_len || !methodname_len) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Empty parameter given");
@@ -458,7 +452,9 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 		ancestor_class = ce;
 	}
 
-	if (php_runkit_generate_lambda_method(arguments, arguments_len, phpcode, phpcode_len, &fe TSRMLS_CC) == FAILURE) {
+	if (php_runkit_generate_lambda_method(arguments, arguments_len, phpcode, phpcode_len, &fe,
+	                                      (flags & PHP_RUNKIT_ACC_RETURN_REFERENCE) == PHP_RUNKIT_ACC_RETURN_REFERENCE
+	                                      TSRMLS_CC) == FAILURE) {
 		efree(methodname_lower);
 		RETURN_FALSE;
 	}

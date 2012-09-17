@@ -162,6 +162,12 @@ extern ZEND_DECLARE_MODULE_GLOBALS(runkit);
 #     define zend_hash_quick_del(ht, key, key_len, h) zend_hash_del(ht, key, key_len)
 #endif
 
+#ifdef ZEND_ACC_RETURN_REFERENCE
+#     define PHP_RUNKIT_ACC_RETURN_REFERENCE         ZEND_ACC_RETURN_REFERENCE
+#else
+#     define PHP_RUNKIT_ACC_RETURN_REFERENCE         0x4000000
+#endif
+
 #ifndef ALLOC_PERMANENT_ZVAL
 # define ALLOC_PERMANENT_ZVAL(z) \
     (z) = (zval*)malloc(sizeof(zval))
@@ -185,7 +191,8 @@ int php_runkit_check_call_stack(zend_op_array *op_array TSRMLS_DC);
 void php_runkit_clear_all_functions_runtime_cache(TSRMLS_D);
 #endif
 void php_runkit_function_copy_ctor(zend_function *fe, const char *newname, int newname_len TSRMLS_DC);
-int php_runkit_generate_lambda_method(const char *arguments, int arguments_len, const char *phpcode, int phpcode_len, zend_function **pfe TSRMLS_DC);
+int php_runkit_generate_lambda_method(const char *arguments, int arguments_len, const char *phpcode, int phpcode_len,
+                                      zend_function **pfe, zend_bool return_ref TSRMLS_DC);
 int php_runkit_destroy_misplaced_functions(void *pDest TSRMLS_DC);
 int php_runkit_restore_internal_functions(RUNKIT_53_TSRMLS_ARG(void *pDest), int num_args, va_list args, zend_hash_key *hash_key);
 int php_runkit_clean_zval(zval **val TSRMLS_DC);

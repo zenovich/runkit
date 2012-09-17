@@ -352,18 +352,20 @@ void php_runkit_clear_all_functions_runtime_cache(TSRMLS_D)
 
 /* {{{ php_runkit_generate_lambda_method
 	Heavily borrowed from ZEND_FUNCTION(create_function) */
-int php_runkit_generate_lambda_method(const char *arguments, int arguments_len, const char *phpcode, int phpcode_len, zend_function **pfe TSRMLS_DC)
+int php_runkit_generate_lambda_method(const char *arguments, int arguments_len, const char *phpcode, int phpcode_len,
+                                      zend_function **pfe, zend_bool return_ref TSRMLS_DC)
 {
 	char *eval_code, *eval_name;
 	int eval_code_length;
 
-	eval_code_length = sizeof("function " RUNKIT_TEMP_FUNCNAME) + arguments_len + 4 + phpcode_len;
+	eval_code_length = sizeof("function " RUNKIT_TEMP_FUNCNAME) + arguments_len + 4 + phpcode_len + return_ref;
 	eval_code = (char*)emalloc(eval_code_length);
-	snprintf(eval_code, eval_code_length, "function " RUNKIT_TEMP_FUNCNAME "(%s){%s}", arguments, phpcode);
+	snprintf(eval_code, eval_code_length, "function %s" RUNKIT_TEMP_FUNCNAME "(%s){%s}", (return_ref ? "&" : ""), arguments, phpcode);
 	eval_name = zend_make_compiled_string_description("runkit runtime-created function" TSRMLS_CC);
 	if (zend_eval_string(eval_code, NULL, eval_name TSRMLS_CC) == FAILURE) {
 		efree(eval_code);
 		efree(eval_name);
+		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Cannot create temporary function");
 		return FAILURE;
 	}
 	efree(eval_code);
@@ -430,7 +432,7 @@ int php_runkit_restore_internal_functions(RUNKIT_53_TSRMLS_ARG(void *pDest), int
    * Functions API *
    ***************** */
 
-/* {{{ proto bool runkit_function_add(string funcname, string arglist, string code)
+/* {{{ proto bool runkit_function_add(string funcname, string arglist, string code[, bool return_reference = FALSE])
 	Add a new function, similar to create_function, but allows specifying name
 	There's nothing about this function that's better than eval(), it's here for completeness */
 PHP_FUNCTION(runkit_function_add)
@@ -439,14 +441,16 @@ PHP_FUNCTION(runkit_function_add)
 	PHP_RUNKIT_DECL_STRING_PARAM(funcname_lower)
 	PHP_RUNKIT_DECL_STRING_PARAM(arglist)
 	PHP_RUNKIT_DECL_STRING_PARAM(code)
+	zend_bool return_ref = 0;
 	char *delta = NULL, *delta_desc;
 	int retval;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
-			PHP_RUNKIT_STRING_SPEC "/" PHP_RUNKIT_STRING_SPEC PHP_RUNKIT_STRING_SPEC,
+			PHP_RUNKIT_STRING_SPEC "/" PHP_RUNKIT_STRING_SPEC PHP_RUNKIT_STRING_SPEC "|b",
 			PHP_RUNKIT_STRING_PARAM(funcname),
 			PHP_RUNKIT_STRING_PARAM(arglist),
-			PHP_RUNKIT_STRING_PARAM(code)) == FAILURE) {
+			PHP_RUNKIT_STRING_PARAM(code),
+			&return_ref) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -466,13 +470,14 @@ PHP_FUNCTION(runkit_function_add)
 	}
 
 #if PHP_MAJOR_VERSION >= 6
-	spprintf(&delta, 0, "function %R(%R){%R}", funcname_type, funcname, arglist_type, arglist, code_type, code);
+	spprintf(&delta, 0, "function %s%R(%R){%R}", return_ref ? "&" : "", funcname_type, funcname, arglist_type, arglist, code_type, code);
 #else
-	spprintf(&delta, 0, "function %s(%s){%s}", funcname, arglist, code);
+	spprintf(&delta, 0, "function %s%s(%s){%s}", return_ref ? "&" : "", funcname, arglist, code);
 #endif
 
 	if (!delta) {
 		efree(funcname_lower);
+		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
 		RETURN_FALSE;
 	}
 
@@ -605,14 +610,16 @@ PHP_FUNCTION(runkit_function_redefine)
 	PHP_RUNKIT_DECL_STRING_PARAM(funcname_lower)
 	PHP_RUNKIT_DECL_STRING_PARAM(arglist)
 	PHP_RUNKIT_DECL_STRING_PARAM(code)
+	zend_bool return_ref = 0;
 	char *delta = NULL, *delta_desc;
 	int retval;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
-			PHP_RUNKIT_STRING_SPEC "/" PHP_RUNKIT_STRING_SPEC PHP_RUNKIT_STRING_SPEC,
+			PHP_RUNKIT_STRING_SPEC "/" PHP_RUNKIT_STRING_SPEC PHP_RUNKIT_STRING_SPEC "|b",
 			PHP_RUNKIT_STRING_PARAM(funcname),
 			PHP_RUNKIT_STRING_PARAM(arglist),
-			PHP_RUNKIT_STRING_PARAM(code)) == FAILURE) {
+			PHP_RUNKIT_STRING_PARAM(code),
+			&return_ref) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -636,9 +643,10 @@ PHP_FUNCTION(runkit_function_redefine)
 	}
 	efree(funcname_lower);
 
-	spprintf(&delta, 0, "function %s(%s){%s}", funcname, arglist, code);
+	spprintf(&delta, 0, "function %s%s(%s){%s}", return_ref ? "&" : "", funcname, arglist, code);
 
 	if (!delta) {
+		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
 		RETURN_FALSE;
 	}
 

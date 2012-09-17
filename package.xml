@@ -34,6 +34,9 @@ Execute code in restricted environment (sandboxing).
          + Ability to add non-scalar default properties was added
          + Magic methods __isset, __unset, __callStatic, and __toString are now supported.
          + Functions runkit_class_adopt &amp; runkit_class_emancipate now change class-hierarchy (issue #13)
+         + Adding and redefining functions and methods, which return references, were fully implemented
+           New optional argument 'return_ref' of functions runkit_function_add and runkit_function_redefine was introduced
+           New constant RUNKIT_ACC_RETURN_REFERENCE was introduced for use with functions runkit_method_add and runkit_method_redefine
 
      Critical fixes:
          * Crash on sandbox creation when register_globals is switched on was fixed
@@ -93,6 +96,7 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_function_rename_redefine_add_remove.phpt" role="test" />
     <file name="runkit_functions_redefining_and_cache.inc" role="test" />
     <file name="runkit_functions_redefining_and_cache.phpt" role="test" />
+    <file name="runkit_functions_returning_by_reference.phpt" role="test" />
     <file name="runkit_import_class.inc" role="test" />
     <file name="runkit_import_class.phpt" role="test" />
     <file name="runkit_import_constant_properties.inc" role="test" />
@@ -118,6 +122,7 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_method_rename_inheritance.phpt" role="test" />
     <file name="runkit_methods_redefining_and_cache.inc" role="test" />
     <file name="runkit_methods_redefining_and_cache.phpt" role="test" />
+    <file name="runkit_methods_returning_by_reference.phpt" role="test" />
     <file name="runkit_return_value_used.phpt" role="test" />
     <file name="runkit_zval_inspect.phpt" role="test" />
     <file name="Runkit_Sandbox_.active.phpt" role="test" />
