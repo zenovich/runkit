@@ -300,7 +300,7 @@ int php_runkit_update_children_methods(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce
 			/* This method was defined below our current level, leave it be */
 #ifdef ZEND_ENGINE_2
 			cfe->common.prototype = _php_runkit_get_method_prototype(scope->parent, fname, fname_len TSRMLS_CC);
-			zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 7, ancestor_class, ce, fe, fname, fname_len, orig_fe, add_or_update);
+			zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 7, ancestor_class, ce, fe, fname, fname_len, orig_fe, 0);
 #endif
 			efree(fname_lower);
 			return ZEND_HASH_APPLY_KEEP;
