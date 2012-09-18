@@ -468,9 +468,6 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 	efree((void *)func.common.function_name);
 	func.common.function_name = estrndup(methodname, methodname_len);
 #ifdef ZEND_ENGINE_2
-	func.common.scope = ce;
-	func.common.prototype = _php_runkit_get_method_prototype(ce, methodname, methodname_len TSRMLS_CC);
-
 	if (flags & ZEND_ACC_PRIVATE) {
 		func.common.fn_flags &= ~ZEND_ACC_PPP_MASK;
 		func.common.fn_flags |= ZEND_ACC_PRIVATE;
@@ -518,6 +515,11 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 		RETURN_FALSE;
 	}
 
+#ifdef ZEND_ENGINE_2
+	fe->common.scope = ce;
+	fe->common.prototype = _php_runkit_get_method_prototype(ce, methodname, methodname_len TSRMLS_CC);
+#endif
+
 	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, methodname_lower, methodname_len, fe, orig_fe);
 #if PHP_MAJOR_VERSION >= 5
 	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 7,
@@ -563,16 +565,16 @@ static int php_runkit_method_copy(const char *dclass, int dclass_len, const char
 	dfe = *sfe;
 	php_runkit_function_copy_ctor(&dfe, dfunc, dfunc_len TSRMLS_CC);
 
-#ifdef ZEND_ENGINE_2
-	dfe.common.scope = dce;
-	dfe.common.prototype = _php_runkit_get_method_prototype(dce, dfunc, dfunc_len TSRMLS_CC);
-#endif
-
 	if (zend_hash_add(&dce->function_table, dfunc_lower, dfunc_len + 1, &dfe, sizeof(zend_function), (void **) &dfeInHashTable) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error adding method to class %s::%s()", dclass, dfunc);
 		efree(dfunc_lower);
 		return FAILURE;
 	}
+
+#ifdef ZEND_ENGINE_2
+	dfeInHashTable->common.scope = dce;
+	dfeInHashTable->common.prototype = _php_runkit_get_method_prototype(dce, dfunc, dfunc_len TSRMLS_CC);
+#endif
 
 	PHP_RUNKIT_ADD_MAGIC_METHOD(dce, dfunc_lower, dfunc_len, dfeInHashTable, NULL);
 
