@@ -132,7 +132,7 @@ static inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_object *ob
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4) || (PHP_MAJOR_VERSION < 5)
 	/* safe_mode only goes on */
 	if (!safe_mode &&
-		zend_hash_find(options, "safe_mode", sizeof("safe_mode"), (void**)&tmpzval) == SUCCESS) {
+		zend_hash_find(options, "safe_mode", sizeof("safe_mode"), (void*)&tmpzval) == SUCCESS) {
 		zval copyval = **tmpzval;
 
 		zval_copy_ctor(&copyval);
@@ -145,7 +145,7 @@ static inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_object *ob
 
 	/* safe_mode_gid only goes off */
 	if (safe_mode_gid &&
-		zend_hash_find(options, "safe_mode_gid", sizeof("safe_mode_gid"), (void**)&tmpzval) == SUCCESS) {
+		zend_hash_find(options, "safe_mode_gid", sizeof("safe_mode_gid"), (void*)&tmpzval) == SUCCESS) {
 		zval copyval = **tmpzval;
 
 		zval_copy_ctor(&copyval);
@@ -157,7 +157,7 @@ static inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_object *ob
 	}
 
 	/* safe_mode_include_dir can go deeper, or be set to blank (which means nowhere is includable) */
-	if (zend_hash_find(options, "safe_mode_include_dir", sizeof("safe_mode_include_dir"), (void**)&tmpzval) == SUCCESS &&
+	if (zend_hash_find(options, "safe_mode_include_dir", sizeof("safe_mode_include_dir"), (void*)&tmpzval) == SUCCESS &&
 		Z_TYPE_PP(tmpzval) == IS_STRING) {
 
 		if (Z_STRLEN_PP(tmpzval) == 0) {
@@ -187,7 +187,7 @@ static inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_object *ob
 	}
 #endif
 	/* open_basedir goes deeper only */
-	if (zend_hash_find(options, "open_basedir", sizeof("open_basedir"), (void**)&tmpzval) == SUCCESS &&
+	if (zend_hash_find(options, "open_basedir", sizeof("open_basedir"), (void*)&tmpzval) == SUCCESS &&
 		Z_TYPE_PP(tmpzval) == IS_STRING) {
 		char new_basedir[MAXPATHLEN];
 		int open_basedir_len = strlen(open_basedir);
@@ -209,7 +209,7 @@ static inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_object *ob
 
 	/* allow_url_fopen goes off only */
 	if (allow_url_fopen &&
-		zend_hash_find(options, "allow_url_fopen", sizeof("allow_url_fopen"), (void**)&tmpzval) == SUCCESS) {
+		zend_hash_find(options, "allow_url_fopen", sizeof("allow_url_fopen"), (void*)&tmpzval) == SUCCESS) {
 		zval copyval = **tmpzval;
 
 		zval_copy_ctor(&copyval);
@@ -221,7 +221,7 @@ static inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_object *ob
 	}
 
 	/* Can only disable additional functions */
-	if (zend_hash_find(options, "disable_functions", sizeof("disable_functions"), (void**)&tmpzval) == SUCCESS &&
+	if (zend_hash_find(options, "disable_functions", sizeof("disable_functions"), (void*)&tmpzval) == SUCCESS &&
 		Z_TYPE_PP(tmpzval) == IS_STRING) {
 		/* NOTE: disable_functions doesn't prevent $obj->function_name, it only blocks code inside $obj->eval() statements
 		 * This could be brought into consistency, but I actually think it's okay to leave those functions available to calling script
@@ -242,7 +242,7 @@ static inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_object *ob
 	}
 
 	/* Can only disable additional classes */
-	if (zend_hash_find(options, "disable_classes", sizeof("disable_classes"), (void**)&tmpzval) == SUCCESS &&
+	if (zend_hash_find(options, "disable_classes", sizeof("disable_classes"), (void*)&tmpzval) == SUCCESS &&
 		Z_TYPE_PP(tmpzval) == IS_STRING) {
 		/* This buffer needs to be around when the error message occurs since the underlying implementation in Zend expects it to be */
 		int disable_classes_len = Z_STRLEN_PP(tmpzval);
@@ -260,7 +260,7 @@ static inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_object *ob
 	}
 
 	/* Additional superglobals to define */
-	if (zend_hash_find(options, "runkit.superglobal", sizeof("runkit.superglobal"), (void**)&tmpzval) == SUCCESS &&
+	if (zend_hash_find(options, "runkit.superglobal", sizeof("runkit.superglobal"), (void*)&tmpzval) == SUCCESS &&
 		Z_TYPE_PP(tmpzval) == IS_STRING) {
 		char *p, *s = Z_STRVAL_PP(tmpzval);
 		int len;
@@ -294,7 +294,7 @@ static inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_object *ob
 	}
 
 	/* May only turn off */
-	if (zend_hash_find(options, "runkit.internal_override", sizeof("runkit.internal_override"), (void**)&tmpzval) == SUCCESS) {
+	if (zend_hash_find(options, "runkit.internal_override", sizeof("runkit.internal_override"), (void*)&tmpzval) == SUCCESS) {
 		zval copyval = **tmpzval;
 
 		zval_copy_ctor(&copyval);
@@ -401,7 +401,7 @@ PHP_METHOD(Runkit_Sandbox,__call)
 
 			sandbox_args = safe_emalloc(sizeof(zval**), argc, 0);
 			for(zend_hash_internal_pointer_reset_ex(Z_ARRVAL_P(args), &pos), i = 0;
-				(zend_hash_get_current_data_ex(Z_ARRVAL_P(args), (void**)&tmpzval, &pos) == SUCCESS) && (i < argc);
+				(zend_hash_get_current_data_ex(Z_ARRVAL_P(args), (void*)&tmpzval, &pos) == SUCCESS) && (i < argc);
 				zend_hash_move_forward_ex(Z_ARRVAL_P(args), &pos), i++) {
 				sandbox_args[i] = emalloc(sizeof(zval*));
 				MAKE_STD_ZVAL(*sandbox_args[i]);
@@ -521,7 +521,7 @@ static void php_runkit_sandbox_include_or_eval(INTERNAL_FUNCTION_PARAMETERS, int
 					if (!file_handle.opened_path) {
 						file_handle.opened_path = estrndup(Z_STRVAL_P(zcode), Z_STRLEN_P(zcode));
 					}
-					if (zend_hash_add(&EG(included_files), file_handle.opened_path, strlen(file_handle.opened_path)+1, (void *)&dummy, sizeof(int), NULL)==SUCCESS) {
+					if (zend_hash_add(&EG(included_files), file_handle.opened_path, strlen(file_handle.opened_path)+1, (void*)&dummy, sizeof(int), NULL)==SUCCESS) {
 						op_array = zend_compile_file(&file_handle, type TSRMLS_CC);
 						zend_destroy_file_handle(&file_handle TSRMLS_CC);
 					} else {
@@ -766,7 +766,7 @@ static zval *php_runkit_sandbox_read_property(zval *object, zval *member, int ty
 		zend_try {
 			zval **value;
 
-			if (zend_hash_find(&EG(symbol_table), Z_STRVAL_P(member), Z_STRLEN_P(member) + 1, (void**)&value) == SUCCESS) {
+			if (zend_hash_find(&EG(symbol_table), Z_STRVAL_P(member), Z_STRLEN_P(member) + 1, (void*)&value) == SUCCESS) {
 				retval = **value;
 				prop_found = 1;
 			}
@@ -878,7 +878,7 @@ static int php_runkit_sandbox_has_property(zval *object, zval *member, int has_s
 	{
 		zval **tmpzval;
 
-		if (zend_hash_find(&EG(symbol_table), Z_STRVAL_P(member), Z_STRLEN_P(member) + 1, (void**)&tmpzval) == SUCCESS) {
+		if (zend_hash_find(&EG(symbol_table), Z_STRVAL_P(member), Z_STRLEN_P(member) + 1, (void*)&tmpzval) == SUCCESS) {
 			switch (has_set_exists) {
 				case 0:
 					result = (Z_TYPE_PP(tmpzval) != IS_NULL);

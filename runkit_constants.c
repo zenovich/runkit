@@ -26,11 +26,11 @@
  */
 static int php_runkit_fetch_const(char *cname, int cname_len, zend_constant **constant TSRMLS_DC)
 {
-	if (zend_hash_find(EG(zend_constants), cname, cname_len + 1, (void**)constant) == FAILURE) {
+	if (zend_hash_find(EG(zend_constants), cname, cname_len + 1, (void*)constant) == FAILURE) {
 		char *lcase;
 
 		lcase = estrndup(cname, cname_len);
-		if (zend_hash_find(EG(zend_constants), lcase, cname_len + 1, (void**)constant) == FAILURE) {
+		if (zend_hash_find(EG(zend_constants), lcase, cname_len + 1, (void*)constant) == FAILURE) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Constant %s not found", cname);
 			efree(lcase);
 			return FAILURE;

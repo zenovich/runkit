@@ -43,7 +43,7 @@ int php_runkit_check_call_stack(zend_op_array *op_array TSRMLS_DC)
 
 static void php_runkit_hash_key_dtor(void *hash_key)
 {
-	efree((void *) PHP_RUNKIT_HASH_KEY((zend_hash_key*)hash_key));
+	efree((void*) PHP_RUNKIT_HASH_KEY((zend_hash_key*)hash_key));
 }
 
 /* Maintain order */
@@ -66,7 +66,7 @@ static int php_runkit_fetch_function(int fname_type, const char *fname, int fnam
 	}
 	PHP_RUNKIT_STRTOLOWER(fname_lower);
 
-	if (zend_hash_find(EG(function_table), fname_lower, fname_len + 1, (void**)&fe) == FAILURE) {
+	if (zend_hash_find(EG(function_table), fname_lower, fname_len + 1, (void*)&fe) == FAILURE) {
 		efree(fname_lower);
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s() not found", fname);
 		return FAILURE;
@@ -300,7 +300,7 @@ static int php_runkit_clear_function_runtime_cache(void *pDest TSRMLS_DC)
 		return ZEND_HASH_APPLY_KEEP;
 	}
 
-	memset(f->op_array.run_time_cache, 0, (f->op_array.last_cache_slot) * sizeof(void *));
+	memset(f->op_array.run_time_cache, 0, (f->op_array.last_cache_slot) * sizeof(void*));
 
 	return ZEND_HASH_APPLY_KEEP;
 }
@@ -319,7 +319,7 @@ void php_runkit_clear_all_functions_runtime_cache(TSRMLS_D)
 	count = zend_hash_num_elements(EG(class_table));
 	for (i = 0; i < count; ++i) {
 		zend_class_entry **curce;
-		zend_hash_get_current_data_ex(EG(class_table), (void**)&curce, &pos);
+		zend_hash_get_current_data_ex(EG(class_table), (void*)&curce, &pos);
 		zend_hash_apply(&(*curce)->function_table, php_runkit_clear_function_runtime_cache TSRMLS_CC);
 		zend_hash_move_forward_ex(EG(class_table), &pos);
 	}
@@ -371,7 +371,7 @@ int php_runkit_generate_lambda_method(const char *arguments, int arguments_len, 
 	efree(eval_code);
 	efree(eval_name);
 
-	if (zend_hash_find(EG(function_table), RUNKIT_TEMP_FUNCNAME, sizeof(RUNKIT_TEMP_FUNCNAME), (void **)pfe) == FAILURE) {
+	if (zend_hash_find(EG(function_table), RUNKIT_TEMP_FUNCNAME, sizeof(RUNKIT_TEMP_FUNCNAME), (void*)pfe) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Unexpected inconsistency during create_function");
 		return FAILURE;
 	}
@@ -582,7 +582,7 @@ PHP_FUNCTION(runkit_function_rename)
 	efree(sfunc_lower);
 
 	if (func.type == ZEND_USER_FUNCTION) {
-		efree((void *) func.common.function_name);
+		efree((void*) func.common.function_name);
 		func.common.function_name = estrndup(dfunc, dfunc_len);
 	}
 

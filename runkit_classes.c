@@ -102,7 +102,7 @@ static int php_runkit_inherit_methods(zend_function *fe, zend_class_entry *ce TS
 		return ZEND_HASH_APPLY_KEEP;
 	}
 
-	if (zend_hash_find(&ce->function_table, lower_function_name, function_name_len + 1, (void**)&fe) == FAILURE ||
+	if (zend_hash_find(&ce->function_table, lower_function_name, function_name_len + 1, (void*)&fe) == FAILURE ||
 	    !fe) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to locate newly added method");
 		efree(lower_function_name);

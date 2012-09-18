@@ -94,7 +94,7 @@ static HashTable *php_runkit_sandbox_parent_resolve_symbol_table(php_runkit_sand
 		if (objval->self->parent_scope_name) {
 			zval **symtable;
 
-			if (zend_hash_find(ht, objval->self->parent_scope_name, objval->self->parent_scope_namelen + 1, (void**)&symtable) == SUCCESS) {
+			if (zend_hash_find(ht, objval->self->parent_scope_name, objval->self->parent_scope_namelen + 1, (void*)&symtable) == SUCCESS) {
 				if (Z_TYPE_PP(symtable) == IS_ARRAY) {
 					ht = Z_ARRVAL_PP(symtable);
 				} else {
@@ -203,7 +203,7 @@ PHP_METHOD(Runkit_Sandbox_Parent,__call)
 
 		sandbox_args = safe_emalloc(sizeof(zval**), argc, 0);
 		for(zend_hash_internal_pointer_reset_ex(Z_ARRVAL_P(args), &pos), i = 0;
-			(zend_hash_get_current_data_ex(Z_ARRVAL_P(args), (void**)&tmpzval, &pos) == SUCCESS) && (i < argc);
+			(zend_hash_get_current_data_ex(Z_ARRVAL_P(args), (void*)&tmpzval, &pos) == SUCCESS) && (i < argc);
 			zend_hash_move_forward_ex(Z_ARRVAL_P(args), &pos), i++) {
 			sandbox_args[i] = emalloc(sizeof(zval*));
 			MAKE_STD_ZVAL(*sandbox_args[i]);
@@ -298,7 +298,7 @@ static void php_runkit_sandbox_parent_include_or_eval(INTERNAL_FUNCTION_PARAMETE
 				if (!file_handle.opened_path) {
 					file_handle.opened_path = estrndup(Z_STRVAL_P(zcode), Z_STRLEN_P(zcode));
 				}
-				if (zend_hash_add(&EG(included_files), file_handle.opened_path, strlen(file_handle.opened_path)+1, (void *)&dummy, sizeof(int), NULL)==SUCCESS) {
+				if (zend_hash_add(&EG(included_files), file_handle.opened_path, strlen(file_handle.opened_path)+1, (void*)&dummy, sizeof(int), NULL)==SUCCESS) {
 					op_array = zend_compile_file(&file_handle, type TSRMLS_CC);
 					zend_destroy_file_handle(&file_handle TSRMLS_CC);
 				} else {
@@ -543,7 +543,7 @@ static zval *php_runkit_sandbox_parent_read_property(zval *object, zval *member,
 	PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval)
 		zval **value;
 
-		if (zend_hash_find(php_runkit_sandbox_parent_resolve_symbol_table(objval TSRMLS_CC), Z_STRVAL_P(member), Z_STRLEN_P(member) + 1, (void**)&value) == SUCCESS) {
+		if (zend_hash_find(php_runkit_sandbox_parent_resolve_symbol_table(objval TSRMLS_CC), Z_STRVAL_P(member), Z_STRLEN_P(member) + 1, (void*)&value) == SUCCESS) {
 			retval = **value;
 			prop_found = 1;
 		}
@@ -651,7 +651,7 @@ static int php_runkit_sandbox_parent_has_property(zval *object, zval *member, in
 	{
 		zval **tmpzval;
 
-		if (zend_hash_find(php_runkit_sandbox_parent_resolve_symbol_table(objval TSRMLS_CC), Z_STRVAL_P(member), Z_STRLEN_P(member) + 1, (void**)&tmpzval) == SUCCESS) {
+		if (zend_hash_find(php_runkit_sandbox_parent_resolve_symbol_table(objval TSRMLS_CC), Z_STRVAL_P(member), Z_STRLEN_P(member) + 1, (void*)&tmpzval) == SUCCESS) {
 			switch (has_set_exists) {
 				case 0:
 					result = (Z_TYPE_PP(tmpzval) != IS_NULL);

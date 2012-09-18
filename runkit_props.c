@@ -113,7 +113,7 @@ int php_runkit_def_prop_add_int(zend_class_entry *ce, const char *propname, int 
 #endif // PHP_MAJOR_VERSION >= 5
 
 #if PHP_MAJOR_VERSION >= 5
-	if (zend_hash_quick_find(&ce->properties_info, (char *) propname, propname_len + 1, h, (void **) &prop_info_ptr) == SUCCESS && !override) {
+	if (zend_hash_quick_find(&ce->properties_info, (char *) propname, propname_len + 1, h, (void*) &prop_info_ptr) == SUCCESS && !override) {
 		zval_ptr_dtor(&pcopyval);
 		php_error_docref(NULL TSRMLS_CC, E_NOTICE, "%s%s%s already exists, not importing",
 		                 ce->name, (prop_info_ptr->flags & ZEND_ACC_STATIC) ? "::" : "->", propname);
@@ -150,7 +150,7 @@ int php_runkit_def_prop_add_int(zend_class_entry *ce, const char *propname, int 
 	}
 
 	if (ce != definer_class) {
-		if (zend_hash_quick_find(&ce->properties_info, (char *) propname, propname_len + 1, h, (void **) &prop_info_ptr) != SUCCESS) {
+		if (zend_hash_quick_find(&ce->properties_info, (char *) propname, propname_len + 1, h, (void*) &prop_info_ptr) != SUCCESS) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot find just added property's info");
 			return FAILURE;
 		}
@@ -166,17 +166,17 @@ int php_runkit_def_prop_add_int(zend_class_entry *ce, const char *propname, int 
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION <= 3) || (PHP_MAJOR_VERSION < 5)
 			zend_mangle_property_name(&oldkey, &oldkey_len, ce->name, ce->name_length, (char *) propname, propname_len, ce->type & ZEND_INTERNAL_CLASS);
 			symt = (visibility & ZEND_ACC_STATIC) ? &ce->default_static_members : &ce->default_properties;
-			if (zend_hash_find(symt, oldkey, oldkey_len + 1, (void **) &prop) != SUCCESS) {
+			if (zend_hash_find(symt, oldkey, oldkey_len + 1, (void*) &prop) != SUCCESS) {
 				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot find just added property");
 				return FAILURE;
 			}
 			Z_ADDREF_P(*prop);
 			zend_hash_update(symt, newkey, newkey_len + 1, prop, sizeof(zval *), NULL);
 			zend_hash_del(symt, oldkey, oldkey_len + 1);
-			pefree((void *)oldkey, ce->type & ZEND_INTERNAL_CLASS);
+			pefree((void*)oldkey, ce->type & ZEND_INTERNAL_CLASS);
 #endif
 #if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION <= 3
-			pefree((void *)prop_info_ptr->name, ce->type & ZEND_INTERNAL_CLASS);
+			pefree((void*)prop_info_ptr->name, ce->type & ZEND_INTERNAL_CLASS);
 #endif
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 			str_efree(prop_info_ptr->name);
@@ -204,9 +204,9 @@ int php_runkit_def_prop_add_int(zend_class_entry *ce, const char *propname, int 
 			if (object->ce == ce) {
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 				if (!object->properties_table) {
-					object->properties_table = pemalloc(sizeof(void *) * ce->default_properties_count, 0);
+					object->properties_table = pemalloc(sizeof(void*) * ce->default_properties_count, 0);
 				} else {
-					object->properties_table = perealloc(object->properties_table, sizeof(void *) * ce->default_properties_count, 0);
+					object->properties_table = perealloc(object->properties_table, sizeof(void*) * ce->default_properties_count, 0);
 				}
 				object->properties_table[ce->default_properties_count-1] = ce->default_properties_table[ce->default_properties_count-1];
 				if (object->properties_table[ce->default_properties_count-1]) {
@@ -343,7 +343,7 @@ int php_runkit_def_prop_remove_int(zend_class_entry *ce, const char *propname, i
 	zend_property_info *property_info_ptr;
 
 	h = zend_get_hash_value((char *) propname, propname_len + 1);
-	if (zend_hash_quick_find(&ce->properties_info, (char *) propname, propname_len + 1, h, (void**)&property_info_ptr) == SUCCESS) {
+	if (zend_hash_quick_find(&ce->properties_info, (char *) propname, propname_len + 1, h, (void*)&property_info_ptr) == SUCCESS) {
 		if (definer_class && property_info_ptr->ce != definer_class) {
 #if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4
 			char *private;

@@ -44,7 +44,7 @@ static int php_runkit_import_functions(HashTable *function_table, long flags
 		zend_bool add_function = 1;
 		zend_bool exists = 0;
 
-		zend_hash_get_current_data_ex(function_table, (void**)&fe, &pos);
+		zend_hash_get_current_data_ex(function_table, (void*)&fe, &pos);
 
 		new_key = fe->common.function_name;
 		new_key_len = strlen(new_key) + 1;
@@ -116,7 +116,7 @@ static int php_runkit_import_class_methods(zend_class_entry *dce, zend_class_ent
 	fn = emalloc(fn_maxlen);
 
 	zend_hash_internal_pointer_reset_ex(&ce->function_table, &pos);
-	while (zend_hash_get_current_data_ex(&ce->function_table, (void**)&fe, &pos) == SUCCESS) {
+	while (zend_hash_get_current_data_ex(&ce->function_table, (void*)&fe, &pos) == SUCCESS) {
 		zend_function *dfe = NULL;
 		int fn_len = strlen(fe->common.function_name);
 		zend_class_entry *fe_scope = php_runkit_locate_scope(ce, fe, fe->common.function_name, fn_len);
@@ -135,7 +135,7 @@ static int php_runkit_import_class_methods(zend_class_entry *dce, zend_class_ent
 		php_strtolower(fn, fn_len);
 
 		dfe = NULL;
-		if (zend_hash_find(&dce->function_table, fn, fn_len + 1, (void**)&dfe) == SUCCESS) {
+		if (zend_hash_find(&dce->function_table, fn, fn_len + 1, (void*)&dfe) == SUCCESS) {
 			zend_class_entry *scope;
 			if (!override) {
 				php_error_docref(NULL TSRMLS_CC, E_NOTICE, "%s::%s() already exists, not importing", dce->name, fe->common.function_name);
@@ -174,7 +174,7 @@ static int php_runkit_import_class_methods(zend_class_entry *dce, zend_class_ent
 			PHP_RUNKIT_FUNCTION_ADD_REF(fe);
 		}
 
-		if (zend_hash_find(&dce->function_table, fn, fn_len + 1, (void **)&fe) != SUCCESS) {
+		if (zend_hash_find(&dce->function_table, fn, fn_len + 1, (void*)&fe) != SUCCESS) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot get newly created method %s::%s()", ce->name, fn);
 			zend_hash_move_forward_ex(&ce->function_table, &pos);
 			continue;
@@ -210,7 +210,7 @@ static int php_runkit_import_class_consts(zend_class_entry *dce, zend_class_entr
 	zval **c;
 
 	zend_hash_internal_pointer_reset_ex(&ce->constants_table, &pos);
-	while (zend_hash_get_current_data_ex(&ce->constants_table, (void**)&c, &pos) == SUCCESS && c && *c) {
+	while (zend_hash_get_current_data_ex(&ce->constants_table, (void*)&c, &pos) == SUCCESS && c && *c) {
 		long action = HASH_ADD;
 
 		if (zend_hash_get_current_key_ex(&ce->constants_table, &key, &key_len, &idx, 0, &pos) == HASH_KEY_IS_STRING) {
@@ -262,7 +262,7 @@ static int php_runkit_import_class_static_props(zend_class_entry *dce, zend_clas
 	zend_property_info *property_info_ptr = NULL;
 
 	zend_hash_internal_pointer_reset_ex(&ce->properties_info, &pos);
-	while (zend_hash_get_current_data_ex(&ce->properties_info, (void**) &property_info_ptr, &pos) == SUCCESS && property_info_ptr) {
+	while (zend_hash_get_current_data_ex(&ce->properties_info, (void*) &property_info_ptr, &pos) == SUCCESS && property_info_ptr) {
 		if (zend_hash_get_current_key_ex(&ce->properties_info, &key, &key_len, &idx, 0, &pos) == HASH_KEY_IS_STRING) {
 			zval **pp;
 			zend_property_info *ex_property_info_ptr;
@@ -272,7 +272,7 @@ static int php_runkit_import_class_static_props(zend_class_entry *dce, zend_clas
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 			pp = &CE_STATIC_MEMBERS(ce)[property_info_ptr->offset];
 #else
-			zend_hash_quick_find(CE_STATIC_MEMBERS(ce), key, key_len, property_info_ptr->h, (void **) &pp);
+			zend_hash_quick_find(CE_STATIC_MEMBERS(ce), key, key_len, property_info_ptr->h, (void*) &pp);
 			if (
 				Z_TYPE_PP(pp) == IS_CONSTANT_ARRAY
 #if RUNKIT_ABOVE53
@@ -282,7 +282,7 @@ static int php_runkit_import_class_static_props(zend_class_entry *dce, zend_clas
 				zval_update_constant_ex(pp, (void*) 1, dce TSRMLS_CC);
 			}
 #endif // (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
-			if (zend_hash_find(&dce->properties_info, key, key_len, (void **) &ex_property_info_ptr) == SUCCESS && ex_property_info_ptr) {
+			if (zend_hash_find(&dce->properties_info, key, key_len, (void*) &ex_property_info_ptr) == SUCCESS && ex_property_info_ptr) {
 				if (override) {
 					if (!(ex_property_info_ptr->flags & ZEND_ACC_STATIC)) {
 						if (php_runkit_def_prop_remove_int(dce, key, key_len - 1, NULL TSRMLS_CC) != SUCCESS) {
@@ -360,7 +360,7 @@ static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry
 	zend_property_info *property_info_ptr;
 
 	zend_hash_internal_pointer_reset_ex(&ce->properties_info, &pos);
-	while (zend_hash_get_current_data_ex(&ce->properties_info, (void**) &property_info_ptr, &pos) == SUCCESS &&
+	while (zend_hash_get_current_data_ex(&ce->properties_info, (void*) &property_info_ptr, &pos) == SUCCESS &&
 	       property_info_ptr) {
 		if (zend_hash_get_current_key_ex(&ce->properties_info, &key, &key_len, &idx, 0, &pos) == HASH_KEY_IS_STRING) {
 			if (property_info_ptr->flags & ZEND_ACC_STATIC) {
@@ -386,7 +386,7 @@ static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 			p = &ce->default_properties_table[property_info_ptr->offset];
 #else
-			zend_hash_quick_find(&ce->default_properties, key, key_len, property_info_ptr->h, (void *) &p);
+			zend_hash_quick_find(&ce->default_properties, key, key_len, property_info_ptr->h, (void*) &p);
 #endif // (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 			if (
 				Z_TYPE_PP(p) == IS_CONSTANT_ARRAY
@@ -414,7 +414,7 @@ import_st54_prop_skip:
 	}
 #else // PHP_MAJOR_VERSION >= 5
 	zend_hash_internal_pointer_reset_ex(&ce->default_properties, &pos);
-	while (zend_hash_get_current_data_ex(&ce->default_properties, (void**)&p, &pos) == SUCCESS && p && *p) {
+	while (zend_hash_get_current_data_ex(&ce->default_properties, (void*)&p, &pos) == SUCCESS && p && *p) {
 		if (zend_hash_get_current_key_ex(&ce->default_properties, &key, &key_len, &idx, 0, &pos) == HASH_KEY_IS_STRING) {
 			if (zend_hash_exists(&dce->default_properties, key, key_len)) {
 				if (!override) {
@@ -456,7 +456,7 @@ static int php_runkit_import_classes(HashTable *class_table, long flags
 		int type;
 		ulong idx;
 
-		zend_hash_get_current_data_ex(class_table, (void**)&ce, &pos);
+		zend_hash_get_current_data_ex(class_table, (void*)&ce, &pos);
 #ifdef ZEND_ENGINE_2
 		if (ce) {
 			ce = *((zend_class_entry**)ce);
@@ -564,7 +564,7 @@ static zend_op_array *php_runkit_compile_filename(int type, zval *filename TSRML
 			file_handle.opened_path = opened_path = estrndup(filename->value.str.val, filename->value.str.len);
 		}
 
-		zend_hash_add(&EG(included_files), file_handle.opened_path, strlen(file_handle.opened_path)+1, (void *)&dummy, sizeof(int), NULL);
+		zend_hash_add(&EG(included_files), file_handle.opened_path, strlen(file_handle.opened_path)+1, (void*)&dummy, sizeof(int), NULL);
 
 		if (opened_path) {
 			efree(opened_path);

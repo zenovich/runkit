@@ -215,7 +215,7 @@ int php_runkit_fetch_interface(const char *classname, int classname_len, zend_cl
 #define PHP_RUNKIT_STRTOLOWER(param)			php_u_strtolower(param, &param##_len, UG(default_locale))
 #define PHP_RUNKIT_STRING_LEN(param,addtl)		(param##_type == IS_UNICODE ? UBYTES(param##_len + (addtl)) : (param##_len + (addtl)))
 #define PHP_RUNKIT_STRING_TYPE(param)			(param##_type)
-#define PHP_RUNKIT_HASH_FIND(hash,param,ppvar)	zend_u_hash_find(hash, param##_type, (UChar *)param, param##_len + 1, (void**)ppvar)
+#define PHP_RUNKIT_HASH_FIND(hash,param,ppvar)	zend_u_hash_find(hash, param##_type, (UChar *)param, param##_len + 1, (void*)ppvar)
 #define PHP_RUNKIT_HASH_EXISTS(hash,param)		zend_u_hash_exists(hash, param##_type, (UChar *)param, param##_len + 1)
 #define PHP_RUNKIT_HASH_KEY(hash_key)			((hash_key)->type == HASH_KEY_IS_UNICODE ? (hash_key)->u.unicode : (hash_key)->u.string)
 #define PHP_RUNKIT_HASH_KEYLEN(hash_key)		((hash_key)->type == HASH_KEY_IS_UNICODE ? UBYTES((hash_key)->nKeyLength) : (hash_key)->nKeyLength)
@@ -229,7 +229,7 @@ int php_runkit_fetch_interface(const char *classname, int classname_len, zend_cl
 #define PHP_RUNKIT_STRTOLOWER(p)				php_strtolower(p, p##_len)
 #define PHP_RUNKIT_STRING_LEN(param,addtl)		(param##_len + (addtl))
 #define PHP_RUNKIT_STRING_TYPE(param)			IS_STRING
-#define PHP_RUNKIT_HASH_FIND(hash,param,ppvar)	zend_hash_find(hash, param, param##_len + 1, (void**)ppvar)
+#define PHP_RUNKIT_HASH_FIND(hash,param,ppvar)	zend_hash_find(hash, param, param##_len + 1, (void*)ppvar)
 #define PHP_RUNKIT_HASH_EXISTS(hash,param)		zend_hash_exists(hash, param##_type, param, param##_len + 1)
 #define PHP_RUNKIT_HASH_KEY(hash_key)			((hash_key)->arKey)
 #define PHP_RUNKIT_HASH_KEYLEN(hash_key)		((hash_key)->nKeyLength)
@@ -244,7 +244,7 @@ zend_class_entry *_php_runkit_locate_scope(zend_class_entry *ce, zend_function *
 #define PHP_RUNKIT_STRTOLOWER(p)				php_strtolower(p, p##_len)
 #define PHP_RUNKIT_STRING_LEN(param,addtl)		(param##_len + (addtl))
 #define PHP_RUNKIT_STRING_TYPE(param)			IS_STRING
-#define PHP_RUNKIT_HASH_FIND(hash,param,ppvar)	zend_hash_find(hash, param, param##_len + 1, (void**)ppvar)
+#define PHP_RUNKIT_HASH_FIND(hash,param,ppvar)	zend_hash_find(hash, param, param##_len + 1, (void*)ppvar)
 #define PHP_RUNKIT_HASH_EXISTS(hash,param)		zend_hash_exists(hash, param##_type, param, param##_len + 1)
 #define PHP_RUNKIT_HASH_KEY(hash_key)			((hash_key)->arKey)
 #define PHP_RUNKIT_HASH_KEYLEN(hash_key)		((hash_key)->nKeyLength)
@@ -489,7 +489,7 @@ struct _php_runkit_sandbox_object {
 #define PHP_RUNKIT_ADD_MAGIC_METHOD(ce, lcmname, mname_len, fe, orig_fe)
 #define PHP_RUNKIT_DEL_MAGIC_METHOD(ce, fe) { \
 	zend_function *current_constr; \
-	if (zend_hash_find(&(ce)->function_table, (ce)->name, (ce)->name_length + 1, (void **) &current_constr) == SUCCESS && \
+	if (zend_hash_find(&(ce)->function_table, (ce)->name, (ce)->name_length + 1, (void*) &current_constr) == SUCCESS && \
 	    current_constr && current_constr->op_array.opcodes == (fe)->op_array.opcodes && (fe) != current_constr) { \
 		zend_hash_del(&ce->function_table, ce->name, ce->name_length+1); \
 	} \
@@ -497,7 +497,7 @@ struct _php_runkit_sandbox_object {
 #define PHP_RUNKIT_INHERIT_MAGIC(ce, fe, orig_fe, is_constr) { \
 	zend_function *current_constr = NULL; \
 	if (is_constr) { \
-		zend_hash_find(&(ce)->function_table, (ce)->name, (ce)->name_length + 1, (void **) &current_constr); \
+		zend_hash_find(&(ce)->function_table, (ce)->name, (ce)->name_length + 1, (void*) &current_constr); \
 	} \
 	if (((orig_fe) && current_constr && current_constr->op_array.opcodes == (orig_fe)->op_array.opcodes) || \
 	    (!(orig_fe) && (is_constr) && !current_constr) \

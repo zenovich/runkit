@@ -40,7 +40,7 @@ zend_class_entry *_php_runkit_locate_scope(zend_class_entry *ce, zend_function *
 	php_strtolower(methodname_lower, methodname_len);
 
 	while (current) {
-		if (zend_hash_find(&current->function_table, methodname_lower, methodname_len + 1, (void **)&func) == FAILURE) {
+		if (zend_hash_find(&current->function_table, methodname_lower, methodname_len + 1, (void*)&func) == FAILURE) {
 			/* Not defined at this point (or higher) */
 			efree(methodname_lower);
 			return top;
@@ -76,7 +76,7 @@ zend_function* _php_runkit_get_method_prototype(zend_class_entry *ce, const char
 
 	php_strtolower(func_lower, func_len);
 	while (pce) {
-		if (zend_hash_find(&pce->function_table, func_lower, func_len+1, (void**) &proto) != FAILURE) {
+		if (zend_hash_find(&pce->function_table, func_lower, func_len+1, (void*) &proto) != FAILURE) {
 			break;
 		}
 		pce = pce->parent;
@@ -114,7 +114,7 @@ int php_runkit_fetch_class_int(const char *classname, int classname_len, zend_cl
 	php_strtolower(lclass, classname_len);
 
 #ifdef ZEND_ENGINE_2
-	if (zend_hash_find(EG(class_table), lclass, classname_len + 1, (void**)&ze) == FAILURE ||
+	if (zend_hash_find(EG(class_table), lclass, classname_len + 1, (void*)&ze) == FAILURE ||
 		!ze || !*ze) {
 		efree(lclass);
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "class %s not found", classname);
@@ -122,7 +122,7 @@ int php_runkit_fetch_class_int(const char *classname, int classname_len, zend_cl
 	}
 	ce = *ze;
 #else
-	if (zend_hash_find(EG(class_table), lclass, classname_len + 1, (void**)&ce) == FAILURE ||
+	if (zend_hash_find(EG(class_table), lclass, classname_len + 1, (void*)&ce) == FAILURE ||
 		!ce) {
 		efree(lclass);
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "class %s not found", classname);
@@ -189,7 +189,7 @@ int php_runkit_fetch_interface(const char *classname, int classname_len, zend_cl
 	}
 	php_strtolower(lclass, classname_len);
 
-	if (zend_hash_find(EG(class_table), lclass, classname_len + 1, (void**)&pce) == FAILURE ||
+	if (zend_hash_find(EG(class_table), lclass, classname_len + 1, (void*)&pce) == FAILURE ||
 		!pce || !*pce) {
 		efree(lclass);
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "interface %s not found", classname);
@@ -239,7 +239,7 @@ TSRMLS_DC)
 	}
 	php_strtolower(fname_lower, fname_len);
 
-	if (zend_hash_find(ftable, fname_lower, fname_len + 1, (void**)&fe) == FAILURE) {
+	if (zend_hash_find(ftable, fname_lower, fname_len + 1, (void*)&fe) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s::%s() not found", classname, fname);
 		efree(fname_lower);
 		return FAILURE;
@@ -294,7 +294,7 @@ int php_runkit_update_children_methods(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce
 		return ZEND_HASH_APPLY_KEEP;
 	}
 
-	if (zend_hash_find(&ce->function_table, fname_lower, fname_len + 1, (void**)&cfe) == SUCCESS) {
+	if (zend_hash_find(&ce->function_table, fname_lower, fname_len + 1, (void*)&cfe) == SUCCESS) {
 		scope = php_runkit_locate_scope(ce, cfe, fname, fname_len);
 		if (scope != ancestor_class) {
 			/* This method was defined below our current level, leave it be */
@@ -367,7 +367,7 @@ int php_runkit_clean_children_methods(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce)
 		return ZEND_HASH_APPLY_KEEP;
 	}
 
-	if (zend_hash_find(&ce->function_table, fname_lower, fname_len + 1, (void**)&cfe) == SUCCESS) {
+	if (zend_hash_find(&ce->function_table, fname_lower, fname_len + 1, (void*)&cfe) == SUCCESS) {
 		scope = php_runkit_locate_scope(ce, cfe, fname, fname_len);
 		if (scope != ancestor_class) {
 			/* This method was defined below our current level, leave it be */
@@ -461,7 +461,7 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 
 	func = *fe;
 	PHP_RUNKIT_FUNCTION_ADD_REF(&func);
-	efree((void *)func.common.function_name);
+	efree((void*)func.common.function_name);
 	func.common.function_name = estrndup(methodname, methodname_len);
 #ifdef ZEND_ENGINE_2
 	func.common.scope = ce;
@@ -507,7 +507,7 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 		RETURN_FALSE;
 	}
 
-	if (zend_hash_find(&ce->function_table, methodname_lower, methodname_len + 1, (void**)&fe) == FAILURE ||
+	if (zend_hash_find(&ce->function_table, methodname_lower, methodname_len + 1, (void*)&fe) == FAILURE ||
 		!fe) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to locate newly added method");
 		efree(methodname_lower);
@@ -564,7 +564,7 @@ static int php_runkit_method_copy(const char *dclass, int dclass_len, const char
 	dfe.common.prototype = _php_runkit_get_method_prototype(dce, dfunc, dfunc_len TSRMLS_CC);
 #endif
 
-	if (zend_hash_add(&dce->function_table, dfunc_lower, dfunc_len + 1, &dfe, sizeof(zend_function), (void **) &dfeInHashTable) == FAILURE) {
+	if (zend_hash_add(&dce->function_table, dfunc_lower, dfunc_len + 1, &dfe, sizeof(zend_function), (void*) &dfeInHashTable) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error adding method to class %s::%s()", dclass, dfunc);
 		efree(dfunc_lower);
 		return FAILURE;
@@ -716,7 +716,7 @@ PHP_FUNCTION(runkit_method_rename)
 
 	func = *fe;
 	PHP_RUNKIT_FUNCTION_ADD_REF(&func);
-	efree((void *) func.common.function_name);
+	efree((void*) func.common.function_name);
 	func.common.function_name = estrndup(newname, newname_len + 1);
 
 	if (zend_hash_add(&ce->function_table, newname_lower, newname_len + 1, &func, sizeof(zend_function), NULL) == FAILURE) {
