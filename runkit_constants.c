@@ -110,6 +110,9 @@ static int php_runkit_constant_remove(char *classname, int classname_len, char *
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to remove constant %s::%s", classname, constname);
 			return FAILURE;
 		}
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+		php_runkit_clear_all_functions_runtime_cache(TSRMLS_C);
+#endif
 		return SUCCESS;
 #else
 		/* PHP4 doesn't support class constants */
@@ -153,6 +156,11 @@ static int php_runkit_constant_remove(char *classname, int classname_len, char *
 	if (lcase) {
 		efree(lcase);
 	}
+
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+	php_runkit_clear_all_functions_runtime_cache(TSRMLS_C);
+#endif
+
 	return SUCCESS;
 }
 /* }}} */
@@ -217,6 +225,10 @@ static int php_runkit_constant_add(char *classname, int classname_len, char *con
 		zval_ptr_dtor(&copyval);
 		return FAILURE;
 	}
+
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+	php_runkit_clear_all_functions_runtime_cache(TSRMLS_C);
+#endif
 
 	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_consts, 4, ce, copyval, constname, constname_len);
 

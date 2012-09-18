@@ -100,7 +100,7 @@ int php_runkit_sandbox_array_deep_copy(RUNKIT_53_TSRMLS_ARG(zval **value), int n
  * runkit.internal_override = false
  *		runkit.internal_override may be disabled (but not re-enabled) within sandboxes
  */
-inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_object *objval, HashTable *options TSRMLS_DC)
+static inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_object *objval, HashTable *options TSRMLS_DC)
 {
 	zend_bool allow_url_fopen;
 	char open_basedir[MAXPATHLEN] = {0};

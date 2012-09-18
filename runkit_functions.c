@@ -308,20 +308,83 @@ void php_runkit_function_copy_ctor(zend_function *fe, const char *newname, int n
 }
 /* }}}} */
 
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+/* {{{ php_runkit_clear_function_runtime_cache */
+static int php_runkit_clear_function_runtime_cache(void *pDest TSRMLS_DC)
+{
+	zend_function *f = (zend_function *) pDest;
+
+	if (pDest == NULL || f->type != ZEND_USER_FUNCTION ||
+	    f->op_array.last_cache_slot == 0 || f->op_array.run_time_cache == NULL) {
+		return ZEND_HASH_APPLY_KEEP;
+	}
+
+	memset(f->op_array.run_time_cache, 0, (f->op_array.last_cache_slot) * sizeof(void *));
+
+	return ZEND_HASH_APPLY_KEEP;
+}
+/* }}} */
+
+/* {{{ php_runkit_clear_all_functions_runtime_cache */
+void php_runkit_clear_all_functions_runtime_cache(TSRMLS_D)
+{
+	int i, count;
+	zend_execute_data *ptr;
+	HashPosition pos;
+
+	zend_hash_apply(EG(function_table), php_runkit_clear_function_runtime_cache TSRMLS_CC);
+
+	zend_hash_internal_pointer_reset_ex(EG(class_table), &pos);
+	count = zend_hash_num_elements(EG(class_table));
+	for (i = 0; i < count; ++i) {
+		zend_class_entry **curce;
+		zend_hash_get_current_data_ex(EG(class_table), (void**)&curce, &pos);
+		zend_hash_apply(&(*curce)->function_table, php_runkit_clear_function_runtime_cache TSRMLS_CC);
+		zend_hash_move_forward_ex(EG(class_table), &pos);
+	}
+
+	for (ptr = EG(current_execute_data); ptr != NULL; ptr = ptr->prev_execute_data) {
+		if (ptr->op_array == NULL || ptr->op_array->last_cache_slot == 0 || ptr->op_array->run_time_cache == NULL) {
+			continue;
+		}
+		memset(ptr->op_array->run_time_cache, 0, (ptr->op_array->last_cache_slot) * sizeof(void*));
+	}
+
+	if (!EG(objects_store).object_buckets) {
+		return;
+	}
+
+	for (i = 1; i < EG(objects_store).top ; i++) {
+		if (EG(objects_store).object_buckets[i].valid && (!EG(objects_store).object_buckets[i].destructor_called) &&
+		   EG(objects_store).object_buckets[i].bucket.obj.object) {
+			zend_object *object;
+			object = (zend_object *) EG(objects_store).object_buckets[i].bucket.obj.object;
+			if (object->ce == zend_ce_closure) {
+				zend_closure *cl = (zend_closure *) object;
+				php_runkit_clear_function_runtime_cache((void*) &cl->func TSRMLS_CC);
+			}
+		}
+	}
+}
+/* }}} */
+#endif
+
 /* {{{ php_runkit_generate_lambda_method
 	Heavily borrowed from ZEND_FUNCTION(create_function) */
-int php_runkit_generate_lambda_method(const char *arguments, int arguments_len, const char *phpcode, int phpcode_len, zend_function **pfe TSRMLS_DC)
+int php_runkit_generate_lambda_method(const char *arguments, int arguments_len, const char *phpcode, int phpcode_len,
+                                      zend_function **pfe, zend_bool return_ref TSRMLS_DC)
 {
 	char *eval_code, *eval_name;
 	int eval_code_length;
 
-	eval_code_length = sizeof("function " RUNKIT_TEMP_FUNCNAME) + arguments_len + 4 + phpcode_len;
+	eval_code_length = sizeof("function " RUNKIT_TEMP_FUNCNAME) + arguments_len + 4 + phpcode_len + return_ref;
 	eval_code = (char*)emalloc(eval_code_length);
-	snprintf(eval_code, eval_code_length, "function " RUNKIT_TEMP_FUNCNAME "(%s){%s}", arguments, phpcode);
+	snprintf(eval_code, eval_code_length, "function %s" RUNKIT_TEMP_FUNCNAME "(%s){%s}", (return_ref ? "&" : ""), arguments, phpcode);
 	eval_name = zend_make_compiled_string_description("runkit runtime-created function" TSRMLS_CC);
 	if (zend_eval_string(eval_code, NULL, eval_name TSRMLS_CC) == FAILURE) {
 		efree(eval_code);
 		efree(eval_name);
+		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Cannot create temporary function");
 		return FAILURE;
 	}
 	efree(eval_code);
@@ -388,7 +451,7 @@ int php_runkit_restore_internal_functions(RUNKIT_53_TSRMLS_ARG(void *pDest), int
    * Functions API *
    ***************** */
 
-/* {{{ proto bool runkit_function_add(string funcname, string arglist, string code)
+/* {{{ proto bool runkit_function_add(string funcname, string arglist, string code[, bool return_reference = FALSE])
 	Add a new function, similar to create_function, but allows specifying name
 	There's nothing about this function that's better than eval(), it's here for completeness */
 PHP_FUNCTION(runkit_function_add)
@@ -397,14 +460,16 @@ PHP_FUNCTION(runkit_function_add)
 	PHP_RUNKIT_DECL_STRING_PARAM(funcname_lower)
 	PHP_RUNKIT_DECL_STRING_PARAM(arglist)
 	PHP_RUNKIT_DECL_STRING_PARAM(code)
+	zend_bool return_ref = 0;
 	char *delta = NULL, *delta_desc;
 	int retval;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
-			PHP_RUNKIT_STRING_SPEC "/" PHP_RUNKIT_STRING_SPEC PHP_RUNKIT_STRING_SPEC,
+			PHP_RUNKIT_STRING_SPEC "/" PHP_RUNKIT_STRING_SPEC PHP_RUNKIT_STRING_SPEC "|b",
 			PHP_RUNKIT_STRING_PARAM(funcname),
 			PHP_RUNKIT_STRING_PARAM(arglist),
-			PHP_RUNKIT_STRING_PARAM(code)) == FAILURE) {
+			PHP_RUNKIT_STRING_PARAM(code),
+			&return_ref) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -424,13 +489,14 @@ PHP_FUNCTION(runkit_function_add)
 	}
 
 #if PHP_MAJOR_VERSION >= 6
-	spprintf(&delta, 0, "function %R(%R){%R}", funcname_type, funcname, arglist_type, arglist, code_type, code);
+	spprintf(&delta, 0, "function %s%R(%R){%R}", return_ref ? "&" : "", funcname_type, funcname, arglist_type, arglist, code_type, code);
 #else
-	spprintf(&delta, 0, "function %s(%s){%s}", funcname, arglist, code);
+	spprintf(&delta, 0, "function %s%s(%s){%s}", return_ref ? "&" : "", funcname, arglist, code);
 #endif
 
 	if (!delta) {
 		efree(funcname_lower);
+		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
 		RETURN_FALSE;
 	}
 
@@ -469,6 +535,10 @@ PHP_FUNCTION(runkit_function_remove)
 
 	result = (zend_hash_del(EG(function_table), funcname_lower, funcname_len + 1) == SUCCESS);
 	efree(funcname_lower);
+
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+	php_runkit_clear_all_functions_runtime_cache(TSRMLS_C);
+#endif
 
 	RETURN_BOOL(result);
 }
@@ -543,6 +613,10 @@ PHP_FUNCTION(runkit_function_rename)
 	}
 	efree(dfunc_lower);
 
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+	php_runkit_clear_all_functions_runtime_cache(TSRMLS_C);
+#endif
+
 	RETURN_TRUE;
 }
 /* }}} */
@@ -555,14 +629,16 @@ PHP_FUNCTION(runkit_function_redefine)
 	PHP_RUNKIT_DECL_STRING_PARAM(funcname_lower)
 	PHP_RUNKIT_DECL_STRING_PARAM(arglist)
 	PHP_RUNKIT_DECL_STRING_PARAM(code)
+	zend_bool return_ref = 0;
 	char *delta = NULL, *delta_desc;
 	int retval;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
-			PHP_RUNKIT_STRING_SPEC "/" PHP_RUNKIT_STRING_SPEC PHP_RUNKIT_STRING_SPEC,
+			PHP_RUNKIT_STRING_SPEC "/" PHP_RUNKIT_STRING_SPEC PHP_RUNKIT_STRING_SPEC "|b",
 			PHP_RUNKIT_STRING_PARAM(funcname),
 			PHP_RUNKIT_STRING_PARAM(arglist),
-			PHP_RUNKIT_STRING_PARAM(code)) == FAILURE) {
+			PHP_RUNKIT_STRING_PARAM(code),
+			&return_ref) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -586,9 +662,10 @@ PHP_FUNCTION(runkit_function_redefine)
 	}
 	efree(funcname_lower);
 
-	spprintf(&delta, 0, "function %s(%s){%s}", funcname, arglist, code);
+	spprintf(&delta, 0, "function %s%s(%s){%s}", return_ref ? "&" : "", funcname, arglist, code);
 
 	if (!delta) {
+		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
 		RETURN_FALSE;
 	}
 
@@ -596,6 +673,10 @@ PHP_FUNCTION(runkit_function_redefine)
 	retval = zend_eval_string(delta, NULL, delta_desc TSRMLS_CC);
 	efree(delta_desc);
 	efree(delta);
+
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+	php_runkit_clear_all_functions_runtime_cache(TSRMLS_C);
+#endif
 
 	RETURN_BOOL(retval == SUCCESS);
 }

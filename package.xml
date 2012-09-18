@@ -32,14 +32,22 @@ Execute code in restricted environment (sandboxing).
          + PHP 5.4 is now fully supported
          + Introduced new function "runkit_default_property_remove" (Thanks to Juhan Kundla)
          + Ability to add non-scalar default properties was added
+         + Magic methods __isset, __unset, __callStatic, and __toString are now supported.
+         + Functions runkit_class_adopt &amp; runkit_class_emancipate now change class-hierarchy (issue #13)
+         + Adding and redefining functions and methods, which return references, were fully implemented
+           New optional argument 'return_ref' of functions runkit_function_add and runkit_function_redefine was introduced
+           New constant RUNKIT_ACC_RETURN_REFERENCE was introduced for use with functions runkit_method_add and runkit_method_redefine
 
      Critical fixes:
          * Crash on sandbox creation when register_globals is switched on was fixed
          * Building and working with PHP4 were fixed
+         * Crash on syntax error in source file importing with runkit_import was fixed
+         * The possible crash on manipulating constants having length less than two characters was eliminated
 
      Fixes:
-         * Crash on syntax error in source file importing with runkit_import was fixed
-         * Side affect of redefining, adding and removing class constant (Issue #25) was fixed
+         * All ways of adding and removing magic methods and old-style constructors
+           were reworked and corrected (Thanks to Anthony Dovgal for issue #35).
+         * Side effect of redefining, adding and removing class constant (Issue #25) was eliminated
          * Adding of non-lowercase default properties was fixed (removed lowercasing)
          * Skip the leading slash in class names
          * Copying of functions was reworked
@@ -53,11 +61,21 @@ Execute code in restricted environment (sandboxing).
          * Declarations after statement were restricted during compiling
          * Warnings now will be treated as errors
          * All tests now succeed under valgrind
+         * A compilation bug (with gcc 4.3+), caused by wrong definition of internal function,
+           was fixed (Thanks to Reeze Xia)
    </notes>
 
  <contents>
   <dir name="/">
    <dir name="tests">
+    <file name="runkit_add_magic_methods.phpt" role="test" />
+    <file name="runkit_add_old_style_ctor.phpt" role="test" />
+    <file name="runkit_add_old_style_ctor1.phpt" role="test" />
+    <file name="runkit_add_old_style_ctor_by_adopting.phpt" role="test" />
+    <file name="runkit_add_old_style_ctor_by_copying.phpt" role="test" />
+    <file name="runkit_add_old_style_ctor_by_importing.inc" role="test" />
+    <file name="runkit_add_old_style_ctor_by_importing.phpt" role="test" />
+    <file name="runkit_adopt_emancipate_and_inheritance.phpt" role="test" />
     <file name="runkit_class_adopt.phpt" role="test" />
     <file name="runkit_class_emancipate.phpt" role="test" />
     <file name="runkit_constant_add.phpt" role="test" />
@@ -66,14 +84,19 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_constant_redefine_in_class.phpt" role="test" />
     <file name="runkit_constant_remove.phpt" role="test" />
     <file name="runkit_constant_remove_from_class.phpt" role="test" />
+    <file name="runkit_constants_manipulations_and_cache.phpt" role="test" />
     <file name="runkit_function_redefine_and_revert.phpt" role="test" />
     <file name="runkit_function_add.phpt" role="test" />
     <file name="runkit_function_copy.phpt" role="test" />
     <file name="runkit_function_redefine.phpt" role="test" />
+    <file name="runkit_function_redefine_from_anonymous.phpt" role="test" />
     <file name="runkit_function_remove.phpt" role="test" />
     <file name="runkit_function_rename.phpt" role="test" />
     <file name="runkit_function_rename_internal.phpt" role="test" />
     <file name="runkit_function_rename_redefine_add_remove.phpt" role="test" />
+    <file name="runkit_functions_redefining_and_cache.inc" role="test" />
+    <file name="runkit_functions_redefining_and_cache.phpt" role="test" />
+    <file name="runkit_functions_returning_by_reference.phpt" role="test" />
     <file name="runkit_import_class.inc" role="test" />
     <file name="runkit_import_class.phpt" role="test" />
     <file name="runkit_import_constant_properties.inc" role="test" />
@@ -97,6 +120,9 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_method_remove.phpt" role="test" />
     <file name="runkit_method_rename.phpt" role="test" />
     <file name="runkit_method_rename_inheritance.phpt" role="test" />
+    <file name="runkit_methods_redefining_and_cache.inc" role="test" />
+    <file name="runkit_methods_redefining_and_cache.phpt" role="test" />
+    <file name="runkit_methods_returning_by_reference.phpt" role="test" />
     <file name="runkit_return_value_used.phpt" role="test" />
     <file name="runkit_zval_inspect.phpt" role="test" />
     <file name="Runkit_Sandbox_.active.phpt" role="test" />
