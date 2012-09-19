@@ -592,12 +592,6 @@ void php_runkit_error_cb(int type, const char *error_filename, const uint error_
 	CG(class_table) = current_class_table;
 	EG(class_table) = current_eg_class_table;
 	CG(function_table) = current_function_table;
-	zend_hash_destroy(tmp_class_table);
-	efree(tmp_class_table);
-	zend_hash_destroy(tmp_eg_class_table);
-	efree(tmp_eg_class_table);
-	zend_hash_destroy(tmp_function_table);
-	efree(tmp_function_table);
 
 	php_runkit_old_error_cb(type, error_filename, error_lineno, format, args);
 }

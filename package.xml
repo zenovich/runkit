@@ -54,7 +54,8 @@ Execute code in restricted environment (sandboxing).
          * Properties adding, removing and importing were corrected for right inheritance
          * Converting of input parameters (class names &amp; function names) to lowecase was eliminated
          * runkit_method_redefine function now sets the 'prototype' field for the method
-           and its descendants (Thanks to Anthony Dovgal).
+           and its descendants (Thanks to Anthony Dovgal)
+         * Freeing already freed memory on importing of a non-existent file was eliminated
          * Test for correctness of runkit.superglobals feature was added
          * Tests for correctness of inheritance of properties were added
          * Tests for correctness of adding static properties were added
@@ -180,6 +181,7 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_import_class_property.phpt" role="test" />
     <file name="runkit_import_class_property4.inc" role="test" />
     <file name="runkit_import_class_property4.phpt" role="test" />
+    <file name="runkit_import_non_existent_file.phpt" role="test" />
     <file name="runkit_import_static_properties_override.inc" role="test" />
     <file name="runkit_import_static_properties_override.phpt" role="test" />
     <file name="runkit_import_with_syntax_error.inc" role="test" />
