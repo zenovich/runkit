@@ -119,13 +119,7 @@ static int php_runkit_import_class_methods(zend_class_entry *dce, zend_class_ent
 	while (zend_hash_get_current_data_ex(&ce->function_table, (void*)&fe, &pos) == SUCCESS) {
 		zend_function *dfe = NULL;
 		int fn_len = strlen(fe->common.function_name);
-		zend_class_entry *fe_scope = php_runkit_locate_scope(ce, fe, fe->common.function_name, fn_len);
-
-		if (fe_scope != ce) {
-			/* This is an inhereted function, let's skip it */
-			zend_hash_move_forward_ex(&ce->function_table, &pos);
-			continue;
-		}
+		zend_class_entry *fe_scope;
 
 		if (fn_len > fn_maxlen - 1) {
 			fn_maxlen = fn_len + 33;
@@ -133,6 +127,14 @@ static int php_runkit_import_class_methods(zend_class_entry *dce, zend_class_ent
 		}
 		memcpy(fn, fe->common.function_name, fn_len + 1);
 		php_strtolower(fn, fn_len);
+
+		fe_scope = php_runkit_locate_scope(ce, fe, fn, fn_len);
+
+		if (fe_scope != ce) {
+			/* This is an inhereted function, let's skip it */
+			zend_hash_move_forward_ex(&ce->function_table, &pos);
+			continue;
+		}
 
 		dfe = NULL;
 		if (zend_hash_find(&dce->function_table, fn, fn_len + 1, (void*)&dfe) == SUCCESS) {

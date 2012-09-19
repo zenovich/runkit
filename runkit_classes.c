@@ -27,7 +27,19 @@ static int php_runkit_remove_inherited_methods(zend_function *fe, zend_class_ent
 {
 	const char *function_name = fe->common.function_name;
 	int function_name_len = strlen(function_name);
-	zend_class_entry *ancestor_class = php_runkit_locate_scope(ce, fe, function_name, function_name_len);
+	char *fname_lower;
+	zend_class_entry *ancestor_class;
+
+	fname_lower = estrndup(function_name, function_name_len);
+	if (fname_lower == NULL) {
+		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
+		return ZEND_HASH_APPLY_KEEP;
+	}
+	php_strtolower(fname_lower, function_name_len);
+
+	ancestor_class = php_runkit_locate_scope(ce, fe, fname_lower, function_name_len);
+
+	efree(fname_lower);
 
 	if (ancestor_class == ce) {
 		return ZEND_HASH_APPLY_KEEP;
@@ -80,15 +92,22 @@ static int php_runkit_inherit_methods(zend_function *fe, zend_class_entry *ce TS
 	const char *function_name = fe->common.function_name;
 	char *lower_function_name;
 	int function_name_len = strlen(function_name);
-	zend_class_entry *ancestor_class = php_runkit_locate_scope(ce, fe, function_name, function_name_len);
-
-	if (zend_hash_exists(&ce->function_table, (char *) function_name, function_name_len + 1)) {
-		return ZEND_HASH_APPLY_KEEP;
-	}
+	zend_class_entry *ancestor_class;
 
 	/* method name keys must be lower case */
 	lower_function_name = estrndup(function_name, function_name_len);
+	if (lower_function_name == NULL) {
+		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
+		return ZEND_HASH_APPLY_KEEP;
+	}
 	php_strtolower(lower_function_name, function_name_len);
+
+	if (zend_hash_exists(&ce->function_table, (char *) lower_function_name, function_name_len + 1)) {
+		efree(lower_function_name);
+		return ZEND_HASH_APPLY_KEEP;
+	}
+
+	ancestor_class = php_runkit_locate_scope(ce, fe, lower_function_name, function_name_len);
 
 #if PHP_MAJOR_VERSION < 5
 	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 7,
@@ -113,8 +132,8 @@ static int php_runkit_inherit_methods(zend_function *fe, zend_class_entry *ce TS
 	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, lower_function_name, function_name_len, fe, NULL);
 
 #if PHP_MAJOR_VERSION >= 5
-	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 7,
-	                               ancestor_class, ce, fe, function_name, function_name_len, NULL, 0);
+	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 6,
+	                               ancestor_class, ce, fe, function_name, function_name_len, NULL);
 #endif
 	efree(lower_function_name);
 
