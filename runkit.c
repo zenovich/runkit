@@ -290,6 +290,10 @@ PHP_MSHUTDOWN_FUNCTION(runkit)
 	Register an autoglobal only if it's not already registered */
 static void php_runkit_register_auto_global(char *s, int len TSRMLS_DC)
 {
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION >= 6)
+	zend_auto_global *auto_global;
+#endif
+
 	if (zend_hash_exists(CG(auto_globals), s, len + 1)) {
 		/* Registered already */
 		return;
@@ -297,21 +301,25 @@ static void php_runkit_register_auto_global(char *s, int len TSRMLS_DC)
 
 #ifdef ZEND_ENGINE_2
 	if (zend_register_auto_global(s, len,
-#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION >= 6)
+#    if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION >= 6)
 			0,
-#endif
+#    endif
 		    NULL TSRMLS_CC) == SUCCESS) {
 
-#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION >= 6)
-		zend_activate_auto_globals(TSRMLS_C);
-#else
+#    if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION >= 6)
+		if (zend_hash_find(CG(auto_globals), s, len + 1, (void *) &auto_global) != SUCCESS) {
+			php_error_docref(NULL TSRMLS_CC, E_ERROR, "Cannot locate the newly created autoglobal");
+			return;
+		}
+		auto_global->armed = 0;
+#    else
 		/* This shouldn't be necessary, but it is */
 		zend_auto_global_disable_jit(s, len TSRMLS_CC);
 
-#endif
+#    endif
 #else
 	if (zend_register_auto_global(s, len TSRMLS_CC) == SUCCESS) {
-#endif
+#endif // ZEND_ENGINE_2
 
 		if (!RUNKIT_G(superglobals)) {
 			ALLOC_HASHTABLE(RUNKIT_G(superglobals));
