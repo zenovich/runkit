@@ -130,6 +130,7 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_methods_redefining_and_cache.inc" role="test" />
     <file name="runkit_methods_redefining_and_cache.phpt" role="test" />
     <file name="runkit_methods_returning_by_reference.phpt" role="test" />
+    <file name="runkit_redefine_old_style_ctor.phpt" role="test" />
     <file name="runkit_return_value_used.phpt" role="test" />
     <file name="runkit_zval_inspect.phpt" role="test" />
     <file name="Runkit_Sandbox_.active.phpt" role="test" />
