@@ -130,7 +130,7 @@ void php_runkit_function_copy_ctor(zend_function *fe, const char *newname, int n
 #if PHP_MAJOR_VERSION > 5 || (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 1)
 	zend_compiled_variable *dupvars;
 #endif
-	zend_op *opcode_copy;
+	zend_op *opcode_copy, *last_op;
 	int i;
 
 	if (newname) {
@@ -178,6 +178,7 @@ void php_runkit_function_copy_ctor(zend_function *fe, const char *newname, int n
 #endif
 
 		opcode_copy = safe_emalloc(sizeof(zend_op), fe->op_array.last, 0);
+		last_op = fe->op_array.opcodes + fe->op_array.last;
 		for(i = 0; i < fe->op_array.last; i++) {
 			opcode_copy[i] = fe->op_array.opcodes[i];
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4) || (PHP_MAJOR_VERSION < 5)
@@ -188,17 +189,23 @@ void php_runkit_function_copy_ctor(zend_function *fe, const char *newname, int n
 #endif
 #ifdef ZEND_ENGINE_2
 			} else {
+				switch (opcode_copy[i].opcode) {
+# ifdef ZEND_GOTO
+					case ZEND_GOTO:
+# endif
+					case ZEND_JMP:
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
-				if (opcode_copy[i].op1.jmp_addr >= fe->op_array.opcodes &&
-				    opcode_copy[i].op1.jmp_addr <  fe->op_array.opcodes + fe->op_array.last) {
-					opcode_copy[i].op1.jmp_addr =  opcode_copy + (fe->op_array.opcodes[i].op1.jmp_addr - fe->op_array.opcodes);
-				}
+						if (opcode_copy[i].op1.jmp_addr >= fe->op_array.opcodes &&
+							opcode_copy[i].op1.jmp_addr < last_op) {
+							opcode_copy[i].op1.jmp_addr = opcode_copy + (fe->op_array.opcodes[i].op1.jmp_addr - fe->op_array.opcodes);
+						}
 #else
-				if (opcode_copy[i].op1.u.jmp_addr >= fe->op_array.opcodes &&
-				    opcode_copy[i].op1.u.jmp_addr <  fe->op_array.opcodes + fe->op_array.last) {
-					opcode_copy[i].op1.u.jmp_addr =  opcode_copy +     (fe->op_array.opcodes[i].op1.u.jmp_addr - fe->op_array.opcodes);
-				}
+						if (opcode_copy[i].op1.u.jmp_addr >= fe->op_array.opcodes &&
+							opcode_copy[i].op1.u.jmp_addr < last_op) {
+							opcode_copy[i].op1.u.jmp_addr = opcode_copy + (fe->op_array.opcodes[i].op1.u.jmp_addr - fe->op_array.opcodes);
+						}
 #endif
+				}
 #endif
 			}
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4) || (PHP_MAJOR_VERSION < 5)
@@ -209,17 +216,29 @@ void php_runkit_function_copy_ctor(zend_function *fe, const char *newname, int n
 #endif
 #ifdef ZEND_ENGINE_2
 			} else {
+				switch (opcode_copy[i].opcode) {
+					case ZEND_JMPZ:
+					case ZEND_JMPNZ:
+					case ZEND_JMPZ_EX:
+					case ZEND_JMPNZ_EX:
+# ifdef ZEND_JMP_SET
+					case ZEND_JMP_SET:
+# endif
+# ifdef ZEND_JMP_SET_VAR
+					case ZEND_JMP_SET_VAR:
+# endif
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
-				if (opcode_copy[i].op2.jmp_addr >= fe->op_array.opcodes &&
-				    opcode_copy[i].op2.jmp_addr <  fe->op_array.opcodes + fe->op_array.last) {
-					opcode_copy[i].op2.jmp_addr =  opcode_copy + (fe->op_array.opcodes[i].op2.jmp_addr - fe->op_array.opcodes);
-				}
+						if (opcode_copy[i].op2.jmp_addr >= fe->op_array.opcodes &&
+							opcode_copy[i].op2.jmp_addr < last_op) {
+							opcode_copy[i].op2.jmp_addr =  opcode_copy + (fe->op_array.opcodes[i].op2.jmp_addr - fe->op_array.opcodes);
+						}
 #else
-				if (opcode_copy[i].op2.u.jmp_addr >= fe->op_array.opcodes &&
-				    opcode_copy[i].op2.u.jmp_addr <  fe->op_array.opcodes + fe->op_array.last) {
-					opcode_copy[i].op2.u.jmp_addr =  opcode_copy +     (fe->op_array.opcodes[i].op2.u.jmp_addr - fe->op_array.opcodes);
-				}
+						if (opcode_copy[i].op2.u.jmp_addr >= fe->op_array.opcodes &&
+							opcode_copy[i].op2.u.jmp_addr < last_op) {
+							opcode_copy[i].op2.u.jmp_addr =  opcode_copy + (fe->op_array.opcodes[i].op2.u.jmp_addr - fe->op_array.opcodes);
+						}
 #endif
+				}
 #endif
 			}
 		}
