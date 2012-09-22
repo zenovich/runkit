@@ -118,6 +118,7 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_lint.phpt" role="test" />
     <file name="runkit_method_add.phpt" role="test" />
     <file name="runkit_method_copy.phpt" role="test" />
+    <file name="runkit_method_copy_uninit_read.phpt" role="test" />
     <file name="runkit_method_redefine.phpt" role="test" />
     <file name="runkit_method_redefine_protected.phpt" role="test" />
     <file name="runkit_method_redefine_update_proto.phpt" role="test" />

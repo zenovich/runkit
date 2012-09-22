@@ -1,5 +1,7 @@
 --TEST--
-runkit_method_copy() causes uninitialized read 
+runkit_method_copy() causes uninitialized read
+--SKIPIF--
+<?php if(!extension_loaded("runkit") || !RUNKIT_FEATURE_MANIPULATION) print "skip"; ?>
 --FILE--
 <?php
 
