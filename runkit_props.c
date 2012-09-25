@@ -349,6 +349,7 @@ int php_runkit_def_prop_remove_int(zend_class_entry *ce, const char *propname, i
 			char *private;
 			int private_len;
 			zend_mangle_property_name(&private, &private_len, definer_class->name, definer_class->name_length, (char *) propname, propname_len, 0);
+			php_runkit_remove_property_from_reflection_objects(ce, private, private_len TSRMLS_CC);
 			if (zend_hash_exists(&ce->default_properties, private, private_len + 1)) {
 				zend_hash_del(&ce->default_properties, private, private_len + 1);
 			}
@@ -368,6 +369,7 @@ int php_runkit_def_prop_remove_int(zend_class_entry *ce, const char *propname, i
 			zval_ptr_dtor(&ce->default_static_members_table[property_info_ptr->offset]);
 			ce->default_static_members_table[property_info_ptr->offset] = NULL;
 #else
+			php_runkit_remove_property_from_reflection_objects(ce, property_info_ptr->name, property_info_ptr->name_length TSRMLS_CC);
 			if (zend_hash_quick_del(&ce->default_static_members, property_info_ptr->name, property_info_ptr->name_length + 1, property_info_ptr->h) != SUCCESS) {
 				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Failed to remove the property %s::%s", ce->name, propname);
 				return FAILURE;
@@ -378,6 +380,7 @@ int php_runkit_def_prop_remove_int(zend_class_entry *ce, const char *propname, i
 			zval_ptr_dtor(&ce->default_properties_table[property_info_ptr->offset]);
 			ce->default_properties_table[property_info_ptr->offset] = NULL;
 #else
+			php_runkit_remove_property_from_reflection_objects(ce, property_info_ptr->name, property_info_ptr->name_length TSRMLS_CC);
 			if (zend_hash_quick_del(&ce->default_properties, property_info_ptr->name, property_info_ptr->name_length + 1, property_info_ptr->h) != SUCCESS) {
 				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Failed to remove the property %s->%s", ce->name, propname);
 				return FAILURE;
@@ -388,6 +391,7 @@ int php_runkit_def_prop_remove_int(zend_class_entry *ce, const char *propname, i
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 		offset = property_info_ptr->offset;
 #endif
+		php_runkit_remove_property_from_reflection_objects(ce, propname, propname_len TSRMLS_CC);
 		if (zend_hash_quick_del(&ce->properties_info, (char *) propname, propname_len + 1, h) != SUCCESS) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Failed to remove the property %s::%s", ce->name, propname);
 			return FAILURE;
@@ -449,6 +453,48 @@ static int php_runkit_def_prop_remove(char *classname, int classname_len, char *
 	return php_runkit_def_prop_remove_int(ce, propname, propname_len, NULL TSRMLS_CC);
 }
 /* }}} */
+
+#ifdef ZEND_ENGINE_2
+/* {{{ php_runkit_remove_property_from_reflection_objects */
+void php_runkit_remove_property_from_reflection_objects(zend_class_entry *ce, const char *propname, int propname_len TSRMLS_DC) {
+	int i;
+	extern PHPAPI zend_class_entry *reflection_property_ptr;
+
+	if (!EG(objects_store).object_buckets) {
+		return;
+	}
+
+	for (i = 1; i < EG(objects_store).top ; i++) {
+		if (EG(objects_store).object_buckets[i].valid && (!EG(objects_store).object_buckets[i].destructor_called) &&
+		   EG(objects_store).object_buckets[i].bucket.obj.object) {
+			zend_object *object;
+			object = (zend_object *) EG(objects_store).object_buckets[i].bucket.obj.object;
+			if (object->ce == reflection_property_ptr) {
+				reflection_object *refl_obj = (reflection_object *) object;
+				if (refl_obj->ptr && refl_obj->ce == ce) {
+					property_reference *prop_ref = (property_reference *) refl_obj->ptr;
+					if (prop_ref->ce == ce && prop_ref->prop.name_length == propname_len &&
+					    !memcmp(prop_ref->prop.name, propname, propname_len)) {
+#if RUNKIT_ABOVE53
+						if (refl_obj->ref_type == REF_TYPE_DYNAMIC_PROPERTY) {
+							efree((char *)prop_ref->prop.name);
+						}
+						efree(refl_obj->ptr);
+#else
+						if (refl_obj->free_ptr) {
+							efree(refl_obj->ptr);
+						}
+#endif
+						refl_obj->ptr = NULL;
+					}
+					PHP_RUNKIT_UPDATE_REFLECTION_OBJECT_NAME(object, i, RUNKIT_G(removed_property_str_zval));
+				}
+			}
+		}
+	}
+}
+/* }}} */
+#endif
 
 /* ******************
    * Properties API *

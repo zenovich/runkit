@@ -14,6 +14,8 @@ class ParentClass extends Grandparent {
 		echo "Two\n";
 	}
 }
+class ParentClass1 extends Grandparent {
+}
 class ChildClass extends ParentClass {
 	function three() {
 		echo "Three\n";
@@ -31,6 +33,9 @@ $t = get_class_methods('ParentClass');
 sort($t);
 var_dump($t);
 $t = get_class_methods('ChildClass');
+sort($t);
+var_dump($t);
+$t = get_class_methods('ParentClass1');
 sort($t);
 var_dump($t);
 ?>
@@ -58,4 +63,8 @@ array(2) {
   string(5) "three"
   [1]=>
   string(3) "two"
+}
+array(1) {
+  [0]=>
+  string(3) "one"
 }

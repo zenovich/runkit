@@ -162,6 +162,36 @@ PHP_INI_END()
 ZEND_GET_MODULE(runkit)
 #endif
 
+#ifdef PHP_RUNKIT_MANIPULATION
+#	ifdef ZEND_ENGINE_2
+ZEND_FUNCTION(_php_runkit_removed_function) {
+	php_error_docref(NULL TSRMLS_CC, E_ERROR, "A function removed by runkit was somehow invoked");
+}
+ZEND_FUNCTION(_php_runkit_removed_method) {
+	php_error_docref(NULL TSRMLS_CC, E_ERROR, "A method removed by runkit was somehow invoked");
+}
+
+static inline void _php_runkit_init_stub_function(char *name, void (*handler)(INTERNAL_FUNCTION_PARAMETERS), zend_function **result) {
+	*result = emalloc(sizeof(zend_function));
+	(*result)->common.function_name = name;
+	(*result)->common.scope = NULL;
+	(*result)->common.arg_info = NULL;
+	(*result)->common.num_args = 0;
+	(*result)->common.type = ZEND_INTERNAL_FUNCTION;
+	(*result)->common.fn_flags = ZEND_ACC_PUBLIC | ZEND_ACC_STATIC;
+	(*result)->common.arg_info = NULL;
+#if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4
+	(*result)->common.pass_rest_by_reference = 0;
+#endif
+	(*result)->internal_function.handler = handler;
+#if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4
+	(*result)->internal_function.return_reference = 0;
+#endif
+	(*result)->internal_function.module = &runkit_module_entry;
+}
+#	endif
+#endif
+
 #if defined(PHP_RUNKIT_SANDBOX) || defined(PHP_RUNKIT_MANIPULATION)
 static void php_runkit_globals_ctor(void *pDest TSRMLS_DC)
 {
@@ -172,6 +202,21 @@ static void php_runkit_globals_ctor(void *pDest TSRMLS_DC)
 #ifdef PHP_RUNKIT_MANIPULATION
 	runkit_global->replaced_internal_functions = NULL;
 	runkit_global->misplaced_internal_functions = NULL;
+# ifdef ZEND_ENGINE_2
+	MAKE_STD_ZVAL(runkit_global->name_str_zval);
+	ZVAL_STRINGL(runkit_global->name_str_zval, "name", sizeof("name") - 1, 1);
+	MAKE_STD_ZVAL(runkit_global->removed_method_str_zval);
+	ZVAL_STRINGL(runkit_global->removed_method_str_zval, "__method_removed_by_runkit__", sizeof("__method_removed_by_runkit__") - 1, 1);
+	MAKE_STD_ZVAL(runkit_global->removed_function_str_zval);
+	ZVAL_STRINGL(runkit_global->removed_function_str_zval, "__function_removed_by_runkit__", sizeof("__function_removed_by_runkit__") - 1, 1);
+	MAKE_STD_ZVAL(runkit_global->removed_parameter_str_zval);
+	ZVAL_STRINGL(runkit_global->removed_parameter_str_zval, "__parameter_removed_by_runkit__", sizeof("__parameter_removed_by_runkit__") - 1, 1);
+	MAKE_STD_ZVAL(runkit_global->removed_property_str_zval);
+	ZVAL_STRINGL(runkit_global->removed_property_str_zval, "__property_removed_by_runkit__", sizeof("__property_removed_by_runkit__") - 1, 1);
+
+	_php_runkit_init_stub_function("__function_removed_by_runkit__", ZEND_FN(_php_runkit_removed_function), &runkit_global->removed_function);
+	_php_runkit_init_stub_function("__method_removed_by_runkit__", ZEND_FN(_php_runkit_removed_method), &runkit_global->removed_method);
+# endif
 #endif
 }
 #endif
@@ -274,6 +319,14 @@ PHP_MSHUTDOWN_FUNCTION(runkit)
 {
 #if defined(PHP_RUNKIT_SUPERGLOBALS) || defined(PHP_RUNKIT_MANIPULATION)
 	UNREGISTER_INI_ENTRIES();
+#endif
+#	ifdef PHP_RUNKIT_MANIPULATION
+#		ifdef ZEND_ENGINE_2
+	zval_ptr_dtor(&RUNKIT_G(name_str_zval));
+	zval_ptr_dtor(&RUNKIT_G(removed_method_str_zval));
+	zval_ptr_dtor(&RUNKIT_G(removed_function_str_zval));
+	zval_ptr_dtor(&RUNKIT_G(removed_parameter_str_zval));
+#		endif
 #endif
 
 	return (1)

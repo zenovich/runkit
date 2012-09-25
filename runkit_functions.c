@@ -369,6 +369,65 @@ void php_runkit_clear_all_functions_runtime_cache(TSRMLS_D)
 /* }}} */
 #endif
 
+#ifdef ZEND_ENGINE_2
+/* {{{ php_runkit_remove_function_from_reflection_objects */
+void php_runkit_remove_function_from_reflection_objects(zend_function *fe TSRMLS_DC) {
+	int i;
+	extern PHPAPI zend_class_entry *reflection_function_ptr;
+	extern PHPAPI zend_class_entry *reflection_method_ptr;
+	extern PHPAPI zend_class_entry *reflection_parameter_ptr;
+
+	if (!EG(objects_store).object_buckets) {
+		return;
+	}
+
+	for (i = 1; i < EG(objects_store).top ; i++) {
+		if (EG(objects_store).object_buckets[i].valid && (!EG(objects_store).object_buckets[i].destructor_called) &&
+		   EG(objects_store).object_buckets[i].bucket.obj.object) {
+			zend_object *object;
+			object = (zend_object *) EG(objects_store).object_buckets[i].bucket.obj.object;
+			if (object->ce == reflection_function_ptr) {
+				reflection_object *refl_obj = (reflection_object *) object;
+				if (refl_obj->ptr == fe) {
+					PHP_RUNKIT_DELETE_REFLECTION_FUNCTION_PTR(refl_obj);
+					refl_obj->ptr = RUNKIT_G(removed_function);
+#if !RUNKIT_ABOVE53
+					refl_obj->free_ptr = 0;
+#endif
+					PHP_RUNKIT_UPDATE_REFLECTION_OBJECT_NAME(object, i, RUNKIT_G(removed_function_str_zval));
+				}
+			} else if (object->ce == reflection_method_ptr) {
+				reflection_object *refl_obj = (reflection_object *) object;
+				if (refl_obj->ptr == fe) {
+					zend_function *f = emalloc(sizeof(zend_function));
+					memcpy(f, RUNKIT_G(removed_method), sizeof(zend_function));
+					f->common.scope = fe->common.scope;
+					f->internal_function.fn_flags |= ZEND_ACC_CALL_VIA_HANDLER; // This is a trigger to free it from destructor
+#if RUNKIT_ABOVE53
+					f->internal_function.function_name = estrdup(f->internal_function.function_name);
+#endif
+					PHP_RUNKIT_DELETE_REFLECTION_FUNCTION_PTR(refl_obj);
+					refl_obj->ptr = f;
+#if !RUNKIT_ABOVE53
+					refl_obj->free_ptr = 1;
+#endif
+					PHP_RUNKIT_UPDATE_REFLECTION_OBJECT_NAME(object, i, RUNKIT_G(removed_method_str_zval));
+				}
+			} else if (object->ce == reflection_parameter_ptr) {
+				reflection_object *refl_obj = (reflection_object *) object;
+				parameter_reference *reference = (parameter_reference *) refl_obj->ptr;
+				if (reference && reference->fptr == fe) {
+					PHP_RUNKIT_DELETE_REFLECTION_FUNCTION_PTR(refl_obj);
+					refl_obj->ptr = NULL;
+					PHP_RUNKIT_UPDATE_REFLECTION_OBJECT_NAME(object, i, RUNKIT_G(removed_parameter_str_zval));
+				}
+			}
+		}
+	}
+}
+/* }}} */
+#endif
+
 /* {{{ php_runkit_generate_lambda_method
 	Heavily borrowed from ZEND_FUNCTION(create_function) */
 int php_runkit_generate_lambda_method(const char *arguments, int arguments_len, const char *phpcode, int phpcode_len,
@@ -517,12 +576,13 @@ PHP_FUNCTION(runkit_function_remove)
 	PHP_RUNKIT_DECL_STRING_PARAM(funcname)
 	char *funcname_lower;
 	int result;
+	zend_function *fe;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, PHP_RUNKIT_STRING_SPEC "/", PHP_RUNKIT_STRING_PARAM(funcname)) == FAILURE) {
 		RETURN_FALSE;
 	}
 
-	if (php_runkit_fetch_function(PHP_RUNKIT_STRING_TYPE(funcname), funcname, funcname_len, NULL, PHP_RUNKIT_FETCH_FUNCTION_REMOVE TSRMLS_CC) == FAILURE) {
+	if (php_runkit_fetch_function(PHP_RUNKIT_STRING_TYPE(funcname), funcname, funcname_len, &fe, PHP_RUNKIT_FETCH_FUNCTION_REMOVE TSRMLS_CC) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -532,6 +592,10 @@ PHP_FUNCTION(runkit_function_remove)
 		RETURN_FALSE;
 	}
 	php_strtolower(funcname_lower, funcname_len);
+
+#ifdef ZEND_ENGINE_2
+	php_runkit_remove_function_from_reflection_objects(fe TSRMLS_CC);
+#endif
 
 	result = (zend_hash_del(EG(function_table), funcname_lower, funcname_len + 1) == SUCCESS);
 	efree(funcname_lower);
@@ -591,6 +655,10 @@ PHP_FUNCTION(runkit_function_rename)
 	func = *fe;
 	PHP_RUNKIT_FUNCTION_ADD_REF(&func);
 
+#ifdef ZEND_ENGINE_2
+	php_runkit_remove_function_from_reflection_objects(fe TSRMLS_CC);
+#endif
+
 	if (zend_hash_del(EG(function_table), sfunc_lower, sfunc_len + 1) == FAILURE) {
 		efree(dfunc_lower);
 		efree(sfunc_lower);
@@ -632,6 +700,7 @@ PHP_FUNCTION(runkit_function_redefine)
 	zend_bool return_ref = 0;
 	char *delta = NULL, *delta_desc;
 	int retval;
+	zend_function *fe;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
 			PHP_RUNKIT_STRING_SPEC "/" PHP_RUNKIT_STRING_SPEC PHP_RUNKIT_STRING_SPEC "|b",
@@ -643,7 +712,7 @@ PHP_FUNCTION(runkit_function_redefine)
 	}
 
 	/* UTODO */
-	if (php_runkit_fetch_function(PHP_RUNKIT_STRING_TYPE(funcname), funcname, funcname_len, NULL, PHP_RUNKIT_FETCH_FUNCTION_REMOVE TSRMLS_CC) == FAILURE) {
+	if (php_runkit_fetch_function(PHP_RUNKIT_STRING_TYPE(funcname), funcname, funcname_len, &fe, PHP_RUNKIT_FETCH_FUNCTION_REMOVE TSRMLS_CC) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -654,6 +723,10 @@ PHP_FUNCTION(runkit_function_redefine)
 	}
 	funcname_lower_len = funcname_len;
 	PHP_RUNKIT_STRTOLOWER(funcname_lower);
+
+#ifdef ZEND_ENGINE_2
+	php_runkit_remove_function_from_reflection_objects(fe TSRMLS_CC);
+#endif
 
 	if (zend_hash_del(EG(function_table), funcname_lower, funcname_len + 1) == FAILURE) {
 		efree(funcname_lower);

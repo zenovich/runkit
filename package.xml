@@ -39,6 +39,8 @@ Execute code in restricted environment (sandboxing).
            New constant RUNKIT_ACC_RETURN_REFERENCE was introduced for use with functions runkit_method_add and runkit_method_redefine
 
      Critical fixes:
+         * Highly probable crashes after modifying removing or renaming of functions, methods, and properties,
+           for which Reflection objects have been instantiated, were eliminated
          * Crash on sandbox creation when register_globals is switched on was fixed
          * Building and working with PHP4 were fixed
          * Crash on syntax error in source file importing with runkit_import was fixed

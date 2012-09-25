@@ -35,7 +35,7 @@ static int php_runkit_import_functions(HashTable *function_table, long flags
 
 	zend_hash_internal_pointer_reset_ex(function_table, &pos);
 	for(i = 0; i < func_count; i++) {
-		zend_function *fe = NULL;
+		zend_function *fe = NULL, *orig_fe;
 		char *key;
 		const char *new_key;
 		uint key_len, new_key_len;
@@ -55,12 +55,15 @@ static int php_runkit_import_functions(HashTable *function_table, long flags
 			if (type == HASH_KEY_IS_STRING) {
 				new_key = key;
 				new_key_len = key_len;
-				exists = zend_hash_exists(EG(function_table), (char *) new_key, new_key_len);
+				exists = (zend_hash_find(EG(function_table), (char *) new_key, new_key_len, (void *) &orig_fe) == SUCCESS);
 			} else {
-				exists = zend_hash_index_exists(EG(function_table), idx);
+				exists = (zend_hash_index_find(EG(function_table), idx, (void *) &orig_fe) == SUCCESS);
 			}
 
 			if (exists) {
+#ifdef ZEND_ENGINE_2
+				php_runkit_remove_function_from_reflection_objects(orig_fe TSRMLS_CC);
+#endif
 				if (flags & PHP_RUNKIT_IMPORT_OVERRIDE) {
 					if (type == HASH_KEY_IS_STRING) {
 						if (zend_hash_del(EG(function_table), (char *) new_key, new_key_len) == FAILURE) {
@@ -158,6 +161,9 @@ static int php_runkit_import_class_methods(zend_class_entry *dce, zend_class_ent
 #endif
 
 			zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_clean_children_methods, 5, scope, dce, fn, fn_len, dfe);
+#ifdef ZEND_ENGINE_2
+			php_runkit_remove_function_from_reflection_objects(dfe TSRMLS_CC);
+#endif
 			if (zend_hash_del(&dce->function_table, fn, fn_len + 1) == FAILURE) {
 				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error removing old method in destination class %s::%s", dce->name, fe->common.function_name);
 				zend_hash_move_forward_ex(&ce->function_table, &pos);

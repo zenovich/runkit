@@ -70,6 +70,12 @@
 #define PHP_RUNKIT_MANIPULATION
 #endif
 
+#ifdef ZEND_ENGINE_2
+# ifdef PHP_RUNKIT_MANIPULATION
+#include "Zend/zend_object_handlers.h"
+# endif
+#endif
+
 extern zend_module_entry runkit_module_entry;
 #define phpext_runkit_ptr &runkit_module_entry
 
@@ -125,6 +131,10 @@ ZEND_BEGIN_MODULE_GLOBALS(runkit)
 	HashTable *misplaced_internal_functions;
 	HashTable *replaced_internal_functions;
 	zend_bool internal_override;
+# ifdef ZEND_ENGINE_2
+	zval *name_str_zval, *removed_method_str_zval, *removed_function_str_zval, *removed_parameter_str_zval, *removed_property_str_zval;
+	zend_function *removed_function, *removed_method;
+# endif
 #endif
 ZEND_END_MODULE_GLOBALS(runkit)
 #endif
@@ -189,6 +199,9 @@ extern ZEND_DECLARE_MODULE_GLOBALS(runkit);
 int php_runkit_check_call_stack(zend_op_array *op_array TSRMLS_DC);
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 void php_runkit_clear_all_functions_runtime_cache(TSRMLS_D);
+#endif
+#ifdef ZEND_ENGINE_2
+void php_runkit_remove_function_from_reflection_objects(zend_function *fe TSRMLS_DC);
 #endif
 void php_runkit_function_copy_ctor(zend_function *fe, const char *newname, int newname_len TSRMLS_DC);
 int php_runkit_generate_lambda_method(const char *arguments, int arguments_len, const char *phpcode, int phpcode_len,
@@ -259,13 +272,17 @@ int php_runkit_update_children_consts(RUNKIT_53_TSRMLS_ARG(void *pDest), int num
 int php_runkit_update_children_def_props(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce), int num_args, va_list args, zend_hash_key *hash_key);
 int php_runkit_def_prop_add_int(zend_class_entry *ce, const char *propname, int propname_len, zval *copyval, long visibility, const char *doc_comment, int doc_comment_len, zend_class_entry *definer_class, int override TSRMLS_DC);
 int php_runkit_def_prop_remove_int(zend_class_entry *ce, const char *propname, int propname_len, zend_class_entry *definer_class TSRMLS_DC);
+#ifdef ZEND_ENGINE_2
+void php_runkit_remove_property_from_reflection_objects(zend_class_entry *ce, const char *prop_name, int prop_name_len TSRMLS_DC);
+#endif
 
+#ifdef ZEND_ENGINE_2
 typedef struct _zend_closure {
     zend_object    std;
     zend_function  func;
     HashTable     *debug_info;
 } zend_closure;
-
+#endif
 #endif /* PHP_RUNKIT_MANIPULATION */
 
 #ifdef PHP_RUNKIT_SANDBOX
@@ -346,144 +363,219 @@ struct _php_runkit_sandbox_object {
 
 #ifdef ZEND_ENGINE_2
 #if RUNKIT_ABOVE53
-#    define PHP_RUNKIT_ADD_MAGIC_METHOD(ce, lcmname, mname_len, fe, orig_fe) { \
-	if (!strncmp((lcmname), ZEND_CLONE_FUNC_NAME, (mname_len))) { \
-		(ce)->clone = (fe); (fe)->common.fn_flags |= ZEND_ACC_CLONE; \
-	} else if (!strncmp((lcmname), ZEND_CONSTRUCTOR_FUNC_NAME, (mname_len))) { \
-		if (!(ce)->constructor || (ce)->constructor == (orig_fe)) { \
-			(ce)->constructor = (fe); (fe)->common.fn_flags |= ZEND_ACC_CTOR; \
-		} \
-	} else if (!strncmp((lcmname), ZEND_DESTRUCTOR_FUNC_NAME, (mname_len))) { \
-		(ce)->destructor = (fe); (fe)->common.fn_flags |= ZEND_ACC_DTOR; \
-	} else if (!strncmp((lcmname), ZEND_GET_FUNC_NAME, (mname_len))) { \
-		(ce)->__get = (fe); \
-	} else if (!strncmp((lcmname), ZEND_SET_FUNC_NAME, (mname_len))) { \
-		(ce)->__set = (fe); \
-	} else if (!strncmp((lcmname), ZEND_CALL_FUNC_NAME, (mname_len))) { \
-		(ce)->__call = (fe); \
-	} else if (!strncmp((lcmname), ZEND_UNSET_FUNC_NAME, (mname_len))) { \
-		(ce)->__unset = (fe); \
-	} else if (!strncmp((lcmname), ZEND_ISSET_FUNC_NAME, (mname_len))) { \
-		(ce)->__isset = (fe); \
-	} else if (!strncmp((lcmname), ZEND_CALLSTATIC_FUNC_NAME, (mname_len))) { \
-		(ce)->__callstatic = (fe); \
-	} else if (!strncmp((lcmname), ZEND_TOSTRING_FUNC_NAME, (mname_len))) { \
-		(ce)->__tostring = (fe); \
-	} else if ((ce)->name_length == (mname_len)) { \
-		char *lowercase_name = emalloc((ce)->name_length + 1); \
-		zend_str_tolower_copy(lowercase_name, (ce)->name, (ce)->name_length); \
-		if (!memcmp((lcmname), lowercase_name, (mname_len))) { \
+#	define PHP_RUNKIT_ADD_MAGIC_METHOD(ce, lcmname, mname_len, fe, orig_fe) { \
+		if (!strncmp((lcmname), ZEND_CLONE_FUNC_NAME, (mname_len))) { \
+			(ce)->clone = (fe); (fe)->common.fn_flags |= ZEND_ACC_CLONE; \
+		} else if (!strncmp((lcmname), ZEND_CONSTRUCTOR_FUNC_NAME, (mname_len))) { \
 			if (!(ce)->constructor || (ce)->constructor == (orig_fe)) { \
-				(ce)->constructor = (fe); \
-				(fe)->common.fn_flags |= ZEND_ACC_CTOR; \
+				(ce)->constructor = (fe); (fe)->common.fn_flags |= ZEND_ACC_CTOR; \
 			} \
+		} else if (!strncmp((lcmname), ZEND_DESTRUCTOR_FUNC_NAME, (mname_len))) { \
+			(ce)->destructor = (fe); (fe)->common.fn_flags |= ZEND_ACC_DTOR; \
+		} else if (!strncmp((lcmname), ZEND_GET_FUNC_NAME, (mname_len))) { \
+			(ce)->__get = (fe); \
+		} else if (!strncmp((lcmname), ZEND_SET_FUNC_NAME, (mname_len))) { \
+			(ce)->__set = (fe); \
+		} else if (!strncmp((lcmname), ZEND_CALL_FUNC_NAME, (mname_len))) { \
+			(ce)->__call = (fe); \
+		} else if (!strncmp((lcmname), ZEND_UNSET_FUNC_NAME, (mname_len))) { \
+			(ce)->__unset = (fe); \
+		} else if (!strncmp((lcmname), ZEND_ISSET_FUNC_NAME, (mname_len))) { \
+			(ce)->__isset = (fe); \
+		} else if (!strncmp((lcmname), ZEND_CALLSTATIC_FUNC_NAME, (mname_len))) { \
+			(ce)->__callstatic = (fe); \
+		} else if (!strncmp((lcmname), ZEND_TOSTRING_FUNC_NAME, (mname_len))) { \
+			(ce)->__tostring = (fe); \
+		} else if ((ce)->name_length == (mname_len)) { \
+			char *lowercase_name = emalloc((ce)->name_length + 1); \
+			zend_str_tolower_copy(lowercase_name, (ce)->name, (ce)->name_length); \
+			if (!memcmp((lcmname), lowercase_name, (mname_len))) { \
+				if (!(ce)->constructor || (ce)->constructor == (orig_fe)) { \
+					(ce)->constructor = (fe); \
+					(fe)->common.fn_flags |= ZEND_ACC_CTOR; \
+				} \
+			} \
+			efree(lowercase_name); \
 		} \
-		efree(lowercase_name); \
-	} \
-}
-#    define PHP_RUNKIT_DEL_MAGIC_METHOD(ce, fe) { \
-	if      ((ce)->constructor == (fe))                         (ce)->constructor  = NULL; \
-	else if ((ce)->destructor == (fe))                          (ce)->destructor   = NULL; \
-	else if ((ce)->__get == (fe))                               (ce)->__get        = NULL; \
-	else if ((ce)->__set == (fe))                               (ce)->__set        = NULL; \
-	else if ((ce)->__unset == (fe))                             (ce)->__unset      = NULL; \
-	else if ((ce)->__isset == (fe))                             (ce)->__isset      = NULL; \
-	else if ((ce)->__call == (fe))                              (ce)->__call       = NULL; \
-	else if ((ce)->__callstatic == (fe))                        (ce)->__callstatic = NULL; \
-	else if ((ce)->__tostring == (fe))                          (ce)->__tostring   = NULL; \
-	else if ((ce)->clone == (fe))                               (ce)->clone        = NULL; \
-}
-#    define PHP_RUNKIT_INHERIT_MAGIC(ce, fe, orig_fe, is_constr) { \
-	if ((ce)->__get == (orig_fe) && (ce)->parent->__get == (fe)) { \
-		(ce)->__get        = (ce)->parent->__get; \
-	} else if ((ce)->__set        == (orig_fe) && (ce)->parent->__set == (fe)) { \
-		(ce)->__set        = (ce)->parent->__set; \
-	} else if ((ce)->__unset      == (orig_fe) && (ce)->parent->__unset == (fe)) { \
-		(ce)->__unset      = (ce)->parent->__unset; \
-	} else if ((ce)->__isset      == (orig_fe) && (ce)->parent->__isset == (fe)) { \
-		(ce)->__isset      = (ce)->parent->__isset; \
-	} else if ((ce)->__call       == (orig_fe) && (ce)->parent->__call == (fe)) { \
-		(ce)->__call       = (ce)->parent->__call; \
-	} else if ((ce)->__callstatic == (orig_fe) && (ce)->parent->__callstatic == (fe)) { \
-		(ce)->__callstatic = (ce)->parent->__callstatic; \
-	} else if ((ce)->__tostring == (orig_fe) && (ce)->parent->__tostring == (fe)) { \
-		(ce)->__tostring   = (ce)->parent->__tostring; \
-	} else if ((ce)->clone        == (orig_fe) && (ce)->parent->clone == (fe)) { \
-		(ce)->clone        = (ce)->parent->clone; \
-	} else if ((ce)->destructor   == (orig_fe) && (ce)->parent->destructor == (fe)) { \
-		(ce)->destructor   = (ce)->parent->destructor; \
-	} else if ((ce)->constructor  == (orig_fe) && (ce)->parent->constructor == (fe)) { \
-		(ce)->constructor  = (ce)->parent->constructor; \
-	} \
-}
+	}
+#	define PHP_RUNKIT_DEL_MAGIC_METHOD(ce, fe) { \
+		if      ((ce)->constructor == (fe))                         (ce)->constructor  = NULL; \
+		else if ((ce)->destructor == (fe))                          (ce)->destructor   = NULL; \
+		else if ((ce)->__get == (fe))                               (ce)->__get        = NULL; \
+		else if ((ce)->__set == (fe))                               (ce)->__set        = NULL; \
+		else if ((ce)->__unset == (fe))                             (ce)->__unset      = NULL; \
+		else if ((ce)->__isset == (fe))                             (ce)->__isset      = NULL; \
+		else if ((ce)->__call == (fe))                              (ce)->__call       = NULL; \
+		else if ((ce)->__callstatic == (fe))                        (ce)->__callstatic = NULL; \
+		else if ((ce)->__tostring == (fe))                          (ce)->__tostring   = NULL; \
+		else if ((ce)->clone == (fe))                               (ce)->clone        = NULL; \
+	}
+#	define PHP_RUNKIT_INHERIT_MAGIC(ce, fe, orig_fe, is_constr) { \
+		if ((ce)->__get == (orig_fe) && (ce)->parent->__get == (fe)) { \
+			(ce)->__get        = (ce)->parent->__get; \
+		} else if ((ce)->__set        == (orig_fe) && (ce)->parent->__set == (fe)) { \
+			(ce)->__set        = (ce)->parent->__set; \
+		} else if ((ce)->__unset      == (orig_fe) && (ce)->parent->__unset == (fe)) { \
+			(ce)->__unset      = (ce)->parent->__unset; \
+		} else if ((ce)->__isset      == (orig_fe) && (ce)->parent->__isset == (fe)) { \
+			(ce)->__isset      = (ce)->parent->__isset; \
+		} else if ((ce)->__call       == (orig_fe) && (ce)->parent->__call == (fe)) { \
+			(ce)->__call       = (ce)->parent->__call; \
+		} else if ((ce)->__callstatic == (orig_fe) && (ce)->parent->__callstatic == (fe)) { \
+			(ce)->__callstatic = (ce)->parent->__callstatic; \
+		} else if ((ce)->__tostring == (orig_fe) && (ce)->parent->__tostring == (fe)) { \
+			(ce)->__tostring   = (ce)->parent->__tostring; \
+		} else if ((ce)->clone        == (orig_fe) && (ce)->parent->clone == (fe)) { \
+			(ce)->clone        = (ce)->parent->clone; \
+		} else if ((ce)->destructor   == (orig_fe) && (ce)->parent->destructor == (fe)) { \
+			(ce)->destructor   = (ce)->parent->destructor; \
+		} else if ((ce)->constructor  == (orig_fe) && (ce)->parent->constructor == (fe)) { \
+			(ce)->constructor  = (ce)->parent->constructor; \
+		} \
+	}
 #else
-#    define PHP_RUNKIT_ADD_MAGIC_METHOD(ce, lcmname, mname_len, fe, orig_fe) { \
-	if (!strncmp((lcmname), ZEND_CLONE_FUNC_NAME, (mname_len))) { \
-		(ce)->clone = (fe); (fe)->common.fn_flags |= ZEND_ACC_CLONE; \
-	} else if (!strncmp((lcmname), ZEND_CONSTRUCTOR_FUNC_NAME, (mname_len))) { \
-		if (!(ce)->constructor || (ce)->constructor == (orig_fe)) { \
-			(ce)->constructor = (fe); (fe)->common.fn_flags |= ZEND_ACC_CTOR; \
-		} \
-	} else if (!strncmp((lcmname), ZEND_DESTRUCTOR_FUNC_NAME, (mname_len))) { \
-		(ce)->destructor = (fe); (fe)->common.fn_flags |= ZEND_ACC_DTOR; \
-	} else if (!strncmp((lcmname), ZEND_GET_FUNC_NAME, (mname_len))) { \
-		(ce)->__get = (fe); \
-	} else if (!strncmp((lcmname), ZEND_SET_FUNC_NAME, (mname_len))) { \
-		(ce)->__set = (fe); \
-	} else if (!strncmp((lcmname), ZEND_CALL_FUNC_NAME, (mname_len))) { \
-		(ce)->__call = (fe); \
-	} else if (!strncmp((lcmname), ZEND_UNSET_FUNC_NAME, (mname_len))) { \
-		(ce)->__unset = (fe); \
-	} else if (!strncmp((lcmname), ZEND_ISSET_FUNC_NAME, (mname_len))) { \
-		(ce)->__isset = (fe); \
-	} else if (!strncmp((lcmname), ZEND_TOSTRING_FUNC_NAME, (mname_len))) { \
-		(ce)->__tostring = (fe); \
-	} else if ((ce)->name_length == (mname_len)) { \
-		char *lowercase_name = emalloc((ce)->name_length + 1); \
-		zend_str_tolower_copy(lowercase_name, (ce)->name, (ce)->name_length); \
-		if (!memcmp((lcmname), lowercase_name, (mname_len))) { \
+#	define PHP_RUNKIT_ADD_MAGIC_METHOD(ce, lcmname, mname_len, fe, orig_fe) { \
+		if (!strncmp((lcmname), ZEND_CLONE_FUNC_NAME, (mname_len))) { \
+			(ce)->clone = (fe); (fe)->common.fn_flags |= ZEND_ACC_CLONE; \
+		} else if (!strncmp((lcmname), ZEND_CONSTRUCTOR_FUNC_NAME, (mname_len))) { \
 			if (!(ce)->constructor || (ce)->constructor == (orig_fe)) { \
-				(ce)->constructor = (fe); \
-				(fe)->common.fn_flags |= ZEND_ACC_CTOR; \
+				(ce)->constructor = (fe); (fe)->common.fn_flags |= ZEND_ACC_CTOR; \
 			} \
+		} else if (!strncmp((lcmname), ZEND_DESTRUCTOR_FUNC_NAME, (mname_len))) { \
+			(ce)->destructor = (fe); (fe)->common.fn_flags |= ZEND_ACC_DTOR; \
+		} else if (!strncmp((lcmname), ZEND_GET_FUNC_NAME, (mname_len))) { \
+			(ce)->__get = (fe); \
+		} else if (!strncmp((lcmname), ZEND_SET_FUNC_NAME, (mname_len))) { \
+			(ce)->__set = (fe); \
+		} else if (!strncmp((lcmname), ZEND_CALL_FUNC_NAME, (mname_len))) { \
+			(ce)->__call = (fe); \
+		} else if (!strncmp((lcmname), ZEND_UNSET_FUNC_NAME, (mname_len))) { \
+			(ce)->__unset = (fe); \
+		} else if (!strncmp((lcmname), ZEND_ISSET_FUNC_NAME, (mname_len))) { \
+			(ce)->__isset = (fe); \
+		} else if (!strncmp((lcmname), ZEND_TOSTRING_FUNC_NAME, (mname_len))) { \
+			(ce)->__tostring = (fe); \
+		} else if ((ce)->name_length == (mname_len)) { \
+			char *lowercase_name = emalloc((ce)->name_length + 1); \
+			zend_str_tolower_copy(lowercase_name, (ce)->name, (ce)->name_length); \
+			if (!memcmp((lcmname), lowercase_name, (mname_len))) { \
+				if (!(ce)->constructor || (ce)->constructor == (orig_fe)) { \
+					(ce)->constructor = (fe); \
+					(fe)->common.fn_flags |= ZEND_ACC_CTOR; \
+				} \
+			} \
+			efree(lowercase_name); \
 		} \
-		efree(lowercase_name); \
-	} \
-}
-#    define PHP_RUNKIT_DEL_MAGIC_METHOD(ce, fe) { \
-	if      ((ce)->constructor == (fe))                         (ce)->constructor  = NULL; \
-	else if ((ce)->destructor == (fe))                          (ce)->destructor   = NULL; \
-	else if ((ce)->__get == (fe))                               (ce)->__get        = NULL; \
-	else if ((ce)->__set == (fe))                               (ce)->__set        = NULL; \
-	else if ((ce)->__unset == (fe))                             (ce)->__unset      = NULL; \
-	else if ((ce)->__isset == (fe))                             (ce)->__isset      = NULL; \
-	else if ((ce)->__call == (fe))                              (ce)->__call       = NULL; \
-	else if ((ce)->__tostring == (fe))                          (ce)->__tostring   = NULL; \
-	else if ((ce)->clone == (fe))                               (ce)->clone        = NULL; \
-}
-#    define PHP_RUNKIT_INHERIT_MAGIC(ce, fe, orig_fe, is_constr) { \
-	if ((ce)->__get == (orig_fe) && (ce)->parent->__get == (fe)) { \
-		(ce)->__get        = (ce)->parent->__get; \
-	} else if ((ce)->__set        == (orig_fe) && (ce)->parent->__set == (fe)) { \
-		(ce)->__set        = (ce)->parent->__set; \
-	} else if ((ce)->__unset      == (orig_fe) && (ce)->parent->__unset == (fe)) { \
-		(ce)->__unset      = (ce)->parent->__unset; \
-	} else if ((ce)->__isset      == (orig_fe) && (ce)->parent->__isset == (fe)) { \
-		(ce)->__isset      = (ce)->parent->__isset; \
-	} else if ((ce)->__call       == (orig_fe) && (ce)->parent->__call == (fe)) { \
-		(ce)->__call       = (ce)->parent->__call; \
-	} else if ((ce)->__tostring == (orig_fe) && (ce)->parent->__tostring == (fe)) { \
-		(ce)->__tostring   = (ce)->parent->__tostring; \
-	} else if ((ce)->clone        == (orig_fe) && (ce)->parent->clone == (fe)) { \
-		(ce)->clone        = (ce)->parent->clone; \
-	} else if ((ce)->destructor   == (orig_fe) && (ce)->parent->destructor == (fe)) { \
-		(ce)->destructor   = (ce)->parent->destructor; \
-	} else if ((ce)->constructor  == (orig_fe) && (ce)->parent->constructor == (fe)) { \
-		(ce)->constructor  = (ce)->parent->constructor; \
-	} \
-}
-#endif // RUNKIT_ABOVE53
-#define PHP_RUNKIT_DESTROY_FUNCTION(fe) 	destroy_zend_function(fe TSRMLS_CC);
+	}
+#	define PHP_RUNKIT_DEL_MAGIC_METHOD(ce, fe) { \
+		if      ((ce)->constructor == (fe))                         (ce)->constructor  = NULL; \
+		else if ((ce)->destructor == (fe))                          (ce)->destructor   = NULL; \
+		else if ((ce)->__get == (fe))                               (ce)->__get        = NULL; \
+		else if ((ce)->__set == (fe))                               (ce)->__set        = NULL; \
+		else if ((ce)->__unset == (fe))                             (ce)->__unset      = NULL; \
+		else if ((ce)->__isset == (fe))                             (ce)->__isset      = NULL; \
+		else if ((ce)->__call == (fe))                              (ce)->__call       = NULL; \
+		else if ((ce)->__tostring == (fe))                          (ce)->__tostring   = NULL; \
+		else if ((ce)->clone == (fe))                               (ce)->clone        = NULL; \
+	}
+#	define PHP_RUNKIT_INHERIT_MAGIC(ce, fe, orig_fe, is_constr) { \
+		if ((ce)->__get == (orig_fe) && (ce)->parent->__get == (fe)) { \
+			(ce)->__get        = (ce)->parent->__get; \
+		} else if ((ce)->__set        == (orig_fe) && (ce)->parent->__set == (fe)) { \
+			(ce)->__set        = (ce)->parent->__set; \
+		} else if ((ce)->__unset      == (orig_fe) && (ce)->parent->__unset == (fe)) { \
+			(ce)->__unset      = (ce)->parent->__unset; \
+		} else if ((ce)->__isset      == (orig_fe) && (ce)->parent->__isset == (fe)) { \
+			(ce)->__isset      = (ce)->parent->__isset; \
+		} else if ((ce)->__call       == (orig_fe) && (ce)->parent->__call == (fe)) { \
+			(ce)->__call       = (ce)->parent->__call; \
+		} else if ((ce)->__tostring == (orig_fe) && (ce)->parent->__tostring == (fe)) { \
+			(ce)->__tostring   = (ce)->parent->__tostring; \
+		} else if ((ce)->clone        == (orig_fe) && (ce)->parent->clone == (fe)) { \
+			(ce)->clone        = (ce)->parent->clone; \
+		} else if ((ce)->destructor   == (orig_fe) && (ce)->parent->destructor == (fe)) { \
+			(ce)->destructor   = (ce)->parent->destructor; \
+		} else if ((ce)->constructor  == (orig_fe) && (ce)->parent->constructor == (fe)) { \
+			(ce)->constructor  = (ce)->parent->constructor; \
+		} \
+	}
+#	endif // RUNKIT_ABOVE53
+#	define PHP_RUNKIT_DESTROY_FUNCTION(fe) 	destroy_zend_function(fe TSRMLS_CC);
+
+#	if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+#		define PHP_RUNKIT_UPDATE_REFLECTION_OBJECT_NAME(object, handle, name) { \
+			zval obj; \
+			Z_TYPE(obj) = IS_OBJECT; \
+			Z_OBJ_HANDLE(obj) = (handle); \
+			obj.RUNKIT_REFCOUNT = 1; \
+			obj.RUNKIT_IS_REF = 1; \
+			zend_std_write_property(&obj, RUNKIT_G(name_str_zval), (name), NULL TSRMLS_CC); \
+		}
+#	else
+#		define PHP_RUNKIT_UPDATE_REFLECTION_OBJECT_NAME(object, handle, name) { \
+			zval obj; \
+			Z_TYPE(obj) = IS_OBJECT; \
+			Z_OBJ_HANDLE(obj) = (handle); \
+			obj.RUNKIT_REFCOUNT = 1; \
+			obj.RUNKIT_IS_REF = 1; \
+			zend_get_std_object_handlers()->write_property(&obj, RUNKIT_G(name_str_zval), (name) TSRMLS_CC); \
+		}
+#	endif
+
+#	if RUNKIT_ABOVE53
+#		define PHP_RUNKIT_DELETE_REFLECTION_FUNCTION_PTR(obj) { \
+			if ((obj)->ptr \
+			    && ((zend_function *)(obj)->ptr)->type == ZEND_INTERNAL_FUNCTION \
+			    && (((zend_function *)(obj)->ptr)->internal_function.fn_flags & ZEND_ACC_CALL_VIA_HANDLER) != 0) { \
+				efree((char*)((zend_function *)(obj)->ptr)->internal_function.function_name); \
+				efree((obj)->ptr); \
+			} \
+		}
+#	else
+#		define PHP_RUNKIT_DELETE_REFLECTION_FUNCTION_PTR(obj) { \
+			if ((obj)->free_ptr && (obj)->ptr) { \
+				efree((obj)->ptr); \
+			} \
+		}
+#	endif
+
+	/* Struct for properties */
+	typedef struct _property_reference {
+		zend_class_entry *ce;
+		zend_property_info prop;
+	} property_reference;
+
+	/* Struct for parameters */
+	typedef struct _parameter_reference {
+		zend_uint offset;
+		zend_uint required;
+		struct _zend_arg_info *arg_info;
+		zend_function *fptr;
+	} parameter_reference;
+
+	typedef enum {
+		REF_TYPE_OTHER,      /* Must be 0 */
+		REF_TYPE_FUNCTION,
+		REF_TYPE_PARAMETER,
+		REF_TYPE_PROPERTY,
+		REF_TYPE_DYNAMIC_PROPERTY
+	} reflection_type_t;
+
+	/* Struct for reflection objects */
+	typedef struct {
+		zend_object zo;
+		void *ptr;
+#if RUNKIT_ABOVE53
+		reflection_type_t ref_type;
+#else
+		unsigned int free_ptr:1;
+#endif
+		zval *obj;
+		zend_class_entry *ce;
+#if RUNKIT_ABOVE53
+		unsigned int ignore_visibility:1;
+#endif
+	} reflection_object;
 #else
 #define PHP_RUNKIT_DESTROY_FUNCTION(fe) 	destroy_zend_function(fe);
 #define PHP_RUNKIT_ADD_MAGIC_METHOD(ce, lcmname, mname_len, fe, orig_fe)
