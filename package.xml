@@ -193,6 +193,7 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_import_with_syntax_error.phpt" role="test" />
     <file name="runkit_sandbox_with_register_globals.phpt" role="test" />
     <file name="runkit_static_property_add.phpt" role="test" />
+    <file name="runkit_static_property_add_existing.phpt" role="test" />
     <file name="runkit_static_property_add_to_subclasses.phpt" role="test" />
     <file name="runkit_superglobals.phpt" role="test" />
    </dir> <!-- //tests -->

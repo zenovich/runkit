@@ -381,13 +381,13 @@ static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry
 					                                   NULL TSRMLS_CC) != SUCCESS) {
 						php_error_docref(NULL TSRMLS_CC, E_WARNING,
 						                 "Unable to remove old property %s%s%s, not importing",
-						                 dce->name, (property_info_ptr->flags & ZEND_ACC_STATIC) ? ":: " : "->",
+						                 dce->name, (property_info_ptr->flags & ZEND_ACC_STATIC) ? "::$" : "->",
 						                 property_info_ptr->name);
 						goto import_st54_prop_skip;
 					}
 				} else {
-					php_error_docref(NULL TSRMLS_CC, E_NOTICE, "%s->%s already exists, not importing",
-					                 dce->name, key);
+					php_error_docref(NULL TSRMLS_CC, E_NOTICE, "%s%s%s already exists, not importing",
+					                 dce->name, (property_info_ptr->flags & ZEND_ACC_STATIC) ? "::$" : "->", key);
 					goto import_st54_prop_skip;
 				}
 			}

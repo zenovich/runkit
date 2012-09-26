@@ -23,6 +23,6 @@ echo $o->v, "\n";
 --EXPECTF--
 v
 
-Notice: runkit_import(): testsub->v already exists, not importing in %s on line %d
+Notice: runkit_import(): testsub->v already exists, not adding in %s on line %d
 v
 IMPORTED: v

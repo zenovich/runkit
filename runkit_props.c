@@ -115,8 +115,8 @@ int php_runkit_def_prop_add_int(zend_class_entry *ce, const char *propname, int 
 #if PHP_MAJOR_VERSION >= 5
 	if (zend_hash_quick_find(&ce->properties_info, (char *) propname, propname_len + 1, h, (void*) &prop_info_ptr) == SUCCESS && !override) {
 		zval_ptr_dtor(&pcopyval);
-		php_error_docref(NULL TSRMLS_CC, E_NOTICE, "%s%s%s already exists, not importing",
-		                 ce->name, (prop_info_ptr->flags & ZEND_ACC_STATIC) ? "::" : "->", propname);
+		php_error_docref(NULL TSRMLS_CC, E_NOTICE, "%s%s%s already exists, not adding",
+		                 ce->name, (prop_info_ptr->flags & ZEND_ACC_STATIC) ? "::$" : "->", propname);
 		return FAILURE;
 	}
 #else
@@ -124,13 +124,13 @@ int php_runkit_def_prop_add_int(zend_class_entry *ce, const char *propname, int 
 		if (override) {
 			if (zend_hash_del(&ce->default_properties, (char *) propname, propname_len + 1) == FAILURE) {
 				zval_ptr_dtor(&pcopyval);
-				php_error_docref(NULL TSRMLS_CC, E_NOTICE, "Failed to remove property %s->%s, not importing",
+				php_error_docref(NULL TSRMLS_CC, E_NOTICE, "Failed to remove property %s->%s, not adding",
 				                 ce->name, propname);
 				return FAILURE;
 			}
 		} else {
 			zval_ptr_dtor(&pcopyval);
-			php_error_docref(NULL TSRMLS_CC, E_NOTICE, "%s->%s already exists, not importing",
+			php_error_docref(NULL TSRMLS_CC, E_NOTICE, "%s->%s already exists, not adding",
 			                 ce->name, propname);
 			return FAILURE;
 		}
@@ -239,10 +239,7 @@ static int php_runkit_def_prop_add(char *classname, int classname_len, char *pro
 	char *key = propname;
 	int key_len = propname_len;
 #ifdef ZEND_ENGINE_2
-#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION <= 3)
-	char *temp;
-	int temp_len;
-#endif
+	zend_property_info *existing_prop;
 #endif
 
 	if (php_runkit_fetch_class_int(classname, classname_len, &ce TSRMLS_CC)==FAILURE) {
@@ -256,63 +253,31 @@ static int php_runkit_def_prop_add(char *classname, int classname_len, char *pro
 		copyval = value;
 	}
 
+#if PHP_MAJOR_VERSION >= 5
 	/* Check for existing property by this name */
 	/* Existing public? */
-#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION >= 6)
-	if (zend_hash_exists(&ce->properties_info, key, key_len + 1)) {
-		zval_ptr_dtor(&copyval);
-		FREE_ZVAL(copyval);
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s::%s already exists", classname, propname);
+	if (zend_hash_find(&ce->properties_info, key, key_len + 1, (void *) &existing_prop) == SUCCESS) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s%s%s already exists", classname,
+		                 (existing_prop->flags & ZEND_ACC_STATIC) ? "::$" : "->", propname);
 		return FAILURE;
 	}
-#else
-	if (zend_hash_exists(&ce->default_properties, key, key_len + 1)) {
-		zval_ptr_dtor(&copyval);
-		FREE_ZVAL(copyval);
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s::%s already exists", classname, propname);
-		return FAILURE;
-	}
-#endif // (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION >= 6)
-
-#if PHP_MAJOR_VERSION >= 5
 	if (
 	    Z_TYPE_P(copyval) == IS_CONSTANT_ARRAY
-#if RUNKIT_ABOVE53
+#	if RUNKIT_ABOVE53
 	    || (Z_TYPE_P(copyval) & IS_CONSTANT_TYPE_MASK) == IS_CONSTANT
-#endif
+#	endif
 	) {
 		zval_update_constant_ex(&copyval, (void*) 1, ce TSRMLS_CC);
 	}
-#endif
-
-#ifdef ZEND_ENGINE_2
-#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION <= 3)
-	/* Existing Protected? */
-	zend_mangle_property_name(&temp, &temp_len, "*", 1, propname, propname_len, 0);
-	if (zend_hash_exists(&ce->default_properties, temp, temp_len + 1)) {
-		zval_ptr_dtor(&copyval);
-		FREE_ZVAL(copyval);
-		efree(temp);
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s::%s already exists", classname, propname);
+#else
+	if (zend_hash_exists(&ce->default_properties, key, key_len + 1)) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s->%s already exists", classname, propname);
 		return FAILURE;
 	}
-	efree(temp);
+#endif // PHP_MAJOR_VERSION >= 5
 
-	/* Existing Private? */
-	zend_mangle_property_name(&temp, &temp_len, classname, classname_len, propname, propname_len, 0);
-	if (zend_hash_exists(&ce->default_properties, temp, temp_len + 1)) {
-		zval_ptr_dtor(&copyval);
-		FREE_ZVAL(copyval);
-		efree(temp);
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s::%s already exists", classname, propname);
-		return FAILURE;
-	}
-	efree(temp);
-#endif // (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION <= 3)
-#endif // ZEND_ENGINE_2
+
 	if (php_runkit_def_prop_add_int(ce, propname, propname_len, copyval, visibility, NULL, 0, ce, 0 TSRMLS_CC) != SUCCESS) {
-		zval_ptr_dtor(&copyval);
-		FREE_ZVAL(copyval);
 		return FAILURE;
 	}
 

@@ -28,9 +28,9 @@ echo TestSub::$s, "\n";
 v
 s
 
-Notice: runkit_import(): TestSub::s already exists, not importing in %s on line %d
+Notice: runkit_import(): TestSub::$s already exists, not adding in %s on line %d
 
-Notice: runkit_import(): TestSub->v already exists, not importing in %s on line %d
+Notice: runkit_import(): TestSub->v already exists, not adding in %s on line %d
 v
 s
 IMPORTED: v
