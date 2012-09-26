@@ -203,16 +203,11 @@ static void php_runkit_globals_ctor(void *pDest TSRMLS_DC)
 	runkit_global->replaced_internal_functions = NULL;
 	runkit_global->misplaced_internal_functions = NULL;
 # ifdef ZEND_ENGINE_2
-	MAKE_STD_ZVAL(runkit_global->name_str_zval);
-	ZVAL_STRINGL(runkit_global->name_str_zval, "name", sizeof("name") - 1, 1);
-	MAKE_STD_ZVAL(runkit_global->removed_method_str_zval);
-	ZVAL_STRINGL(runkit_global->removed_method_str_zval, "__method_removed_by_runkit__", sizeof("__method_removed_by_runkit__") - 1, 1);
-	MAKE_STD_ZVAL(runkit_global->removed_function_str_zval);
-	ZVAL_STRINGL(runkit_global->removed_function_str_zval, "__function_removed_by_runkit__", sizeof("__function_removed_by_runkit__") - 1, 1);
-	MAKE_STD_ZVAL(runkit_global->removed_parameter_str_zval);
-	ZVAL_STRINGL(runkit_global->removed_parameter_str_zval, "__parameter_removed_by_runkit__", sizeof("__parameter_removed_by_runkit__") - 1, 1);
-	MAKE_STD_ZVAL(runkit_global->removed_property_str_zval);
-	ZVAL_STRINGL(runkit_global->removed_property_str_zval, "__property_removed_by_runkit__", sizeof("__property_removed_by_runkit__") - 1, 1);
+	runkit_global->name_str = "name";
+	runkit_global->removed_method_str = "__method_removed_by_runkit__";
+	runkit_global->removed_function_str = "__function_removed_by_runkit__";
+	runkit_global->removed_parameter_str = "__parameter_removed_by_runkit__";
+	runkit_global->removed_property_str = "__property_removed_by_runkit__";
 
 	_php_runkit_init_stub_function("__function_removed_by_runkit__", ZEND_FN(_php_runkit_removed_function), &runkit_global->removed_function);
 	_php_runkit_init_stub_function("__method_removed_by_runkit__", ZEND_FN(_php_runkit_removed_method), &runkit_global->removed_method);
@@ -319,14 +314,6 @@ PHP_MSHUTDOWN_FUNCTION(runkit)
 {
 #if defined(PHP_RUNKIT_SUPERGLOBALS) || defined(PHP_RUNKIT_MANIPULATION)
 	UNREGISTER_INI_ENTRIES();
-#endif
-#	ifdef PHP_RUNKIT_MANIPULATION
-#		ifdef ZEND_ENGINE_2
-	zval_ptr_dtor(&RUNKIT_G(name_str_zval));
-	zval_ptr_dtor(&RUNKIT_G(removed_method_str_zval));
-	zval_ptr_dtor(&RUNKIT_G(removed_function_str_zval));
-	zval_ptr_dtor(&RUNKIT_G(removed_parameter_str_zval));
-#		endif
 #endif
 
 	return (1)

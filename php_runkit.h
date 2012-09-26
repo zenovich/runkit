@@ -132,7 +132,7 @@ ZEND_BEGIN_MODULE_GLOBALS(runkit)
 	HashTable *replaced_internal_functions;
 	zend_bool internal_override;
 # ifdef ZEND_ENGINE_2
-	zval *name_str_zval, *removed_method_str_zval, *removed_function_str_zval, *removed_parameter_str_zval, *removed_property_str_zval;
+	const char *name_str, *removed_method_str, *removed_function_str, *removed_parameter_str, *removed_property_str;
 	zend_function *removed_function, *removed_method;
 # endif
 #endif
@@ -504,21 +504,35 @@ struct _php_runkit_sandbox_object {
 
 #	if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 #		define PHP_RUNKIT_UPDATE_REFLECTION_OBJECT_NAME(object, handle, name) { \
-			zval obj; \
+			zval obj, *zvname, *zvnew_name; \
+			INIT_ZVAL(obj); \
 			Z_TYPE(obj) = IS_OBJECT; \
 			Z_OBJ_HANDLE(obj) = (handle); \
 			obj.RUNKIT_REFCOUNT = 1; \
 			obj.RUNKIT_IS_REF = 1; \
-			zend_std_write_property(&obj, RUNKIT_G(name_str_zval), (name), NULL TSRMLS_CC); \
+			MAKE_STD_ZVAL(zvname); \
+			ZVAL_STRING(zvname, RUNKIT_G(name_str), 1); \
+			MAKE_STD_ZVAL(zvnew_name); \
+			ZVAL_STRING(zvnew_name, (name), 1); \
+			zend_std_write_property(&obj, zvname, zvnew_name, NULL TSRMLS_CC); \
+			zval_ptr_dtor(&zvnew_name); \
+			zval_ptr_dtor(&zvname); \
 		}
 #	else
 #		define PHP_RUNKIT_UPDATE_REFLECTION_OBJECT_NAME(object, handle, name) { \
-			zval obj; \
+			zval obj, *zvname, *zvnew_name; \
+			INIT_ZVAL(obj); \
 			Z_TYPE(obj) = IS_OBJECT; \
 			Z_OBJ_HANDLE(obj) = (handle); \
 			obj.RUNKIT_REFCOUNT = 1; \
 			obj.RUNKIT_IS_REF = 1; \
-			zend_get_std_object_handlers()->write_property(&obj, RUNKIT_G(name_str_zval), (name) TSRMLS_CC); \
+			MAKE_STD_ZVAL(zvname); \
+			ZVAL_STRING(zvname, (char *) RUNKIT_G(name_str), 1); \
+			MAKE_STD_ZVAL(zvnew_name); \
+			ZVAL_STRING(zvnew_name, (char *) (name), 1); \
+			zend_get_std_object_handlers()->write_property(&obj, zvname, zvnew_name TSRMLS_CC); \
+			zval_ptr_dtor(&zvnew_name); \
+			zval_ptr_dtor(&zvname); \
 		}
 #	endif
 

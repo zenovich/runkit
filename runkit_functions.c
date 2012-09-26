@@ -394,7 +394,7 @@ void php_runkit_remove_function_from_reflection_objects(zend_function *fe TSRMLS
 #if !RUNKIT_ABOVE53
 					refl_obj->free_ptr = 0;
 #endif
-					PHP_RUNKIT_UPDATE_REFLECTION_OBJECT_NAME(object, i, RUNKIT_G(removed_function_str_zval));
+					PHP_RUNKIT_UPDATE_REFLECTION_OBJECT_NAME(object, i, RUNKIT_G(removed_function_str));
 				}
 			} else if (object->ce == reflection_method_ptr) {
 				reflection_object *refl_obj = (reflection_object *) object;
@@ -411,7 +411,7 @@ void php_runkit_remove_function_from_reflection_objects(zend_function *fe TSRMLS
 #if !RUNKIT_ABOVE53
 					refl_obj->free_ptr = 1;
 #endif
-					PHP_RUNKIT_UPDATE_REFLECTION_OBJECT_NAME(object, i, RUNKIT_G(removed_method_str_zval));
+					PHP_RUNKIT_UPDATE_REFLECTION_OBJECT_NAME(object, i, RUNKIT_G(removed_method_str));
 				}
 			} else if (object->ce == reflection_parameter_ptr) {
 				reflection_object *refl_obj = (reflection_object *) object;
@@ -419,7 +419,7 @@ void php_runkit_remove_function_from_reflection_objects(zend_function *fe TSRMLS
 				if (reference && reference->fptr == fe) {
 					PHP_RUNKIT_DELETE_REFLECTION_FUNCTION_PTR(refl_obj);
 					refl_obj->ptr = NULL;
-					PHP_RUNKIT_UPDATE_REFLECTION_OBJECT_NAME(object, i, RUNKIT_G(removed_parameter_str_zval));
+					PHP_RUNKIT_UPDATE_REFLECTION_OBJECT_NAME(object, i, RUNKIT_G(removed_parameter_str));
 				}
 			}
 		}

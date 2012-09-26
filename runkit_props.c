@@ -452,7 +452,7 @@ void php_runkit_remove_property_from_reflection_objects(zend_class_entry *ce, co
 #endif
 						refl_obj->ptr = NULL;
 					}
-					PHP_RUNKIT_UPDATE_REFLECTION_OBJECT_NAME(object, i, RUNKIT_G(removed_property_str_zval));
+					PHP_RUNKIT_UPDATE_REFLECTION_OBJECT_NAME(object, i, RUNKIT_G(removed_property_str));
 				}
 			}
 		}
