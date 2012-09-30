@@ -312,6 +312,10 @@ PHP_MINIT_FUNCTION(runkit)
  */
 PHP_MSHUTDOWN_FUNCTION(runkit)
 {
+#ifdef ZEND_ENGINE_2
+	pefree(RUNKIT_G(removed_function), 1);
+	pefree(RUNKIT_G(removed_method), 1);
+#endif
 #if defined(PHP_RUNKIT_SUPERGLOBALS) || defined(PHP_RUNKIT_MANIPULATION)
 	UNREGISTER_INI_ENTRIES();
 #endif
