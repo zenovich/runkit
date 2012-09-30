@@ -304,7 +304,6 @@ static int php_runkit_import_class_static_props(zend_class_entry *dce, zend_clas
 							php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to import %s::$%s (cannot add new member)", dce->name, key);
 							goto import_st_prop_skip;
 						}
-						Z_ADDREF_P(*pp);
 						goto import_st_prop_skip;
 					} else {
 						zval *pcopy;
@@ -405,9 +404,6 @@ static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry
 				zval_update_constant_ex(p, (void*) 1, dce TSRMLS_CC);
 			}
 
-#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
-			Z_ADDREF_P(*p);
-#endif // (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 			php_runkit_def_prop_add_int(dce, property_info_ptr->name, property_info_ptr->name_length, *p,
 			                            property_info_ptr->flags, property_info_ptr->doc_comment,
 			                            property_info_ptr->doc_comment_len, dce, override TSRMLS_CC);

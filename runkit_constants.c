@@ -231,6 +231,7 @@ static int php_runkit_constant_add(char *classname, int classname_len, char *con
 #endif
 
 	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_consts, 4, ce, copyval, constname, constname_len);
+	zval_ptr_dtor(&copyval);
 
 	return SUCCESS;
 #else

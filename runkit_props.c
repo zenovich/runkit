@@ -76,6 +76,56 @@ int php_runkit_remove_children_def_props(RUNKIT_53_TSRMLS_ARG(zend_class_entry *
 }
 /* }}} */
 
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+/* {{{ php_runkit_remove_private_property_from_childs
+	Clean private properties by offset */
+int php_runkit_remove_private_property_from_childs(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce), int num_args, va_list args, zend_hash_key *hash_key)
+{
+	zend_class_entry *parent_class = va_arg(args, zend_class_entry*);
+	char *pname = va_arg(args, char*);
+	int pname_len = va_arg(args, int);
+	int offset = va_arg(args, int);
+	int i;
+
+	ce = *((zend_class_entry**)ce);
+
+	if (ce->parent != parent_class) {
+		/* Not a child, ignore */
+		return ZEND_HASH_APPLY_KEEP;
+	}
+
+	if (ce->default_properties_table[offset]) {
+		zval_ptr_dtor(&ce->default_properties_table[offset]);
+		ce->default_properties_table[offset] = NULL;
+	}
+	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_remove_private_property_from_childs,
+	                               4, ce, pname, pname_len, offset);
+	php_runkit_remove_property_from_reflection_objects(ce, pname, pname_len TSRMLS_CC);
+
+	if (!EG(objects_store).object_buckets) {
+		return ZEND_HASH_APPLY_KEEP;
+	}
+	for (i = 1; i < EG(objects_store).top ; i++) {
+		if (EG(objects_store).object_buckets[i].valid && (!EG(objects_store).object_buckets[i].destructor_called) &&
+		   EG(objects_store).object_buckets[i].bucket.obj.object) {
+			zend_object *object;
+			object = (zend_object *) EG(objects_store).object_buckets[i].bucket.obj.object;
+			if (object->ce == ce) {
+				if (object->properties_table) {
+					if (object->properties_table[offset]) {
+						zval_ptr_dtor(&object->properties_table[offset]);
+						object->properties_table[offset] = NULL;
+					}
+				}
+			}
+		}
+	}
+
+	return ZEND_HASH_APPLY_KEEP;
+}
+/* }}} */
+#endif
+
 /* {{{ php_runkit_def_prop_add_int */
 int php_runkit_def_prop_add_int(zend_class_entry *ce, const char *propname, int propname_len, zval *copyval, long visibility,
 				const char *doc_comment, int doc_comment_len, zend_class_entry *definer_class, int override TSRMLS_DC)
@@ -96,8 +146,12 @@ int php_runkit_def_prop_add_int(zend_class_entry *ce, const char *propname, int 
 	if ((visibility & ZEND_ACC_PRIVATE) && (visibility &  ZEND_ACC_STATIC) && definer_class && definer_class != ce) {
 		return SUCCESS;
 	}
+
+	Z_ADDREF_P(pcopyval);
+
 	if (visibility & ZEND_ACC_STATIC) {
 		if (definer_class == NULL || ce == definer_class) {
+			zval_ptr_dtor(&pcopyval);
 			SEPARATE_ARG_IF_REF(pcopyval);
 		} else {
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION <= 2)
@@ -107,34 +161,34 @@ int php_runkit_def_prop_add_int(zend_class_entry *ce, const char *propname, int 
 #endif
 		}
 	}
-	Z_ADDREF_P(pcopyval);
-#else
-	Z_ADDREF_P(pcopyval);
 #endif // PHP_MAJOR_VERSION >= 5
 
 #if PHP_MAJOR_VERSION >= 5
-	if (zend_hash_quick_find(&ce->properties_info, (char *) propname, propname_len + 1, h, (void*) &prop_info_ptr) == SUCCESS && !override) {
-		zval_ptr_dtor(&pcopyval);
-		php_error_docref(NULL TSRMLS_CC, E_NOTICE, "%s%s%s already exists, not adding",
-		                 ce->name, (prop_info_ptr->flags & ZEND_ACC_STATIC) ? "::$" : "->", propname);
-		return FAILURE;
+	if (zend_hash_quick_find(&ce->properties_info, (char *) propname, propname_len + 1, h, (void*) &prop_info_ptr) == SUCCESS) {
+		if (!override) {
+			zval_ptr_dtor(&pcopyval);
+			php_error_docref(NULL TSRMLS_CC, E_NOTICE, "%s%s%s already exists, not adding",
+			                 ce->name, (prop_info_ptr->flags & ZEND_ACC_STATIC) ? "::$" : "->", propname);
+			return FAILURE;
+		} else {
+			php_runkit_def_prop_remove_int(ce, propname, propname_len, NULL TSRMLS_CC);
+		}
 	}
 #else
 	if (zend_hash_exists(&ce->default_properties, (char *) propname, propname_len + 1)) {
 		if (override) {
 			if (zend_hash_del(&ce->default_properties, (char *) propname, propname_len + 1) == FAILURE) {
-				zval_ptr_dtor(&pcopyval);
 				php_error_docref(NULL TSRMLS_CC, E_NOTICE, "Failed to remove property %s->%s, not adding",
 				                 ce->name, propname);
 				return FAILURE;
 			}
 		} else {
-			zval_ptr_dtor(&pcopyval);
 			php_error_docref(NULL TSRMLS_CC, E_NOTICE, "%s->%s already exists, not adding",
 			                 ce->name, propname);
 			return FAILURE;
 		}
 	}
+	Z_ADDREF_P(pcopyval);
 	if (zend_hash_add(&ce->default_properties, (char *) propname, propname_len + 1, &pcopyval, sizeof(zval*), NULL) == FAILURE) {
 		zval_ptr_dtor(&pcopyval);
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to add property '%s' to class '%s'", propname, ce->name);
@@ -151,6 +205,7 @@ int php_runkit_def_prop_add_int(zend_class_entry *ce, const char *propname, int 
 
 	if (ce != definer_class) {
 		if (zend_hash_quick_find(&ce->properties_info, (char *) propname, propname_len + 1, h, (void*) &prop_info_ptr) != SUCCESS) {
+			zval_ptr_dtor(&pcopyval);
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot find just added property's info");
 			return FAILURE;
 		}
@@ -181,7 +236,7 @@ int php_runkit_def_prop_add_int(zend_class_entry *ce, const char *propname, int 
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 			str_efree(prop_info_ptr->name);
 #endif
-			prop_info_ptr->name = estrndup(newkey, newkey_len);
+			prop_info_ptr->name = newkey;
 			prop_info_ptr->name_length = newkey_len;
 			prop_info_ptr->h = zend_get_hash_value(prop_info_ptr->name, prop_info_ptr->name_length + 1);
 		}
@@ -217,7 +272,7 @@ int php_runkit_def_prop_add_int(zend_class_entry *ce, const char *propname, int 
 					ALLOC_HASHTABLE(object->properties);
 					zend_hash_init(object->properties, 0, NULL, ZVAL_PTR_DTOR, 0);
 				}
-				SEPARATE_ARG_IF_REF(pcopyval);
+				Z_ADDREF_P(pcopyval);
 				zend_hash_quick_del(object->properties, (char *) propname, propname_len + 1, h);
 				zend_hash_quick_add(object->properties, (char *) propname, propname_len + 1, h, &pcopyval, sizeof(zval *), NULL);
 #endif // (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
@@ -322,17 +377,19 @@ int php_runkit_def_prop_remove_int(zend_class_entry *ce, const char *propname, i
 				zend_hash_del(&ce->default_static_members, private, private_len + 1);
 			}
 			efree(private);
-#endif // PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4
 			zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_remove_children_def_props,
 			                               4, ce, propname, propname_len, definer_class);
+#endif // PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4
 			return SUCCESS;
-		} else {
+		} else if (!definer_class) {
 			definer_class = property_info_ptr->ce;
 		}
 		if (property_info_ptr->flags & ZEND_ACC_STATIC) {
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
-			zval_ptr_dtor(&ce->default_static_members_table[property_info_ptr->offset]);
-			ce->default_static_members_table[property_info_ptr->offset] = NULL;
+			if (ce->default_static_members_table[property_info_ptr->offset]) {
+				zval_ptr_dtor(&ce->default_static_members_table[property_info_ptr->offset]);
+				ce->default_static_members_table[property_info_ptr->offset] = NULL;
+			}
 #else
 			php_runkit_remove_property_from_reflection_objects(ce, property_info_ptr->name, property_info_ptr->name_length TSRMLS_CC);
 			if (zend_hash_quick_del(&ce->default_static_members, property_info_ptr->name, property_info_ptr->name_length + 1, property_info_ptr->h) != SUCCESS) {
@@ -342,8 +399,10 @@ int php_runkit_def_prop_remove_int(zend_class_entry *ce, const char *propname, i
 #endif // (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 		} else {
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
-			zval_ptr_dtor(&ce->default_properties_table[property_info_ptr->offset]);
-			ce->default_properties_table[property_info_ptr->offset] = NULL;
+			if (ce->default_properties_table[property_info_ptr->offset]) {
+				zval_ptr_dtor(&ce->default_properties_table[property_info_ptr->offset]);
+				ce->default_properties_table[property_info_ptr->offset] = NULL;
+			}
 #else
 			php_runkit_remove_property_from_reflection_objects(ce, property_info_ptr->name, property_info_ptr->name_length TSRMLS_CC);
 			if (zend_hash_quick_del(&ce->default_properties, property_info_ptr->name, property_info_ptr->name_length + 1, property_info_ptr->h) != SUCCESS) {
@@ -351,18 +410,23 @@ int php_runkit_def_prop_remove_int(zend_class_entry *ce, const char *propname, i
 				return FAILURE;
 			}
 #endif // (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
-
 		}
+
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 		offset = property_info_ptr->offset;
+		if ((property_info_ptr->flags & ZEND_ACC_PRIVATE) && !(property_info_ptr->flags & ZEND_ACC_STATIC) && offset >= 0) {
+			zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_remove_private_property_from_childs,
+			                               4, ce, propname, propname_len, offset);
+		} else
 #endif
+		zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_remove_children_def_props,
+		                               4, ce, propname, propname_len, definer_class);
+
 		php_runkit_remove_property_from_reflection_objects(ce, propname, propname_len TSRMLS_CC);
 		if (zend_hash_quick_del(&ce->properties_info, (char *) propname, propname_len + 1, h) != SUCCESS) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Failed to remove the property %s::%s", ce->name, propname);
 			return FAILURE;
 		}
-		zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_remove_children_def_props,
-		                               4, ce, propname, propname_len, definer_class);
 	} else {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s::%s does not exist", ce->name, propname);
 		return FAILURE;
@@ -380,13 +444,9 @@ int php_runkit_def_prop_remove_int(zend_class_entry *ce, const char *propname, i
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 				if (object->properties_table) {
 					if (object->properties_table[offset]) {
-						Z_DELREF_P(object->properties_table[offset]);
-						if (Z_REFCOUNT_P(object->properties_table[offset]) == 0) {
-							zval_ptr_dtor(&object->properties_table[offset]);
-							FREE_ZVAL(object->properties_table[offset]);
-						}
+						zval_ptr_dtor(&object->properties_table[offset]);
+						object->properties_table[offset] = NULL;
 					}
-					object->properties_table[offset] = NULL;
 				}
 #else
 				if (object->properties) {
@@ -396,6 +456,7 @@ int php_runkit_def_prop_remove_int(zend_class_entry *ce, const char *propname, i
 			}
 		}
 	}
+
 #endif // PHP_MAJOR_VERSION == 4
 	return SUCCESS;
 }
