@@ -293,7 +293,7 @@ static int php_runkit_import_class_static_props(zend_class_entry *dce, zend_clas
 			if (zend_hash_find(&dce->properties_info, key, key_len, (void*) &ex_property_info_ptr) == SUCCESS && ex_property_info_ptr) {
 				if (override) {
 					if (!(ex_property_info_ptr->flags & ZEND_ACC_STATIC)) {
-						if (php_runkit_def_prop_remove_int(dce, key, key_len - 1, NULL TSRMLS_CC) != SUCCESS) {
+						if (php_runkit_def_prop_remove_int(dce, key, key_len - 1, NULL, -1, 0 TSRMLS_CC) != SUCCESS) {
 							php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to import %s::$%s (cannot remove old member)", dce->name, key);
 							goto import_st_prop_skip;
 						}
@@ -377,7 +377,7 @@ static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry
 				if (override) {
 					if (php_runkit_def_prop_remove_int(dce, property_info_ptr->name,
 					                                   property_info_ptr->name_length,
-					                                   NULL TSRMLS_CC) != SUCCESS) {
+					                                   NULL, -1, 0 TSRMLS_CC) != SUCCESS) {
 						php_error_docref(NULL TSRMLS_CC, E_WARNING,
 						                 "Unable to remove old property %s%s%s, not importing",
 						                 dce->name, (property_info_ptr->flags & ZEND_ACC_STATIC) ? "::$" : "->",

@@ -37,6 +37,7 @@ Execute code in restricted environment (sandboxing).
          + Adding and redefining functions and methods, which return references, were fully implemented
            New optional argument 'return_ref' of functions runkit_function_add and runkit_function_redefine was introduced
            New constant RUNKIT_ACC_RETURN_REFERENCE was introduced for use with functions runkit_method_add and runkit_method_redefine
+         + Properties adding, removing, and importing were reworked for proper inheritance (including objects in PHP5+)
 
      Critical fixes:
          * Highly probable crashes on using Reflection objects after modifying removing or renaming of functions, methods, and properties,
@@ -53,12 +54,11 @@ Execute code in restricted environment (sandboxing).
          * Adding of non-lowercase default properties was fixed (removed lowercasing)
          * Skip the leading slash in class names
          * Copying of functions was reworked
-         * Properties adding, removing and importing were corrected for right inheritance
          * Converting of input parameters (class names &amp; function names) to lowecase was eliminated
          * runkit_method_redefine function now sets the 'prototype' field for the method
            and its descendants (Thanks to Anthony Dovgal)
          * Freeing already freed memory on importing of a non-existent file was eliminated
-         * Test for correctness of runkit.superglobals feature was added
+         * A test for correctness of runkit.superglobals feature was added
          * Tests for correctness of inheritance of properties were added
          * Tests for correctness of adding static properties were added
 
@@ -186,8 +186,10 @@ Execute code in restricted environment (sandboxing).
     <file name="namespaces.phpt" role="test" />
     <file name="runkit_default_property_add.phpt" role="test" />
     <file name="runkit_default_property_add4.phpt" role="test" />
+    <file name="runkit_default_property_add_and_remove_for_class_with_dynamic_properties.phpt" role="test" />
     <file name="runkit_default_property_add_to_subclasses.phpt" role="test" />
     <file name="runkit_default_property_remove.phpt" role="test" />
+    <file name="runkit_default_property_remove_and_add_for_class_with_dynamic_properties.phpt" role="test" />
     <file name="runkit_default_property_remove_and_reflection.phpt" role="test" />
     <file name="runkit_default_property_remove_from_subclasses.phpt" role="test" />
     <file name="runkit_default_property_remove_from_subclasses4.phpt" role="test" />
