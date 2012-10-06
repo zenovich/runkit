@@ -38,6 +38,7 @@ Execute code in restricted environment (sandboxing).
            New optional argument 'return_ref' of functions runkit_function_add and runkit_function_redefine was introduced
            New constant RUNKIT_ACC_RETURN_REFERENCE was introduced for use with functions runkit_method_add and runkit_method_redefine
          + Properties adding, removing, and importing were reworked for proper inheritance (including objects in PHP5+)
+         + Namespaces are fully supported by constants manipulation functions (Thanks to Anthony Dovgal)
 
      Critical fixes:
          * Highly probable crashes on using Reflection objects after modifying removing or renaming of functions, methods, and properties,
@@ -101,6 +102,7 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_function_remove.phpt" role="test" />
     <file name="runkit_function_remove_and_reflection_parameter.phpt" role="test" />
     <file name="runkit_function_remove_and_reflection.phpt" role="test" />
+    <file name="runkit_constant_remove_from_ns.phpt" role="test" />
     <file name="runkit_function_rename.phpt" role="test" />
     <file name="runkit_function_rename_and_reflection.phpt" role="test" />
     <file name="runkit_function_rename_internal.phpt" role="test" />
