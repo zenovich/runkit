@@ -26,46 +26,47 @@
  */
 static int php_runkit_fetch_const(char *cname, int cname_len, zend_constant **constant, char **found_cname TSRMLS_DC)
 {
-	int namespace_constant = 0;
+	char *lcase = NULL;
+	char *old_cname = cname;
+	int constant_name_len = cname_len;
 
+#if RUNKIT_ABOVE53
+	char *separator;
+
+	if (cname_len > 0 && cname[0] == '\\') {
+		++cname;
+		--cname_len;
+	}
+
+	separator = (char *) zend_memrchr(cname, '\\', cname_len);
+	if (separator) {
+		int nsname_len = separator - cname;
+		char *constant_name = separator + 1;
+		constant_name_len = cname_len - nsname_len - 1;
+
+		lcase = emalloc(nsname_len + 1 + constant_name_len + 1);
+		memcpy(lcase, cname, nsname_len + 1);
+		memcpy(lcase + nsname_len + 1, constant_name, constant_name_len + 1);
+		zend_str_tolower(lcase, nsname_len);
+		cname = lcase;
+	}
+#endif
 	if (zend_hash_find(EG(zend_constants), cname, cname_len + 1, (void*)constant) == FAILURE) {
-		char *lcase;
-
-		lcase = zend_str_tolower_dup(cname, cname_len);
-		if (zend_hash_find(EG(zend_constants), lcase, cname_len + 1, (void*)constant) == FAILURE) {
-			char *separator;
-
-			separator = zend_memrchr(cname, '\\', cname_len);
-			if (separator) {
-				int nsname_len = separator - cname;
-				char *constant_name = separator + 1;
-				int constant_name_len = cname_len - nsname_len - 1;
-
-				lcase = erealloc(lcase, nsname_len + 1 + constant_name_len + 1);
-				lcase[nsname_len] = '\\';
-				memcpy(lcase + nsname_len + 1, constant_name, constant_name_len + 1);
-
-				if (zend_hash_find(EG(zend_constants), lcase, cname_len + 1, (void*)constant) == FAILURE) {
-					php_error_docref(NULL TSRMLS_CC, E_WARNING, "Constant %s not found", cname);
-					efree(lcase);
-					return FAILURE;
-				}
-				namespace_constant = 1;
-			} else {
-				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Constant %s not found", cname);
-				efree(lcase);
-				return FAILURE;
-			}
+		if (!lcase) {
+			lcase = estrndup(cname, cname_len);
+			zend_str_tolower(lcase, cname_len);
+		} else {
+			zend_str_tolower(lcase + cname_len - constant_name_len, constant_name_len);
 		}
-
-		if (!namespace_constant && (*constant)->flags & CONST_CS) {
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Constant %s not found", cname);
+		cname = lcase;
+		if (zend_hash_find(EG(zend_constants), cname, cname_len + 1, (void*)constant) == FAILURE || ((*constant)->flags & CONST_CS)) {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Constant %s not found", old_cname);
 			efree(lcase);
 			return FAILURE;
 		}
-		*found_cname = lcase;
-	} else {
-		*found_cname = estrndup(cname, cname_len);
+	}
+	if (found_cname) {
+		*found_cname = lcase ? lcase : estrndup(cname, cname_len);
 	}
 
 	return SUCCESS;
@@ -117,7 +118,6 @@ int php_runkit_update_children_consts(RUNKIT_53_TSRMLS_ARG(void *pDest), int num
 static int php_runkit_constant_remove(char *classname, int classname_len, char *constname, int constname_len TSRMLS_DC)
 {
 	zend_constant *constant;
-	char *lcase = NULL;
 	char *found_constname;
 
 	if (classname && (classname_len > 0)) {
@@ -166,16 +166,10 @@ static int php_runkit_constant_remove(char *classname, int classname_len, char *
 
 	if (zend_hash_del(EG(zend_constants), found_constname, constant->name_len) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to remove constant");
-		if (lcase) {
-			efree(lcase);
-		}
 		efree(found_constname);
 		return FAILURE;
 	}
 	efree(found_constname);
-	if (lcase) {
-		efree(lcase);
-	}
 
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 	php_runkit_clear_all_functions_runtime_cache(TSRMLS_C);
@@ -209,6 +203,13 @@ static int php_runkit_constant_add(char *classname, int classname_len, char *con
 
 	if ((classname == NULL) || (classname_len == 0)) {
 		zend_constant c;
+
+#if RUNKIT_ABOVE53
+		if (constname_len > 0 && constname[0] == '\\') {
+			++constname;
+			--constname_len;
+		}
+#endif
 
 		/* Traditional global constant */
 		c.value = *value;
