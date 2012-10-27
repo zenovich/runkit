@@ -132,6 +132,8 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_import_method_with_closure.phpt" role="test" />
     <file name="runkit_import_method_with_static_var.inc" role="test" />
     <file name="runkit_import_method_with_static_var.phpt" role="test" />
+    <file name="runkit_import_properies_modified_via_reflection.inc" role="test" />
+    <file name="runkit_import_properies_modified_via_reflection.phpt" role="test" />
     <file name="runkit_lint.phpt" role="test" />
     <file name="runkit_method_add.phpt" role="test" />
     <file name="runkit_method_copy.phpt" role="test" />

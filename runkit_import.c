@@ -278,7 +278,7 @@ static int php_runkit_import_class_static_props(zend_class_entry *dce, zend_clas
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 			pp = &CE_STATIC_MEMBERS(ce)[property_info_ptr->offset];
 #else
-			zend_hash_quick_find(CE_STATIC_MEMBERS(ce), key, key_len, property_info_ptr->h, (void*) &pp);
+			zend_hash_quick_find(CE_STATIC_MEMBERS(ce), property_info_ptr->name, property_info_ptr->name_length + 1, property_info_ptr->h, (void*) &pp);
 			if (
 				Z_TYPE_PP(pp) == IS_CONSTANT_ARRAY
 #if RUNKIT_ABOVE53
@@ -318,7 +318,7 @@ static int php_runkit_import_class_static_props(zend_class_entry *dce, zend_clas
 #else
 						Z_ADDREF_P(pcopy);
 #endif
-						if (zend_hash_update(CE_STATIC_MEMBERS(dce), key, key_len, (void*)pp, sizeof(zval*), NULL) == FAILURE) {
+						if (zend_hash_update(CE_STATIC_MEMBERS(dce), ex_property_info_ptr->name, ex_property_info_ptr->name_length + 1, (void*)pp, sizeof(zval*), NULL) == FAILURE) {
 							php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to import %s::$%s", dce->name, key);
 						}
 #endif

@@ -16,6 +16,11 @@ display_errors=on
 class Test {
     public $n = 1;
     public static $s = 2;
+    private $i = 3;
+    protected static $o = 4;
+
+    public function getPrivate() { return Test::$i; }
+    public function getProtected() { return Test::$o; }
 }
 
 if (!defined('E_STRICT')) {
@@ -27,19 +32,19 @@ if (!defined('E_DEPRECATED')) {
 ini_set('error_reporting', E_ALL & ~E_DEPRECATED & ~E_STRICT);
 
 $t = new Test;
-var_dump($t->n);
-var_dump(Test::$s);
 runkit_import(dirname(__FILE__) . '/runkit_import_static_properties_override.inc', RUNKIT_IMPORT_CLASS_STATIC_PROPS | RUNKIT_IMPORT_OVERRIDE);
 $t = new Test;
 var_dump($t->n);
 var_dump(Test::$n);
 var_dump(Test::$s);
+var_dump(Test::getPrivate());
+var_dump(Test::getProtected());
 ?>
 --EXPECTF--
-int(1)
-int(2)
 
 Notice: Undefined property: Test::$n in %s on line %d
 NULL
 int(3)
 int(4)
+int(5)
+int(6)
