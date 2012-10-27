@@ -68,7 +68,7 @@ int php_runkit_remove_children_def_props(RUNKIT_53_TSRMLS_ARG(zend_class_entry *
 	ce = *((zend_class_entry**)ce);
 #endif
 
-	if (ce->parent != parent_class) {
+	if (ce->parent != parent_class || !hash_key || !hash_key->arKey || !hash_key->arKey[0]) {
 		/* Not a child, ignore */
 		return ZEND_HASH_APPLY_KEEP;
 	}

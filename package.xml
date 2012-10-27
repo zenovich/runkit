@@ -112,10 +112,14 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_functions_returning_by_reference.phpt" role="test" />
     <file name="runkit_import_class.inc" role="test" />
     <file name="runkit_import_class.phpt" role="test" />
+    <file name="runkit_import_class_property_and_inheritance.inc" role="test" />
+    <file name="runkit_import_class_property_and_inheritance.phpt" role="test" />
     <file name="runkit_import_constant_properties.inc" role="test" />
     <file name="runkit_import_constant_properties.phpt" role="test" />
     <file name="runkit_import_constant_static_properties.inc" role="test" />
     <file name="runkit_import_constant_static_properties.phpt" role="test" />
+    <file name="runkit_import_constants_and_inheritance.inc" role="test" />
+    <file name="runkit_import_constants_and_inheritance.phpt" role="test" />
     <file name="runkit_import_functions.inc" role="test" />
     <file name="runkit_import_functions.phpt" role="test" />
     <file name="runkit_import_function_and_reflection.inc" role="test" />

@@ -222,7 +222,6 @@ static int php_runkit_import_class_consts(zend_class_entry *dce, zend_class_entr
 		long action = HASH_ADD;
 
 		if (zend_hash_get_current_key_ex(&ce->constants_table, &key, &key_len, &idx, 0, &pos) == HASH_KEY_IS_STRING) {
-			zval *ccopy;
 			if (zend_hash_exists(&dce->constants_table, key, key_len)) {
 				if (override) {
 					action = HASH_UPDATE;
@@ -239,9 +238,8 @@ static int php_runkit_import_class_consts(zend_class_entry *dce, zend_class_entr
 			) {
 				zval_update_constant_ex(c, (void*) 1, dce TSRMLS_CC);
 			}
-			ccopy = *c;
-			SEPARATE_ARG_IF_REF(ccopy);
-			if (zend_hash_add_or_update(&dce->constants_table, key, key_len, (void*)&ccopy, sizeof(zval*), NULL, action) == FAILURE) {
+			Z_ADDREF_P(*c);
+			if (zend_hash_add_or_update(&dce->constants_table, key, key_len, (void*)c, sizeof(zval*), NULL, action) == FAILURE) {
 				zval_ptr_dtor(c);
 				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to import %s::%s", dce->name, key);
 			}
@@ -375,9 +373,7 @@ static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry
 			}
 			if (zend_hash_exists(&dce->properties_info, key, key_len)) {
 				if (override) {
-					if (php_runkit_def_prop_remove_int(dce, property_info_ptr->name,
-					                                   property_info_ptr->name_length,
-					                                   NULL, -1, 0 TSRMLS_CC) != SUCCESS) {
+					if (php_runkit_def_prop_remove_int(dce, key, key_len - 1, NULL, -1, 0 TSRMLS_CC) != SUCCESS) {
 						php_error_docref(NULL TSRMLS_CC, E_WARNING,
 						                 "Unable to remove old property %s%s%s, not importing",
 						                 dce->name, (property_info_ptr->flags & ZEND_ACC_STATIC) ? "::$" : "->",
@@ -393,7 +389,11 @@ static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 			p = &ce->default_properties_table[property_info_ptr->offset];
 #else
-			zend_hash_quick_find(&ce->default_properties, key, key_len, property_info_ptr->h, (void*) &p);
+			if (zend_hash_quick_find(&ce->default_properties, property_info_ptr->name, property_info_ptr->name_length + 1, property_info_ptr->h, (void*) &p) != SUCCESS) {
+				php_error_docref(NULL TSRMLS_CC, E_WARNING,
+				                 "Cannot import broken default property %s->%s", ce->name, key);
+				goto import_st54_prop_skip;
+			}
 #endif // (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 			if (
 				Z_TYPE_PP(p) == IS_CONSTANT_ARRAY
@@ -404,7 +404,7 @@ static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry
 				zval_update_constant_ex(p, (void*) 1, dce TSRMLS_CC);
 			}
 
-			php_runkit_def_prop_add_int(dce, property_info_ptr->name, property_info_ptr->name_length, *p,
+			php_runkit_def_prop_add_int(dce, key, key_len - 1, *p,
 			                            property_info_ptr->flags, property_info_ptr->doc_comment,
 			                            property_info_ptr->doc_comment_len, dce, override TSRMLS_CC);
 		}

@@ -80,10 +80,9 @@ int php_runkit_update_children_consts(RUNKIT_53_TSRMLS_ARG(void *pDest), int num
 {
 	zend_class_entry *ce = (zend_class_entry *) pDest;
 	zend_class_entry *parent_class =  va_arg(args, zend_class_entry*);
-	zval *c = va_arg(args, zval*);
+	zval **c = va_arg(args, zval**);
 	char *cname = va_arg(args, char*);
 	int cname_len = va_arg(args, int);
-	zval *copy;
 	RUNKIT_UNDER53_TSRMLS_FETCH();
 
 /* Redundant I know, but it's too keep these things consistent */
@@ -99,11 +98,10 @@ int php_runkit_update_children_consts(RUNKIT_53_TSRMLS_ARG(void *pDest), int num
 	/* Process children of this child */
 	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), php_runkit_update_children_consts, 4, ce, c, cname, cname_len);
 
-	ALLOC_ZVAL(copy);
-	*copy = *c;
-	SEPARATE_ARG_IF_REF(copy);
+	Z_ADDREF_P(*c);
+
 	zend_hash_del(&ce->constants_table, cname, cname_len + 1);
-	if (zend_hash_add(&ce->constants_table, cname, cname_len + 1, &copy, sizeof(zval*), NULL) == FAILURE) {
+	if (zend_hash_add(&ce->constants_table, cname, cname_len + 1, (void *) c, sizeof(zval**), NULL) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error updating child class");
 		return ZEND_HASH_APPLY_KEEP;
 	}
@@ -233,14 +231,6 @@ static int php_runkit_constant_add(char *classname, int classname_len, char *con
 	ALLOC_ZVAL(copyval);
 	*copyval = *value;
 	zval_copy_ctor(copyval);
-#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 3) || (PHP_MAJOR_VERSION >= 6)
-	Z_SET_REFCOUNT_P(copyval, 1);
-	Z_UNSET_ISREF_P(copyval);
-#else
-	copyval->RUNKIT_REFCOUNT = 1;
-	copyval->is_ref = 0;
-#endif
-	Z_ADDREF_P(copyval);
 	if (zend_hash_add(&ce->constants_table, constname, constname_len + 1, &copyval, sizeof(zval *), NULL) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to add constant to class definition");
 		zval_ptr_dtor(&copyval);
@@ -251,8 +241,7 @@ static int php_runkit_constant_add(char *classname, int classname_len, char *con
 	php_runkit_clear_all_functions_runtime_cache(TSRMLS_C);
 #endif
 
-	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_consts, 4, ce, copyval, constname, constname_len);
-	zval_ptr_dtor(&copyval);
+	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_consts, 4, ce, &copyval, constname, constname_len);
 
 	return SUCCESS;
 #else
