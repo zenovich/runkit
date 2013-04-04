@@ -212,6 +212,8 @@ newstr_ok: ;
  *		open_basedir must be at or below the currently defined basedir for the same reason that safe_mode can only be turned on
  * allow_url_fopen = false
  *		allow_url_fopen may only be turned off for a sandbox, not on.   Once again, don't castrate the existing restrictions
+ * allow_url_include = false
+ *		allow_url_include may only be turned off for a sandbox, not on.   Once again, don't castrate the existing restrictions
  * disable_functions = coma_separated,list_of,additional_functions
  *		ADDITIONAL functions, on top of already disabled functions to disable
  * disable_classes = coma_separated,list_of,additional_classes
@@ -227,6 +229,9 @@ static inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_object *ob
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4) || (PHP_MAJOR_VERSION < 5)
 	zend_bool safe_mode, safe_mode_gid;
 	HashTable *safe_mode_include_dirs = NULL;
+#endif
+#ifdef ZEND_ENGINE_2_2
+	zend_bool allow_url_include;
 #endif
 	HashTable *open_basedirs = NULL;
 	zval **tmpzval;
@@ -247,6 +252,9 @@ static inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_object *ob
 			open_basedirs = php_runkit_sandbox_parse_multipath(PG(open_basedir) TSRMLS_CC);
 		}
 		allow_url_fopen = PG(allow_url_fopen);
+#ifdef ZEND_ENGINE_2_2
+		allow_url_include = PG(allow_url_include);
+#endif
 	}
 	tsrm_set_interpreter_context(objval->context);
 
@@ -429,6 +437,15 @@ child_open_basedir_set:
 			zend_alter_ini_entry("runkit.internal_override", sizeof("runkit.internal_override"), "0", 1, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
 		}
 	}
+
+#ifdef ZEND_ENGINE_2_2
+	/* May only turn off */
+	if (allow_url_include &&
+	    (zend_hash_find(options, "allow_url_include", sizeof("allow_url_include"), (void**)&tmpzval) == SUCCESS) &&
+	    !zend_is_true(*tmpzval)) {
+		zend_alter_ini_entry("allow_url_include", sizeof("allow_url_include"), "0", 1, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
+	}
+#endif
 
 	if (
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4) || (PHP_MAJOR_VERSION < 5)

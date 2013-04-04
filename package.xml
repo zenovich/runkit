@@ -45,6 +45,7 @@ Execute code in restricted environment (sandboxing).
            in runkit_default_property_remove function. Pass the TRUE value to remove property from existing objects.
            This feature works in PHP 5.x and above. The default value for this parameter is FALSE.
          + Namespaces are fully supported by constants manipulation functions (Thanks to Antony Dovgal)
+         + Allow disabling of allow_url_include in a Runkit_Sandbox (PHP >= 5.2) (Thanks to Sara Golemon)
 
      Critical fixes:
          * Highly probable crashes on using Reflection objects after modifying removing or renaming of functions, methods, and properties,
@@ -168,6 +169,7 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_return_value_used.phpt" role="test" />
     <file name="runkit_zval_inspect.phpt" role="test" />
     <file name="runkit_static_vars.phpt" role="test" />
+    <file name="Runkit_Sandbox.allow_url_include.phpt" role="test" />
     <file name="Runkit_Sandbox.open_basedir.phpt" role="test" />
     <file name="Runkit_Sandbox_.active.phpt" role="test" />
     <file name="Runkit_Sandbox_.output_handler.phpt" role="test" />
