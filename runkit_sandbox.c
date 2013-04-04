@@ -21,6 +21,7 @@
 /* $Id$ */
 
 #include "php_runkit.h"
+#include "ext/standard/php_smart_str.h"
 
 #ifdef PHP_RUNKIT_SANDBOX
 #include "SAPI.h"
@@ -79,6 +80,126 @@ int php_runkit_sandbox_array_deep_copy(RUNKIT_53_TSRMLS_ARG(zval **value), int n
    * Runkit_Sandbox *
    ****************** */
 
+static HashTable *php_runkit_sandbox_parse_multipath(const char *paths TSRMLS_DC) {
+	HashTable *ht;
+	int len = strlen(paths);
+	char *s, *colon, *pathcopy, tmppath[MAXPATHLEN] = {0};
+
+	if (!len) {
+		return NULL;
+	}
+
+	pathcopy = estrndup(paths, len);
+
+	ALLOC_HASHTABLE(ht);
+	zend_hash_init(ht, 4, NULL, NULL, 0);
+	for (s = pathcopy; (colon = strchr(s, ':')); s = colon + 1) {
+		if (colon > s) {
+			*colon = 0;
+			VCWD_REALPATH(s, tmppath);
+			if (*tmppath) {
+				zend_hash_next_index_insert(ht, tmppath, strlen(tmppath) + 1, NULL);
+			} else {
+				/* s isn't real, leave it in the HashTable anyway
+				 * to avoid making the old setting look like
+				 * it had no values in it and thus allowing privilege elevation.
+				 */
+				zend_hash_next_index_insert(ht, s, (colon - s) + 1, NULL);
+			}
+		}
+	}
+
+	if (*s) {
+		VCWD_REALPATH(s, tmppath);
+		if (*tmppath) {
+			zend_hash_next_index_insert(ht, tmppath, strlen(tmppath) + 1, NULL);
+		} else {
+			/* See above */
+			zend_hash_next_index_insert(ht, s, strlen(s) + 1, NULL);
+		}
+	}
+
+	efree(pathcopy);
+	return ht;
+}
+
+static void php_runkit_sandbox_free_multipath(HashTable *ht TSRMLS_DC) {
+	if (ht) {
+		zend_hash_destroy(ht);
+		FREE_HASHTABLE(ht);
+	}
+}
+
+static char *php_runkit_sandbox_implode_stringht(HashTable *ht TSRMLS_DC) {
+	smart_str s = { 0 };
+	HashPosition pos;
+	char *str;
+
+	for(zend_hash_internal_pointer_reset_ex(ht, &pos);
+	    SUCCESS == zend_hash_get_current_data_ex(ht, (void**)&str, &pos);
+	    zend_hash_move_forward_ex(ht, &pos)) {
+		if (s.len) {
+			smart_str_appendc(&s, ':');
+		}
+		smart_str_appends(&s, str);
+	}
+	smart_str_0(&s);
+	return s.c;
+}
+
+static char *php_runkit_sandbox_tighten_paths(HashTable *oldht, HashTable *newht TSRMLS_DC) {
+	HashPosition newpos;
+	char *newstr;
+
+	if (!oldht && !newht) {
+		return NULL;
+	}
+	if (!oldht) {
+		/* From nothing to something */
+		return php_runkit_sandbox_implode_stringht(newht TSRMLS_CC);
+	}
+	if (!newht) {
+		/* From something to nothing */
+		return NULL;
+	}
+
+	if (zend_hash_num_elements(oldht) == 0) {
+		/* Special edge case
+		 * The parent's setting is ':' or similar.
+		 * Despite looking similar to an empty setting,
+		 * this actually has the opposite meaning.
+		 * '' provides open access to the filesystem
+		 * ':' provides access to none of it.
+		 * THIS DISTINCTION MATTERS. :p
+		 */
+		return NULL;
+	}
+
+	for(zend_hash_internal_pointer_reset_ex(newht, &newpos);
+	    SUCCESS == zend_hash_get_current_data_ex(newht, (void**)&newstr, &newpos);
+	    zend_hash_move_forward_ex(newht, &newpos)) {
+		HashPosition oldpos;
+		char *oldstr;
+		int newstr_len = strlen(newstr);
+
+		for(zend_hash_internal_pointer_reset_ex(oldht, &oldpos);
+		    SUCCESS == zend_hash_get_current_data_ex(oldht, (void**)&oldstr, &oldpos);
+		    zend_hash_move_forward_ex(oldht, &oldpos)) {
+			int oldstr_len = strlen(oldstr);
+			if ((oldstr_len <= newstr_len) &&
+			    !strncmp(oldstr, newstr, oldstr_len) &&
+			    ((oldstr_len == newstr_len) || (newstr[oldstr_len] == '/'))) {
+				goto newstr_ok;
+			}
+		}
+		/* Couldn't find an old path that we're constricting, so fail */
+		return NULL;
+newstr_ok: ;
+	}
+
+	return php_runkit_sandbox_implode_stringht(newht TSRMLS_CC);
+}
+
 /* Special .ini options (normally PHP_INI_SYSTEM) which can be overridden within a sandbox in the direction of tighter security
  *
  * safe_mode = true
@@ -103,11 +224,11 @@ int php_runkit_sandbox_array_deep_copy(RUNKIT_53_TSRMLS_ARG(zval **value), int n
 static inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_object *objval, HashTable *options TSRMLS_DC)
 {
 	zend_bool allow_url_fopen;
-	char open_basedir[MAXPATHLEN] = {0};
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4) || (PHP_MAJOR_VERSION < 5)
 	zend_bool safe_mode, safe_mode_gid;
-	char safe_mode_include_dir[MAXPATHLEN] = {0};
+	HashTable *safe_mode_include_dirs = NULL;
 #endif
+	HashTable *open_basedirs = NULL;
 	zval **tmpzval;
 
 	/* Collect up parent values */
@@ -118,13 +239,13 @@ static inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_object *ob
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4) || (PHP_MAJOR_VERSION < 5)
 		safe_mode = PG(safe_mode);
 		safe_mode_gid = PG(safe_mode_gid);
-		if (PG(open_basedir) && *PG(open_basedir)) {
-			VCWD_REALPATH(PG(open_basedir), open_basedir);
-		}
 		if (PG(safe_mode_include_dir) && *PG(safe_mode_include_dir)) {
-			VCWD_REALPATH(PG(safe_mode_include_dir), safe_mode_include_dir);
+			safe_mode_include_dirs = php_runkit_sandbox_parse_multipath(PG(safe_mode_include_dir) TSRMLS_CC);
 		}
 #endif
+		if (PG(open_basedir) && *PG(open_basedir)) {
+			open_basedirs = php_runkit_sandbox_parse_multipath(PG(open_basedir) TSRMLS_CC);
+		}
 		allow_url_fopen = PG(allow_url_fopen);
 	}
 	tsrm_set_interpreter_context(objval->context);
@@ -163,49 +284,53 @@ static inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_object *ob
 		if (Z_STRLEN_PP(tmpzval) == 0) {
 			/* simplest case -- clearing safe_mode_include_dir -- maximum restriction */
 			zend_alter_ini_entry("safe_mode_include_dir", sizeof("safe_mode_include_dir"), NULL, 0, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
-		} else if (!*safe_mode_include_dir && safe_mode) {
+		} else if (!safe_mode_include_dirs && safe_mode) {
 			/* 2nd simplest case -- Full security already with safe_mode preexisting -- leave it alone */
-		} else if (!*safe_mode_include_dir) {
+		} else if (!safe_mode_include_dirs) {
 			/* 3rd simplest case -- include_dir not yet set, but safe_mode not on yet, assume we're turning on */
 			zend_alter_ini_entry("safe_mode_include_dir", sizeof("safe_mode_include_dir"), Z_STRVAL_PP(tmpzval), Z_STRLEN_PP(tmpzval), PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
 		} else {
 			/* Otherwise... */
-			int safe_mode_include_dir_len = strlen(safe_mode_include_dir);
-			char new_include_dir[MAXPATHLEN];
-			int new_include_dir_len;
+			HashTable *new_include_dirs = php_runkit_sandbox_parse_multipath(Z_STRVAL_PP(tmpzval) TSRMLS_CC);
+			int new_include_dir_len = 0;
+			char *new_include_dir = php_runkit_sandbox_tighten_paths(safe_mode_include_dirs, new_include_dirs TSRMLS_CC);
 
-			VCWD_REALPATH(Z_STRVAL_PP(tmpzval), new_include_dir);
-
-			new_include_dir_len = strlen(new_include_dir);
-			if ((new_include_dir_len > safe_mode_include_dir_len) &&
-				(strncmp(safe_mode_include_dir, new_include_dir, safe_mode_include_dir_len) == 0) &&
-				(new_include_dir[safe_mode_include_dir_len] == '/')) {
+			if (new_include_dir) {
 				/* Tightening up of existing security level */
 				zend_alter_ini_entry("safe_mode_include_dir", sizeof("safe_mode_include_dir"), new_include_dir, new_include_dir_len, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
+				efree(new_include_dir);
 			}
+			php_runkit_sandbox_free_multipath(new_include_dirs TSRMLS_CC);
 		}
 	}
 #endif
 	/* open_basedir goes deeper only */
 	if (zend_hash_find(options, "open_basedir", sizeof("open_basedir"), (void*)&tmpzval) == SUCCESS &&
 		Z_TYPE_PP(tmpzval) == IS_STRING) {
-		char new_basedir[MAXPATHLEN];
-		int open_basedir_len = strlen(open_basedir);
-		int new_basedir_len;
 
-		VCWD_REALPATH(Z_STRVAL_PP(tmpzval), new_basedir);
-
-		new_basedir_len = strlen(new_basedir);
-		if (open_basedir_len == 0) {
+		if (!open_basedirs) {
 			/* simplest case -- no open basedir existed yet */
-			zend_alter_ini_entry("open_basedir", sizeof("open_basedir"), new_basedir, new_basedir_len, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
-		} else if ((new_basedir_len > open_basedir_len) &&
-					(strncmp(open_basedir, new_basedir, open_basedir_len) == 0) &&
-					(new_basedir[open_basedir_len] == '/')) {
-			/* Tightening up of existing security level */
-			zend_alter_ini_entry("open_basedir", sizeof("open_basedir"), new_basedir, new_basedir_len, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
+			zend_alter_ini_entry("open_basedir", sizeof("open_basedir"), Z_STRVAL_PP(tmpzval), Z_STRLEN_PP(tmpzval), PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
+			goto child_open_basedir_set;
+		} else {
+			HashTable *new_open_basedirs = php_runkit_sandbox_parse_multipath(Z_STRVAL_PP(tmpzval) TSRMLS_CC);			char *new_open_basedir = php_runkit_sandbox_tighten_paths(open_basedirs, new_open_basedirs TSRMLS_CC);
+			php_runkit_sandbox_free_multipath(new_open_basedirs TSRMLS_CC);
+
+			if (new_open_basedir) {
+				/* Tightening up of existing security level */
+				zend_alter_ini_entry("open_basedir", sizeof("open_basedir"), new_open_basedir, strlen(new_open_basedir), PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
+				efree(new_open_basedir);
+				goto child_open_basedir_set;
+			}
 		}
 	}
+	if (open_basedirs) {
+		/* Inherit parent's setting by default which may be PHP_INI_USER level setting */
+		char *parent_open_basedir = php_runkit_sandbox_implode_stringht(open_basedirs TSRMLS_CC);
+		zend_alter_ini_entry("open_basedir", sizeof("open_basedir"), parent_open_basedir, strlen(parent_open_basedir), PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
+		efree(parent_open_basedir);
+	}
+child_open_basedir_set:
 
 	/* allow_url_fopen goes off only */
 	if (allow_url_fopen &&
@@ -303,6 +428,21 @@ static inline void php_runkit_sandbox_ini_override(php_runkit_sandbox_object *ob
 		if (!Z_BVAL(copyval)) {
 			zend_alter_ini_entry("runkit.internal_override", sizeof("runkit.internal_override"), "0", 1, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
 		}
+	}
+
+	if (
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4) || (PHP_MAJOR_VERSION < 5)
+	    safe_mode_include_dirs ||
+#endif
+	    open_basedirs) {
+		tsrm_set_interpreter_context(objval->parent_context);
+		{
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4) || (PHP_MAJOR_VERSION < 5)
+			php_runkit_sandbox_free_multipath(safe_mode_include_dirs TSRMLS_CC);
+#endif
+			php_runkit_sandbox_free_multipath(open_basedirs TSRMLS_CC);
+		}
+		tsrm_set_interpreter_context(objval->context);
 	}
 }
 /* }}} */
