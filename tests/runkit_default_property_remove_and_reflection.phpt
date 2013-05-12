@@ -16,7 +16,7 @@ $reflClass = new ReflectionClass('RunkitClass');
 $reflObject = new ReflectionObject($obj);
 $reflProp = new ReflectionProperty('RunkitClass', 'publicProperty');
 
-runkit_default_property_remove('RunkitClass','publicProperty');
+runkit_default_property_remove('RunkitClass','publicProperty', TRUE);
 
 try {
 	var_dump($reflClass->getProperty('publicProperty'));

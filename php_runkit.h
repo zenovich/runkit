@@ -39,13 +39,15 @@
 #define PHP_RUNKIT_SANDBOX_CLASSNAME		"Runkit_Sandbox"
 #define PHP_RUNKIT_SANDBOX_PARENT_CLASSNAME	"Runkit_Sandbox_Parent"
 
-#define PHP_RUNKIT_IMPORT_FUNCTIONS                 0x0001
-#define PHP_RUNKIT_IMPORT_CLASS_METHODS             0x0002
-#define PHP_RUNKIT_IMPORT_CLASS_CONSTS              0x0004
-#define PHP_RUNKIT_IMPORT_CLASS_PROPS               0x0008
-#define PHP_RUNKIT_IMPORT_CLASS_STATIC_PROPS        0x0010
-#define PHP_RUNKIT_IMPORT_CLASSES                   (PHP_RUNKIT_IMPORT_CLASS_METHODS|PHP_RUNKIT_IMPORT_CLASS_CONSTS|PHP_RUNKIT_IMPORT_CLASS_PROPS|PHP_RUNKIT_IMPORT_CLASS_STATIC_PROPS)
-#define PHP_RUNKIT_IMPORT_OVERRIDE                  0x0020
+#define PHP_RUNKIT_IMPORT_FUNCTIONS                         0x0001
+#define PHP_RUNKIT_IMPORT_CLASS_METHODS                     0x0002
+#define PHP_RUNKIT_IMPORT_CLASS_CONSTS                      0x0004
+#define PHP_RUNKIT_IMPORT_CLASS_PROPS                       0x0008
+#define PHP_RUNKIT_IMPORT_CLASS_STATIC_PROPS                0x0010
+#define PHP_RUNKIT_IMPORT_CLASSES                           (PHP_RUNKIT_IMPORT_CLASS_METHODS|PHP_RUNKIT_IMPORT_CLASS_CONSTS|\
+                                                             PHP_RUNKIT_IMPORT_CLASS_PROPS|PHP_RUNKIT_IMPORT_CLASS_STATIC_PROPS)
+#define PHP_RUNKIT_IMPORT_OVERRIDE                          0x0020
+#define PHP_RUNKIT_OVERRIDE_OBJECTS                         0x8000
 
 #if ZEND_MODULE_API_NO > 20050922
 #define ZEND_ENGINE_2_2
@@ -270,11 +272,14 @@ int php_runkit_update_children_consts(RUNKIT_53_TSRMLS_ARG(void *pDest), int num
 
 /* runkit_props.c */
 int php_runkit_update_children_def_props(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce), int num_args, va_list args, zend_hash_key *hash_key);
-int php_runkit_def_prop_add_int(zend_class_entry *ce, const char *propname, int propname_len, zval *copyval, long visibility, const char *doc_comment, int doc_comment_len, zend_class_entry *definer_class, int override TSRMLS_DC);
-int php_runkit_def_prop_remove_int(zend_class_entry *ce, const char *propname, int propname_len, zend_class_entry *definer_class,
-                                   int parent_offset, zend_bool was_static TSRMLS_DC);
+int php_runkit_def_prop_add_int(zend_class_entry *ce, const char *propname, int propname_len, zval *copyval, long visibility, const char *doc_comment, int doc_comment_len, zend_class_entry *definer_class, int override, int override_in_objects TSRMLS_DC);
 #ifdef ZEND_ENGINE_2
+int php_runkit_def_prop_remove_int(zend_class_entry *ce, const char *propname, int propname_len, zend_class_entry *definer_class,
+                                   zend_bool was_static, zend_bool remove_from_objects, zend_property_info *parent_property TSRMLS_DC);
 void php_runkit_remove_property_from_reflection_objects(zend_class_entry *ce, const char *prop_name, int prop_name_len TSRMLS_DC);
+#else
+int php_runkit_def_prop_remove_int(zend_class_entry *ce, const char *propname, int propname_len, zend_class_entry *definer_class,
+                                   zend_bool was_static, zend_bool remove_from_objects, void *parent_property TSRMLS_DC);
 #endif
 
 #ifdef ZEND_ENGINE_2

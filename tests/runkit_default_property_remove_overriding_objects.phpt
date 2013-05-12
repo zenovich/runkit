@@ -1,5 +1,5 @@
 --TEST--
-runkit_default_property_remove() function
+runkit_default_property_remove() function overriding objects
 --SKIPIF--
 <?php if(!extension_loaded("runkit") || !RUNKIT_FEATURE_MANIPULATION) print "skip";
       if(array_shift(explode(".", PHP_VERSION)) < 5) print "skip";
@@ -22,17 +22,15 @@ ini_set('error_reporting', E_ALL);
 
 $className = 'RunkitClass';
 $obj = new $className();
-runkit_default_property_add($className, 'dynamic', $obj);
+runkit_default_property_add($className, 'dynamic', $obj, RUNKIT_OVERRIDE_OBJECTS);
 
-runkit_default_property_remove($className, 'dynamic');
-runkit_default_property_remove($className, 'publicproperty');
-runkit_default_property_remove($className, 'publicproperty');
-@runkit_default_property_remove($className, 'privateProperty');
-@runkit_default_property_remove($className, 'protectedProperty');
-runkit_default_property_remove($className, 'constArray');
-
-
-print_r(new $className());
+runkit_default_property_remove($className, 'dynamic', TRUE);
+runkit_default_property_remove($className, 'publicproperty', TRUE);
+runkit_default_property_remove($className, 'publicproperty', TRUE);
+runkit_default_property_remove($className, 'privateProperty', TRUE);
+runkit_default_property_remove($className, 'protectedProperty', TRUE);
+runkit_default_property_remove($className, 'constArray', TRUE);
+print_r($obj);
 
 $obj = new stdClass();
 runkit_default_property_remove('stdClass', 'str');

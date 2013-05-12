@@ -42,6 +42,8 @@ var_dump(Test::getProtected());
 ?>
 --EXPECTF--
 
+Notice: runkit_import(): Making Test::i public to remove it from class without objects overriding in %s on line %d
+
 Notice: Undefined property: Test::$n in %s on line %d
 NULL
 int(3)

@@ -30,7 +30,8 @@ echo SubClass::$s, "\n";
 echo $o->getPrivate(), "\n";
 echo $o->getProtected(), "\n";
 runkit_import(dirname(__FILE__) . '/runkit_import_class_property_and_inheritance.inc', RUNKIT_IMPORT_CLASS_PROPS |
-                                                                                       RUNKIT_IMPORT_CLASS_STATIC_PROPS | RUNKIT_IMPORT_OVERRIDE);
+                                                                                       RUNKIT_IMPORT_CLASS_STATIC_PROPS |
+                                                                                       RUNKIT_IMPORT_OVERRIDE);
 $o = new SubClass;
 echo $o->v, "\n";
 echo SubClass::$s, "\n";
@@ -52,6 +53,10 @@ v
 s
 p
 o
+
+Notice: runkit_import(): Making SubClass::p public to remove it from class without objects overriding in %s on line %d
+
+Notice: runkit_import(): Making SubClass::o public to remove it from class without objects overriding in %s on line %d
 IMPORTED: v
 IMPORTED: s
 IMPORTED: p

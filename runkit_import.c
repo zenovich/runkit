@@ -259,7 +259,7 @@ import_const_skip:
 #ifdef ZEND_ENGINE_2
 /* {{{ php_runkit_import_class_static_props
  */
-static int php_runkit_import_class_static_props(zend_class_entry *dce, zend_class_entry *ce, int override TSRMLS_DC)
+static int php_runkit_import_class_static_props(zend_class_entry *dce, zend_class_entry *ce, int override, int remove_from_objects TSRMLS_DC)
 {
 	HashPosition pos;
 	char *key;
@@ -290,43 +290,19 @@ static int php_runkit_import_class_static_props(zend_class_entry *dce, zend_clas
 #endif // (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 			if (zend_hash_find(&dce->properties_info, key, key_len, (void*) &ex_property_info_ptr) == SUCCESS && ex_property_info_ptr) {
 				if (override) {
-					if (!(ex_property_info_ptr->flags & ZEND_ACC_STATIC)) {
-						if (php_runkit_def_prop_remove_int(dce, key, key_len - 1, NULL, -1, 0 TSRMLS_CC) != SUCCESS) {
-							php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to import %s::$%s (cannot remove old member)", dce->name, key);
-							goto import_st_prop_skip;
-						}
-						if (php_runkit_def_prop_add_int(dce, key, key_len - 1, *pp, property_info_ptr->flags,
-						                                property_info_ptr->doc_comment,
-						                                property_info_ptr->doc_comment_len, dce,
-						                                override TSRMLS_CC) != SUCCESS) {
-							php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to import %s::$%s (cannot add new member)", dce->name, key);
-							goto import_st_prop_skip;
-						}
+					if (php_runkit_def_prop_remove_int(dce, key, key_len - 1, NULL, 0, 0, NULL TSRMLS_CC) != SUCCESS) {
+						php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to import %s::$%s (cannot remove old member)", dce->name, key);
 						goto import_st_prop_skip;
-					} else {
-						zval *pcopy;
-#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
-						zval_ptr_dtor(&dce->default_static_members_table[ex_property_info_ptr->offset]);
-						dce->default_static_members_table[ex_property_info_ptr->offset] = ce->default_static_members_table[property_info_ptr->offset];
-						ce->default_static_members_table[property_info_ptr->offset] = NULL;
-						zval_update_constant(&dce->default_static_members_table[ex_property_info_ptr->offset], dce TSRMLS_CC);
-						pcopy = dce->default_static_members_table[ex_property_info_ptr->offset];
-#else
-						pcopy = *pp;
-#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION <= 2)
-						SEPARATE_ARG_IF_REF(pcopy);
-#else
-						Z_ADDREF_P(pcopy);
-#endif
-						if (zend_hash_update(CE_STATIC_MEMBERS(dce), ex_property_info_ptr->name, ex_property_info_ptr->name_length + 1, (void*)pp, sizeof(zval*), NULL) == FAILURE) {
-							php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to import %s::$%s", dce->name, key);
-						}
-#endif
-						zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)),
-						                               (apply_func_args_t)php_runkit_update_children_def_props,
-						                               7, dce, pcopy, key, key_len - 1,
-						                               property_info_ptr->flags, dce, override);
 					}
+					zval_update_constant(pp, dce TSRMLS_CC);
+					if (php_runkit_def_prop_add_int(dce, key, key_len - 1, *pp, property_info_ptr->flags,
+					                                property_info_ptr->doc_comment,
+					                                property_info_ptr->doc_comment_len, dce,
+					                                override, remove_from_objects TSRMLS_CC) != SUCCESS) {
+						php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to import %s::$%s (cannot add new member)", dce->name, key);
+						goto import_st_prop_skip;
+					}
+					goto import_st_prop_skip;
 				} else {
 					php_error_docref(NULL TSRMLS_CC, E_NOTICE, "%s::$%s already exists, not importing", dce->name, key);
 					goto import_st_prop_skip;
@@ -335,7 +311,7 @@ static int php_runkit_import_class_static_props(zend_class_entry *dce, zend_clas
 				if (php_runkit_def_prop_add_int(dce, key, key_len - 1, *pp, property_info_ptr->flags,
 				                                property_info_ptr->doc_comment,
 				                                property_info_ptr->doc_comment_len, dce,
-				                                override TSRMLS_CC) != SUCCESS) {
+				                                override, remove_from_objects TSRMLS_CC) != SUCCESS) {
 					php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to import %s::$%s (cannot add new member)", dce->name, key);
 					goto import_st_prop_skip;
 				}
@@ -353,7 +329,7 @@ import_st_prop_skip:
 
 /* {{{ php_runkit_import_class_props
  */
-static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry *ce, int override TSRMLS_DC)
+static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry *ce, int override, int remove_from_objects TSRMLS_DC)
 {
 	HashPosition pos;
 	char *key;
@@ -372,15 +348,7 @@ static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry
 				goto import_st54_prop_skip;
 			}
 			if (zend_hash_exists(&dce->properties_info, key, key_len)) {
-				if (override) {
-					if (php_runkit_def_prop_remove_int(dce, key, key_len - 1, NULL, -1, 0 TSRMLS_CC) != SUCCESS) {
-						php_error_docref(NULL TSRMLS_CC, E_WARNING,
-						                 "Unable to remove old property %s%s%s, not importing",
-						                 dce->name, (property_info_ptr->flags & ZEND_ACC_STATIC) ? "::$" : "->",
-						                 property_info_ptr->name);
-						goto import_st54_prop_skip;
-					}
-				} else {
+				if (!override) {
 					php_error_docref(NULL TSRMLS_CC, E_NOTICE, "%s%s%s already exists, not importing",
 					                 dce->name, (property_info_ptr->flags & ZEND_ACC_STATIC) ? "::$" : "->", key);
 					goto import_st54_prop_skip;
@@ -406,7 +374,7 @@ static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry
 
 			php_runkit_def_prop_add_int(dce, key, key_len - 1, *p,
 			                            property_info_ptr->flags, property_info_ptr->doc_comment,
-			                            property_info_ptr->doc_comment_len, dce, override TSRMLS_CC);
+			                            property_info_ptr->doc_comment_len, dce, override, remove_from_objects TSRMLS_CC);
 		}
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4) || (PHP_MAJOR_VERSION < 5)
 		else {
@@ -427,7 +395,7 @@ import_st54_prop_skip:
 				}
 			}
 
-			php_runkit_def_prop_add_int(dce, key, key_len - 1, *p, 0, NULL, 0, dce, override TSRMLS_CC);
+			php_runkit_def_prop_add_int(dce, key, key_len - 1, *p, 0, NULL, 0, dce, override, remove_from_objects TSRMLS_CC);
 		} else {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Property has invalid key name");
 		}
@@ -487,12 +455,16 @@ static int php_runkit_import_classes(HashTable *class_table, long flags
 				php_runkit_import_class_consts(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE) TSRMLS_CC);
 			}
 			if (flags & PHP_RUNKIT_IMPORT_CLASS_STATIC_PROPS) {
-				php_runkit_import_class_static_props(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE) TSRMLS_CC);
+				php_runkit_import_class_static_props(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE) != 0,
+				                                     (flags & PHP_RUNKIT_OVERRIDE_OBJECTS) != 0
+				                                     TSRMLS_CC);
 			}
 #endif
 
 			if (flags & PHP_RUNKIT_IMPORT_CLASS_PROPS) {
-				php_runkit_import_class_props(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE) TSRMLS_CC);
+				php_runkit_import_class_props(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE) != 0,
+				                              (flags & PHP_RUNKIT_OVERRIDE_OBJECTS) != 0
+				                              TSRMLS_CC);
 			}
 
 			if (flags & PHP_RUNKIT_IMPORT_CLASS_METHODS) {
@@ -617,6 +589,13 @@ PHP_FUNCTION(runkit_import)
 		RETURN_FALSE;
 	}
 	convert_to_string(filename);
+
+#ifndef ZEND_ENGINE_2
+	if (flags & PHP_RUNKIT_OVERRIDE_OBJECTS) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Overriding in objects is not supported for PHP versions below 5.0");
+		flags &= ~PHP_RUNKIT_OVERRIDE_OBJECTS;
+	}
+#endif
 
 	if (compile_file != zend_compile_file) {
 		/* An accellerator or other dark force is at work
