@@ -97,7 +97,7 @@ int php_runkit_fetch_class_int(const char *classname, int classname_len, zend_cl
 	if (zend_hash_find(EG(class_table), lclass, classname_len + 1, (void*)&ze) == FAILURE ||
 		!ze || !*ze) {
 		efree(lclass);
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "class %s not found", classname);
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Class %s not found", classname);
 		return FAILURE;
 	}
 	ce = *ze;
@@ -105,7 +105,7 @@ int php_runkit_fetch_class_int(const char *classname, int classname_len, zend_cl
 	if (zend_hash_find(EG(class_table), lclass, classname_len + 1, (void*)&ce) == FAILURE ||
 		!ce) {
 		efree(lclass);
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "class %s not found", classname);
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Class %s not found", classname);
 		return FAILURE;
 	}
 #endif

@@ -1,6 +1,6 @@
 <?php
 class a {
-  public function foo() {
+  function foo() {
     echo "foo()\n";
   }
 }
