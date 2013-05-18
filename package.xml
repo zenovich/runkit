@@ -68,6 +68,8 @@ Execute code in restricted environment (sandboxing).
          * A test for correctness of runkit.superglobals feature was added
          * Tests for correctness of inheritance of properties were added
          * Tests for correctness of adding static properties were added
+         * Bug 57649 (https://bugs.php.net/bug.php?id=57649) has been fixed without apathy ;)
+           Thanks to Sara Golemon for tests.
 
      Build system improvements:
          * Declarations after statement were restricted during compiling
@@ -228,6 +230,7 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_static_property_add.phpt" role="test" />
     <file name="runkit_static_property_add_existing.phpt" role="test" />
     <file name="runkit_static_property_add_to_subclasses.phpt" role="test" />
+    <file name="runkit_static_vars.phpt" role="test" />
     <file name="runkit_superglobals.phpt" role="test" />
     <file name="runkit_default_property_add_and_remove_for_class_with_dynamic_properties_overriding_in_objects.phpt" role="test" />
     <file name="runkit_default_property_add_overriding_objects.phpt" role="test" />
@@ -246,6 +249,17 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_import_class_property_and_inheritance_overriding_objects.phpt" role="test" />
     <file name="runkit_import_function_overriding_objects4.inc" role="test" />
     <file name="runkit_import_function_overriding_objects4.phpt" role="test" />
+    <file name="bug56662.phpt" role="test" />
+    <file name="bug56976.phpt" role="test" />
+    <file name="bug57249.inc" role="test" />
+    <file name="bug57249.phpt" role="test" />
+    <file name="bug57649.inc" role="test" />
+    <file name="bug57649.phpt" role="test" />
+    <file name="bug57658.phpt" role="test" />
+    <file name="runkit_import_methods1.inc" role="test" />
+    <file name="runkit_import_methods2.inc" role="test" />
+    <file name="runkit_import_methods.phpt" role="test" />
+    <file name="runkit_method_rename_002.phpt" role="test" />
    </dir> <!-- //tests -->
    <file name="config.m4" role="src" />
    <file name="config.w32" role="src" />

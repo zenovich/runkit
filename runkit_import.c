@@ -427,6 +427,8 @@ static int php_runkit_import_classes(HashTable *class_table, long flags
 		uint key_len;
 		int type;
 		ulong idx;
+		char *lcname;
+		zend_class_entry *dce;
 
 		zend_hash_get_current_data_ex(class_table, (void*)&ce, &pos);
 #ifdef ZEND_ENGINE_2
@@ -440,57 +442,68 @@ static int php_runkit_import_classes(HashTable *class_table, long flags
 			return FAILURE;
 		}
 
-		if (((type = zend_hash_get_current_key_ex(EG(class_table), &key, &key_len, &idx, 0, &pos)) != HASH_KEY_NON_EXISTANT) &&
-			ce && ce->type == ZEND_USER_CLASS) {
-			zend_class_entry *dce;
+		if (ce->type != ZEND_USER_CLASS) {
+			php_error_docref(NULL TSRMLS_CC, E_ERROR, "Cannot import internal class!");
+			return FAILURE;
+		}
 
-			if (php_runkit_fetch_class(ce->name, ce->name_length, &dce TSRMLS_CC) == FAILURE) {
-				/* Oddly non-existant target class or error retreiving it... Or it's an internal class... */
-				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot redeclare class %s", ce->name);
-				continue;
-			}
+		type = zend_hash_get_current_key_ex(class_table, &key, &key_len, &idx, 0, &pos);
+
+		lcname = estrndup(ce->name, ce->name_length);
+		if (lcname == NULL) {
+			php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
+			return FAILURE;
+		}
+		php_strtolower(lcname, ce->name_length);
+
+		if (!zend_hash_exists(EG(class_table), lcname, ce->name_length + 1)) {
+			php_runkit_class_copy(ce, ce->name, ce->name_length TSRMLS_CC);
+		}
+		efree(lcname);
+
+		if (php_runkit_fetch_class(ce->name, ce->name_length, &dce TSRMLS_CC) == FAILURE) {
+			/* Oddly non-existant target class or error retreiving it... Or it's an internal class... */
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot redeclare class %s", ce->name);
+			continue;
+		}
 
 #ifdef ZEND_ENGINE_2
-			if (flags & PHP_RUNKIT_IMPORT_CLASS_CONSTS) {
-				php_runkit_import_class_consts(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE) TSRMLS_CC);
-			}
-			if (flags & PHP_RUNKIT_IMPORT_CLASS_STATIC_PROPS) {
-				php_runkit_import_class_static_props(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE) != 0,
-				                                     (flags & PHP_RUNKIT_OVERRIDE_OBJECTS) != 0
-				                                     TSRMLS_CC);
-			}
+		if (flags & PHP_RUNKIT_IMPORT_CLASS_CONSTS) {
+			php_runkit_import_class_consts(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE) TSRMLS_CC);
+		}
+		if (flags & PHP_RUNKIT_IMPORT_CLASS_STATIC_PROPS) {
+			php_runkit_import_class_static_props(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE) != 0,
+			                                     (flags & PHP_RUNKIT_OVERRIDE_OBJECTS) != 0
+			                                     TSRMLS_CC);
+		}
 #endif
 
-			if (flags & PHP_RUNKIT_IMPORT_CLASS_PROPS) {
-				php_runkit_import_class_props(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE) != 0,
-				                              (flags & PHP_RUNKIT_OVERRIDE_OBJECTS) != 0
-				                              TSRMLS_CC);
-			}
+		if (flags & PHP_RUNKIT_IMPORT_CLASS_PROPS) {
+			php_runkit_import_class_props(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE) != 0,
+			                              (flags & PHP_RUNKIT_OVERRIDE_OBJECTS) != 0
+			                              TSRMLS_CC);
+		}
 
-			if (flags & PHP_RUNKIT_IMPORT_CLASS_METHODS) {
-				php_runkit_import_class_methods(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE)
+		if (flags & PHP_RUNKIT_IMPORT_CLASS_METHODS) {
+			php_runkit_import_class_methods(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE)
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
-				                                , clear_cache
+			                                , clear_cache
 #endif
-				                                TSRMLS_CC);
-			}
+			                                TSRMLS_CC);
+		}
 
-			zend_hash_move_forward_ex(class_table, &pos);
+		zend_hash_move_forward_ex(class_table, &pos);
 
-			if (type == HASH_KEY_IS_STRING) {
-				if (zend_hash_del(class_table, key, key_len) == FAILURE) {
-					php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to remove temporary version of class %s", ce->name);
-					continue;
-				}
-			} else {
-				if (zend_hash_index_del(class_table, idx) == FAILURE) {
-					php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to remove temporary version of class %s", ce->name);
-					continue;
-				}
+		if (type == HASH_KEY_IS_STRING) {
+			if (zend_hash_del(class_table, key, key_len) == FAILURE) {
+				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to remove temporary version of class %s", ce->name);
+				continue;
 			}
 		} else {
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Can not find class definition in class table");
-			return FAILURE;
+			if (zend_hash_index_del(class_table, idx) == FAILURE) {
+				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to remove temporary version of class %s", ce->name);
+				continue;
+			}
 		}
 	}
 

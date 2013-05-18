@@ -697,9 +697,7 @@ PHP_FUNCTION(runkit_method_rename)
 #endif
 
 	func = *fe;
-	PHP_RUNKIT_FUNCTION_ADD_REF(&func);
-	efree((void*) func.common.function_name);
-	func.common.function_name = estrndup(newname, newname_len + 1);
+	php_runkit_function_copy_ctor(&func, newname, newname_len TSRMLS_CC);
 
 	if (zend_hash_add(&ce->function_table, newname_lower, newname_len + 1, &func, sizeof(zend_function), NULL) == FAILURE) {
 		efree(newname_lower);

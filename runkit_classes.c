@@ -144,6 +144,69 @@ static int php_runkit_inherit_methods(zend_function *fe, zend_class_entry *ce TS
 }
 /* }}} */
 
+/* {{{ php_runkit_class_copy
+       Copy class into class table */
+int php_runkit_class_copy(zend_class_entry *src, const char *classname, int classname_len TSRMLS_DC)
+{
+	zend_class_entry *new_class_entry;
+
+#ifndef ZEND_ENGINE_2
+	new_class_entry = emalloc(sizeof(zend_class_entry));
+
+	new_class_entry->type = ZEND_USER_CLASS;
+	new_class_entry->name = estrdup(classname);
+	new_class_entry->name_length = classname_len;
+	new_class_entry->refcount = (int *) emalloc(sizeof(int));
+	*(new_class_entry->refcount) = 1;
+	new_class_entry->constants_updated = 0;
+
+	zend_hash_init(&new_class_entry->function_table, 10, NULL, ZEND_FUNCTION_DTOR, 0);
+	zend_hash_init(&new_class_entry->default_properties, 10, NULL, ZVAL_PTR_DTOR, 0);
+
+	new_class_entry->handle_function_call = src->handle_function_call;
+	new_class_entry->handle_property_set = src->handle_property_set;
+	new_class_entry->handle_property_get = src->handle_property_get;
+
+	new_class_entry->parent = src->parent;
+
+	zend_hash_update(CG(class_table), new_class_entry->name, classname_len, new_class_entry, sizeof(zend_class_entry), (void **) &new_class_entry);
+#else
+	char *lcname;
+
+	new_class_entry = emalloc(sizeof(zend_class_entry));
+	new_class_entry->type = ZEND_USER_CLASS;
+	new_class_entry->name = estrndup(classname, classname_len);
+	new_class_entry->name_length = classname_len;
+
+	zend_initialize_class_data(new_class_entry, 1 TSRMLS_CC);
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+	new_class_entry->info.user.filename = src->info.user.filename;
+	new_class_entry->info.user.line_start = src->info.user.line_start;
+	new_class_entry->info.user.doc_comment = src->info.user.doc_comment;
+	new_class_entry->info.user.doc_comment_len = src->info.user.doc_comment_len;
+	new_class_entry->info.user.line_end = src->info.user.line_end;
+	new_class_entry->num_traits = src->num_traits;
+	new_class_entry->traits = src->traits;
+#else
+	new_class_entry->filename = src->filename;
+	new_class_entry->line_start = src->line_start;
+	new_class_entry->doc_comment = src->doc_comment;
+	new_class_entry->doc_comment_len = src->doc_comment_len;
+	new_class_entry->line_end = src->line_end;
+#endif
+	new_class_entry->ce_flags = src->ce_flags;
+
+	lcname = zend_str_tolower_dup(classname, classname_len);
+	zend_hash_update(EG(class_table), lcname, classname_len + 1, &new_class_entry, sizeof(zend_class_entry *), NULL);
+	efree(lcname);
+
+
+	new_class_entry->num_interfaces = src->num_interfaces;
+#endif
+	return SUCCESS;
+}
+/* }}} */
+
 /* {{{ proto bool runkit_class_adopt(string classname, string parentname)
 	Convert a base class to an inherited class, add ancestral methods when appropriate */
 PHP_FUNCTION(runkit_class_adopt)

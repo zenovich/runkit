@@ -270,6 +270,9 @@ zend_class_entry *_php_runkit_locate_scope(zend_class_entry *ce, zend_function *
 /* runkit_constants.c */
 int php_runkit_update_children_consts(RUNKIT_53_TSRMLS_ARG(void *pDest), int num_args, va_list args, zend_hash_key *hash_key);
 
+/* runkit_classes.c */
+int php_runkit_class_copy(zend_class_entry *src, const char *classname, int classname_len TSRMLS_DC);
+
 /* runkit_props.c */
 int php_runkit_update_children_def_props(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce), int num_args, va_list args, zend_hash_key *hash_key);
 int php_runkit_def_prop_add_int(zend_class_entry *ce, const char *propname, int propname_len, zval *copyval, long visibility, const char *doc_comment, int doc_comment_len, zend_class_entry *definer_class, int override, int override_in_objects TSRMLS_DC);
