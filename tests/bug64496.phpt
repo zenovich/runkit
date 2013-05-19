@@ -1,11 +1,15 @@
 --TEST--
 Bug #64496 - Runkit_Sandbox override of open_basedir when parent uses multiple paths
+--SKIPIF--
+<?php if(!extension_loaded("runkit") || !RUNKIT_FEATURE_SANDBOX) print "skip";
+      if(version_compare(PHP_VERSION, '5.3.0', '<')) print "skip";
+?>
 --FILE--
 <?php
 $tmp = realpath(sys_get_temp_dir());
-$dir = realpath(__DIR__);
-$parent = realpath(dirname(dirname(__DIR__)));
-ini_set('open_basedir', sys_get_temp_dir() . ':' . dirname(__DIR__));
+$dir = realpath(dirname(__FILE__));
+$parent = realpath(dirname(dirname(dirname(__FILE__))));
+ini_set('open_basedir', sys_get_temp_dir() . ':' . dirname(dirname(__FILE__)));
 
 foreach(array(
   "$tmp:$dir",
