@@ -781,21 +781,24 @@ PHP_METHOD(Runkit_Sandbox,require_once)
 PHP_METHOD(Runkit_Sandbox,echo)
 {
 	php_runkit_sandbox_object *objval;
-	zval **argv;
+	zval ***argv;
 	int i, argc = ZEND_NUM_ARGS();
 
-	if (zend_get_parameters_array_ex(argc, &argv) == FAILURE) {
+	argv = emalloc(sizeof(zval**) * argc);
+	if (zend_get_parameters_array_ex(argc, argv) == FAILURE) {
+		efree(argv);
 		/* Big problems... */
 		RETURN_NULL();
 	}
 
 	for(i = 0; i < argc; i++) {
 		/* Prepare for output */
-		convert_to_string(argv[i]);
+		convert_to_string(*(argv[i]));
 	}
 
 	objval = PHP_RUNKIT_SANDBOX_FETCHBOX(this_ptr);
 	if (!objval->active) {
+		efree(argv);
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Current sandbox is no longer active");
 		RETURN_NULL();
 	}
@@ -803,12 +806,14 @@ PHP_METHOD(Runkit_Sandbox,echo)
 	PHP_RUNKIT_SANDBOX_BEGIN(objval)
 		zend_try {
 			for(i = 0; i < argc; i++) {
-				PHPWRITE(Z_STRVAL_P(argv[i]),Z_STRLEN_P(argv[i]));
+				PHPWRITE(Z_STRVAL_PP(argv[i]),Z_STRLEN_PP(argv[i]));
 			}
 		} zend_catch {
 			objval->active = 0;
 		} zend_end_try();
 	PHP_RUNKIT_SANDBOX_END(objval)
+
+	efree(argv);
 
 	RETURN_NULL();
 }
