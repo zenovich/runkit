@@ -71,6 +71,7 @@ Execute code in restricted environment (sandboxing).
          * Tests for correctness of adding static properties were added
          * Bug 57649 (https://bugs.php.net/bug.php?id=57649) has been fixed without apathy ;)
            Thanks to Sara Golemon for tests.
+         * Importing class extending another class was fixed (Issue #48) (thanks to mido0258)
 
      Build system improvements:
          * Declarations after statement were restricted during compiling
@@ -121,6 +122,8 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_functions_returning_by_reference.phpt" role="test" />
     <file name="runkit_import_class.inc" role="test" />
     <file name="runkit_import_class.phpt" role="test" />
+    <file name="runkit_import_class_extend.inc" role="test" />
+    <file name="runkit_import_class_extend.phpt" role="test" />
     <file name="runkit_import_class_property_and_inheritance.inc" role="test" />
     <file name="runkit_import_class_property_and_inheritance.phpt" role="test" />
     <file name="runkit_import_constant_properties.inc" role="test" />

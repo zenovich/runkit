@@ -148,15 +148,14 @@ static int php_runkit_inherit_methods(zend_function *fe, zend_class_entry *ce TS
        Copy class into class table */
 int php_runkit_class_copy(zend_class_entry *src, const char *classname, int classname_len TSRMLS_DC)
 {
-	zend_class_entry *new_class_entry;
+	zend_class_entry *new_class_entry, *parent = NULL;
 	char *lcname;
 	lcname = estrndup(classname, classname_len);
 	php_strtolower(lcname, classname_len);
 
 	new_class_entry = emalloc(sizeof(zend_class_entry));
-	new_class_entry->parent = NULL;
 	if (src->parent && src->parent->name) {
-		php_runkit_fetch_class_int(src->parent->name, src->parent->name_length, &new_class_entry->parent TSRMLS_CC);
+		php_runkit_fetch_class_int(src->parent->name, src->parent->name_length, &parent TSRMLS_CC);
 	}
 #ifndef ZEND_ENGINE_2
 	new_class_entry->type = ZEND_USER_CLASS;
@@ -173,14 +172,16 @@ int php_runkit_class_copy(zend_class_entry *src, const char *classname, int clas
 	new_class_entry->handle_property_set = src->handle_property_set;
 	new_class_entry->handle_property_get = src->handle_property_get;
 
+	new_class_entry->parent = parent;
+
 	zend_hash_update(EG(class_table), lcname, classname_len+1, new_class_entry, sizeof(zend_class_entry), NULL);
-	efree(new_class_entry);
 #else
 	new_class_entry->type = ZEND_USER_CLASS;
 	new_class_entry->name = estrndup(classname, classname_len);
 	new_class_entry->name_length = classname_len;
 
 	zend_initialize_class_data(new_class_entry, 1 TSRMLS_CC);
+	new_class_entry->parent = parent;
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 	new_class_entry->info.user.filename = src->info.user.filename;
 	new_class_entry->info.user.line_start = src->info.user.line_start;
@@ -203,6 +204,16 @@ int php_runkit_class_copy(zend_class_entry *src, const char *classname, int clas
 	new_class_entry->num_interfaces = src->num_interfaces;
 #endif
 	efree(lcname);
+
+	if (new_class_entry->parent) {
+		zend_hash_apply_with_argument(&(new_class_entry->parent->function_table),
+		                              (apply_func_arg_t)php_runkit_inherit_methods, new_class_entry TSRMLS_CC);
+	}
+
+#ifndef ZEND_ENGINE_2
+	efree(new_class_entry);
+#endif
+
 	return SUCCESS;
 }
 /* }}} */

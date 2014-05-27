@@ -449,49 +449,54 @@ static int php_runkit_import_classes(HashTable *class_table, long flags
 
 		type = zend_hash_get_current_key_ex(class_table, &key, &key_len, &idx, 0, &pos);
 
-		lcname = estrndup(ce->name, ce->name_length);
-		if (lcname == NULL) {
-			php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
-			return FAILURE;
-		}
-		php_strtolower(lcname, ce->name_length);
+#ifdef ZEND_ENGINE_2
+		if (key[0] != 0) {
+#endif
+			lcname = estrndup(ce->name, ce->name_length);
+			if (lcname == NULL) {
+				php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
+				return FAILURE;
+			}
+			php_strtolower(lcname, ce->name_length);
 
-		if (!zend_hash_exists(EG(class_table), lcname, ce->name_length + 1)) {
-			php_runkit_class_copy(ce, ce->name, ce->name_length TSRMLS_CC);
-		}
-		efree(lcname);
+			if (!zend_hash_exists(EG(class_table), lcname, ce->name_length + 1)) {
+				php_runkit_class_copy(ce, ce->name, ce->name_length TSRMLS_CC);
+			}
+			efree(lcname);
 
-		if (php_runkit_fetch_class(ce->name, ce->name_length, &dce TSRMLS_CC) == FAILURE) {
-			/* Oddly non-existant target class or error retreiving it... Or it's an internal class... */
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot redeclare class %s", ce->name);
-			continue;
-		}
+			if (php_runkit_fetch_class(ce->name, ce->name_length, &dce TSRMLS_CC) == FAILURE) {
+				/* Oddly non-existant target class or error retreiving it... Or it's an internal class... */
+				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot redeclare class %s", ce->name);
+				continue;
+			}
 
 #ifdef ZEND_ENGINE_2
-		if (flags & PHP_RUNKIT_IMPORT_CLASS_CONSTS) {
-			php_runkit_import_class_consts(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE) TSRMLS_CC);
-		}
-		if (flags & PHP_RUNKIT_IMPORT_CLASS_STATIC_PROPS) {
-			php_runkit_import_class_static_props(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE) != 0,
-			                                     (flags & PHP_RUNKIT_OVERRIDE_OBJECTS) != 0
-			                                     TSRMLS_CC);
-		}
+			if (flags & PHP_RUNKIT_IMPORT_CLASS_CONSTS) {
+				php_runkit_import_class_consts(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE) TSRMLS_CC);
+			}
+			if (flags & PHP_RUNKIT_IMPORT_CLASS_STATIC_PROPS) {
+				php_runkit_import_class_static_props(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE) != 0,
+				                                     (flags & PHP_RUNKIT_OVERRIDE_OBJECTS) != 0
+				                                     TSRMLS_CC);
+			}
 #endif
 
-		if (flags & PHP_RUNKIT_IMPORT_CLASS_PROPS) {
-			php_runkit_import_class_props(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE) != 0,
-			                              (flags & PHP_RUNKIT_OVERRIDE_OBJECTS) != 0
-			                              TSRMLS_CC);
-		}
+			if (flags & PHP_RUNKIT_IMPORT_CLASS_PROPS) {
+				php_runkit_import_class_props(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE) != 0,
+				                              (flags & PHP_RUNKIT_OVERRIDE_OBJECTS) != 0
+				                              TSRMLS_CC);
+			}
 
-		if (flags & PHP_RUNKIT_IMPORT_CLASS_METHODS) {
-			php_runkit_import_class_methods(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE)
+			if (flags & PHP_RUNKIT_IMPORT_CLASS_METHODS) {
+				php_runkit_import_class_methods(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE)
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
-			                                , clear_cache
+				                                , clear_cache
 #endif
-			                                TSRMLS_CC);
+				                                TSRMLS_CC);
+			}
+#ifdef ZEND_ENGINE_2
 		}
-
+#endif
 		zend_hash_move_forward_ex(class_table, &pos);
 
 		if (type == HASH_KEY_IS_STRING) {
@@ -569,6 +574,9 @@ static zend_op_array *php_runkit_compile_filename(int type, zval *filename TSRML
 /* }}} */
 
 static HashTable *current_class_table, *tmp_class_table, *tmp_eg_class_table, *current_eg_class_table, *current_function_table, *tmp_function_table;
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 3) || (PHP_MAJOR_VERSION > 5)
+static zend_uint php_runkit_old_compiler_options;
+#endif
 void (*php_runkit_old_error_cb)(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args);
 
 /* {{{ php_runkit_error_cb */
@@ -579,6 +587,9 @@ void php_runkit_error_cb(int type, const char *error_filename, const uint error_
 	CG(class_table) = current_class_table;
 	EG(class_table) = current_eg_class_table;
 	CG(function_table) = current_function_table;
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 3) || (PHP_MAJOR_VERSION > 5)
+	CG(compiler_options) = php_runkit_old_compiler_options;
+#endif
 
 	php_runkit_old_error_cb(type, error_filename, error_lineno, format, args);
 }
@@ -632,6 +643,10 @@ PHP_FUNCTION(runkit_import)
 	CG(function_table) = tmp_function_table;
 	php_runkit_old_error_cb = zend_error_cb;
 	zend_error_cb = php_runkit_error_cb;
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 3) || (PHP_MAJOR_VERSION > 5)
+	php_runkit_old_compiler_options = CG(compiler_options);
+	CG(compiler_options) |= ZEND_COMPILE_DELAYED_BINDING;
+#endif
 
 	new_op_array = local_compile_filename(ZEND_INCLUDE, filename TSRMLS_CC);
 
@@ -639,6 +654,9 @@ PHP_FUNCTION(runkit_import)
 	CG(class_table) = current_class_table;
 	EG(class_table) = current_eg_class_table;
 	CG(function_table) = current_function_table;
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 3) || (PHP_MAJOR_VERSION > 5)
+	CG(compiler_options) = php_runkit_old_compiler_options;
+#endif
 
 	if (!new_op_array) {
 		zend_hash_destroy(tmp_class_table);
@@ -650,6 +668,55 @@ PHP_FUNCTION(runkit_import)
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Import Failure");
 		RETURN_FALSE;
 	}
+
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 3) || (PHP_MAJOR_VERSION > 5)
+	if (new_op_array->early_binding != -1) {
+		zend_bool orig_in_compilation = CG(in_compilation);
+		zend_uint opline_num = new_op_array->early_binding;
+		zend_class_entry *pce;
+
+		CG(in_compilation) = 1;
+		while (opline_num != -1) {
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+			if (php_runkit_fetch_class_int(Z_STRVAL_P(new_op_array->opcodes[opline_num-1].op2.zv), Z_STRLEN_P(new_op_array->opcodes[opline_num-1].op2.zv), &pce TSRMLS_CC) == SUCCESS) {
+				do_bind_inherited_class(new_op_array, &new_op_array->opcodes[opline_num], tmp_class_table, pce, 0 TSRMLS_CC);
+			}
+			opline_num = new_op_array->opcodes[opline_num].result.opline_num;
+#else
+			if (php_runkit_fetch_class_int(Z_STRVAL(new_op_array->opcodes[opline_num-1].op2.u.constant), Z_STRLEN(new_op_array->opcodes[opline_num-1].op2.u.constant), &pce TSRMLS_CC) == SUCCESS) {
+				do_bind_inherited_class(&new_op_array->opcodes[opline_num], tmp_class_table, pce, 1 TSRMLS_CC);
+			}
+			opline_num = new_op_array->opcodes[opline_num].result.u.opline_num;
+#endif
+		}
+		CG(in_compilation) = orig_in_compilation;
+	}
+#else
+	{
+		zend_bool orig_in_compilation = CG(in_compilation);
+		zend_op *opline = &new_op_array->opcodes[new_op_array->last-1];
+		zend_class_entry *pce;
+
+		CG(in_compilation) = 1;
+
+		while (opline->opcode == ZEND_TICKS && opline > new_op_array->opcodes) {
+			opline--;
+		}
+
+		for (;opline >= new_op_array->opcodes; --opline) {
+			if (opline->opcode == ZEND_DECLARE_INHERITED_CLASS) {
+				if (php_runkit_fetch_class_int(Z_STRVAL((opline-1)->op2.u.constant), Z_STRLEN((opline-1)->op2.u.constant), &pce TSRMLS_CC) == SUCCESS) {
+#ifdef ZEND_ENGINE_2
+					do_bind_inherited_class(opline, tmp_class_table, pce, 1 TSRMLS_CC);
+#else
+					do_bind_function_or_class(opline, tmp_function_table, tmp_class_table, 1);
+#endif
+				}
+			}
+		}
+		CG(in_compilation) = orig_in_compilation;
+	}
+#endif
 
 	/* We never really needed the main loop opcodes to begin with */
 #ifdef ZEND_ENGINE_2
