@@ -129,8 +129,9 @@ void php_runkit_function_copy_ctor(zend_function *fe, const char *newname, int n
 #endif
 #if PHP_MAJOR_VERSION > 5 || (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 1)
 	zend_compiled_variable *dupvars;
+	zend_op *last_op;
 #endif
-	zend_op *opcode_copy, *last_op;
+	zend_op *opcode_copy;
 	int i;
 
 	if (newname) {
@@ -178,7 +179,9 @@ void php_runkit_function_copy_ctor(zend_function *fe, const char *newname, int n
 #endif
 
 		opcode_copy = safe_emalloc(sizeof(zend_op), fe->op_array.last, 0);
+#ifdef ZEND_ENGINE_2
 		last_op = fe->op_array.opcodes + fe->op_array.last;
+#endif
 		for(i = 0; i < fe->op_array.last; i++) {
 			opcode_copy[i] = fe->op_array.opcodes[i];
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4) || (PHP_MAJOR_VERSION < 5)
