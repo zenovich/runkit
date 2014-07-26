@@ -569,15 +569,18 @@ static int php_runkit_def_prop_add(char *classname, int classname_len, char *pro
 /* }}} */
 
 /* {{{ php_runkit_dump_string */
+/*
 static inline void php_runkit_dump_string(const char *str, int len) {
 	int j;
 	for (j=0; j<len; j++) {
 		printf("%c", str[j]);
 	}
 }
+*/
 /* }}} */
 
 /* {{{ php_runkit_dump_hashtable_keys */
+/*
 static inline void php_runkit_dump_hashtable_keys(HashTable* ht) {
 	HashPosition pos;
 	void *ptr;
@@ -588,6 +591,7 @@ static inline void php_runkit_dump_hashtable_keys(HashTable* ht) {
 		php_runkit_dump_string(pos->arKey, pos->nKeyLength);
 	}
 }
+*/
 /* }}} */
 
 /* {{{ php_runkit_def_prop_remove_int */
