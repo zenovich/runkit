@@ -10,4 +10,4 @@ runkit_import(dirname(__FILE__) . '/runkit_import_with_syntax_error.inc');
 echo "After syntax error";
 ?>
 --EXPECTF--
-Parse error: syntax error, unexpected ')' in %s on line 2
+Parse error: %s in %s on line 2
