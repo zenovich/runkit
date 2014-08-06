@@ -381,12 +381,18 @@ struct _php_runkit_sandbox_object {
 			} \
 		} else if (!strncmp((lcmname), ZEND_DESTRUCTOR_FUNC_NAME, (mname_len))) { \
 			(ce)->destructor = (fe); (fe)->common.fn_flags |= ZEND_ACC_DTOR; \
+		} else if (!strncmp((lcmname), "serialize", (mname_len))) { \
+			(ce)->serialize_func = (fe); \
+		} else if (!strncmp((lcmname), "unserialize", (mname_len))) { \
+			(ce)->unserialize_func = (fe); \
 		} else if (!strncmp((lcmname), ZEND_GET_FUNC_NAME, (mname_len))) { \
 			(ce)->__get = (fe); \
 		} else if (!strncmp((lcmname), ZEND_SET_FUNC_NAME, (mname_len))) { \
 			(ce)->__set = (fe); \
 		} else if (!strncmp((lcmname), ZEND_CALL_FUNC_NAME, (mname_len))) { \
 			(ce)->__call = (fe); \
+		} else if (!strncmp((lcmname), ZEND_CALLSTATIC_FUNC_NAME, (mname_len))) { \
+			(ce)->__callstatic = (fe); \
 		} else if (!strncmp((lcmname), ZEND_UNSET_FUNC_NAME, (mname_len))) { \
 			(ce)->__unset = (fe); \
 		} else if (!strncmp((lcmname), ZEND_ISSET_FUNC_NAME, (mname_len))) { \
@@ -484,8 +490,11 @@ struct _php_runkit_sandbox_object {
 		else if ((ce)->__unset == (fe))                             (ce)->__unset      = NULL; \
 		else if ((ce)->__isset == (fe))                             (ce)->__isset      = NULL; \
 		else if ((ce)->__call == (fe))                              (ce)->__call       = NULL; \
+		else if ((ce)->__callstatic == (fe))                        (ce)->__callstatic = NULL; \
 		else if ((ce)->__tostring == (fe))                          (ce)->__tostring   = NULL; \
 		else if ((ce)->clone == (fe))                               (ce)->clone        = NULL; \
+		else if ((ce)->serialize_func == (fe))                      (ce)->serialize_func = NULL; \
+		else if ((ce)->unserialize_func == (fe))                    (ce)->unserialize_func = NULL; \
 	}
 #	define PHP_RUNKIT_INHERIT_MAGIC(ce, fe, orig_fe, is_constr) { \
 		if ((ce)->__get == (orig_fe) && (ce)->parent->__get == (fe)) { \
@@ -498,6 +507,8 @@ struct _php_runkit_sandbox_object {
 			(ce)->__isset      = (ce)->parent->__isset; \
 		} else if ((ce)->__call       == (orig_fe) && (ce)->parent->__call == (fe)) { \
 			(ce)->__call       = (ce)->parent->__call; \
+		} else if ((ce)->__callstatic == (orig_fe) && (ce)->parent->__callstatic == (fe)) { \
+			(ce)->__callstatic = (ce)->parent->__callstatic; \
 		} else if ((ce)->__tostring == (orig_fe) && (ce)->parent->__tostring == (fe)) { \
 			(ce)->__tostring   = (ce)->parent->__tostring; \
 		} else if ((ce)->clone        == (orig_fe) && (ce)->parent->clone == (fe)) { \
@@ -506,6 +517,10 @@ struct _php_runkit_sandbox_object {
 			(ce)->destructor   = (ce)->parent->destructor; \
 		} else if ((ce)->constructor  == (orig_fe) && (ce)->parent->constructor == (fe)) { \
 			(ce)->constructor  = (ce)->parent->constructor; \
+		} else if ((ce)->serialize_func == (orig_fe) && (ce)->parent->serialize_func == (fe)) { \
+			(ce)->serialize_func  = (ce)->parent->serialize_func; \
+		} else if ((ce)->unserialize_func == (orig_fe) && (ce)->parent->unserialize_func == (fe)) { \
+			(ce)->unserialize_func = (ce)->parent->unserialize_func; \
 		} \
 	}
 #	endif // RUNKIT_ABOVE53
