@@ -544,12 +544,12 @@ static int php_runkit_def_prop_add(char *classname, int classname_len, char *pro
 		return FAILURE;
 	}
 	if (
-	    Z_TYPE_P(copyval) == IS_CONSTANT_ARRAY
+	    Z_TYPE_P(copyval) == IS_CONSTANT_AST
 #	if RUNKIT_ABOVE53
 	    || (Z_TYPE_P(copyval) & IS_CONSTANT_TYPE_MASK) == IS_CONSTANT
 #	endif
 	) {
-		zval_update_constant_ex(&copyval, (void*) 1, ce TSRMLS_CC);
+		zval_update_constant_ex(&copyval, 1, ce TSRMLS_CC);
 	}
 #else
 	if (zend_hash_exists(&ce->default_properties, key, key_len + 1)) {
