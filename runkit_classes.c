@@ -47,9 +47,7 @@ static int php_runkit_remove_inherited_methods(zend_function *fe, zend_class_ent
 	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_clean_children_methods, 5,
 	                               ancestor_class, ce, fname_lower, function_name_len, fe);
 	PHP_RUNKIT_DEL_MAGIC_METHOD(ce, fe);
-#ifdef ZEND_ENGINE_2
 	php_runkit_remove_function_from_reflection_objects(fe TSRMLS_CC);
-#endif
 
 	efree(fname_lower);
 	return ZEND_HASH_APPLY_REMOVE;
@@ -112,12 +110,6 @@ static int php_runkit_inherit_methods(zend_function *fe, zend_class_entry *ce TS
 
 	ancestor_class = php_runkit_locate_scope(ce, fe, lower_function_name, function_name_len);
 
-#if PHP_MAJOR_VERSION < 5
-	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 7,
-	                               ancestor_class, ce, fe, lower_function_name, function_name_len, NULL,
-	                               ce->name_length == function_name_len && !strncmp(ce->name, lower_function_name, ce->name_length));
-#endif
-
 	if (zend_hash_add_or_update(&ce->function_table, lower_function_name, function_name_len + 1, fe, sizeof(zend_function), NULL, HASH_ADD) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error inheriting parent method: %s()", fe->common.function_name);
 		efree(lower_function_name);
@@ -134,10 +126,8 @@ static int php_runkit_inherit_methods(zend_function *fe, zend_class_entry *ce TS
 	PHP_RUNKIT_FUNCTION_ADD_REF(fe);
 	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, lower_function_name, function_name_len, fe, NULL);
 
-#if PHP_MAJOR_VERSION >= 5
 	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 6,
 	                               ancestor_class, ce, fe, lower_function_name, function_name_len, NULL);
-#endif
 	efree(lower_function_name);
 
 	return ZEND_HASH_APPLY_KEEP;
@@ -157,25 +147,6 @@ int php_runkit_class_copy(zend_class_entry *src, const char *classname, int clas
 	if (src->parent && src->parent->name) {
 		php_runkit_fetch_class_int(src->parent->name, src->parent->name_length, &parent TSRMLS_CC);
 	}
-#ifndef ZEND_ENGINE_2
-	new_class_entry->type = ZEND_USER_CLASS;
-	new_class_entry->name = estrdup(classname);
-	new_class_entry->name_length = classname_len;
-	new_class_entry->refcount = (int *) emalloc(sizeof(int));
-	*(new_class_entry->refcount) = 0;
-	new_class_entry->constants_updated = 0;
-
-	zend_hash_init(&new_class_entry->function_table, 10, NULL, ZEND_FUNCTION_DTOR, 0);
-	zend_hash_init(&new_class_entry->default_properties, 10, NULL, ZVAL_PTR_DTOR, 0);
-
-	new_class_entry->handle_function_call = src->handle_function_call;
-	new_class_entry->handle_property_set = src->handle_property_set;
-	new_class_entry->handle_property_get = src->handle_property_get;
-
-	new_class_entry->parent = parent;
-
-	zend_hash_update(EG(class_table), lcname, classname_len+1, new_class_entry, sizeof(zend_class_entry), NULL);
-#else
 	new_class_entry->type = ZEND_USER_CLASS;
 	new_class_entry->name = estrndup(classname, classname_len);
 	new_class_entry->name_length = classname_len;
@@ -202,17 +173,12 @@ int php_runkit_class_copy(zend_class_entry *src, const char *classname, int clas
 	zend_hash_update(EG(class_table), lcname, classname_len + 1, &new_class_entry, sizeof(zend_class_entry *), NULL);
 
 	new_class_entry->num_interfaces = src->num_interfaces;
-#endif
 	efree(lcname);
 
 	if (new_class_entry->parent) {
 		zend_hash_apply_with_argument(&(new_class_entry->parent->function_table),
 		                              (apply_func_arg_t)php_runkit_inherit_methods, new_class_entry TSRMLS_CC);
 	}
-
-#ifndef ZEND_ENGINE_2
-	efree(new_class_entry);
-#endif
 
 	return SUCCESS;
 }
@@ -257,7 +223,6 @@ PHP_FUNCTION(runkit_class_adopt)
 
 #endif /* PHP_RUNKIT_MANIPULATION */
 
-#ifdef ZEND_ENGINE_2
 /* {{{ proto int runkit_object_id(object instance)
 Fetch the Object Handle ID from an instance */
 PHP_FUNCTION(runkit_object_id)
@@ -271,7 +236,7 @@ PHP_FUNCTION(runkit_object_id)
 	RETURN_LONG(Z_OBJ_HANDLE_P(obj));
 }
 /* }}} */
-#endif /* ZEND_ENGINE_2 */
+
 /*
  * Local variables:
  * tab-width: 4

@@ -33,7 +33,7 @@ Bar is 2
 Baz is
 
 
-Compatability: PHP 4.2 or greater
+Compatability: PHP 5.0 or greater
 
 
 [USER DEFINED FUNCTION AND CLASS MANIPULATION]
@@ -41,7 +41,7 @@ Userdefined functions and userdefined methods may now be renamed, delete, and re
 
 Examples for these functions may also be found in the tests folder.
 
-Compatability: PHP4 and PHP5
+Compatability: PHP5
 
 
 [SANDBOXING]

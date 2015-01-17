@@ -61,9 +61,7 @@ static int php_runkit_import_functions(HashTable *function_table, long flags
 			}
 
 			if (exists) {
-#ifdef ZEND_ENGINE_2
 				php_runkit_remove_function_from_reflection_objects(orig_fe TSRMLS_CC);
-#endif
 				if (flags & PHP_RUNKIT_IMPORT_OVERRIDE) {
 					if (type == HASH_KEY_IS_STRING) {
 						if (zend_hash_del(EG(function_table), (char *) new_key, new_key_len) == FAILURE) {
@@ -161,9 +159,7 @@ static int php_runkit_import_class_methods(zend_class_entry *dce, zend_class_ent
 #endif
 
 			zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_clean_children_methods, 5, scope, dce, fn, fn_len, dfe);
-#ifdef ZEND_ENGINE_2
 			php_runkit_remove_function_from_reflection_objects(dfe TSRMLS_CC);
-#endif
 			if (zend_hash_del(&dce->function_table, fn, fn_len + 1) == FAILURE) {
 				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error removing old method in destination class %s::%s", dce->name, fe->common.function_name);
 				zend_hash_move_forward_ex(&ce->function_table, &pos);
@@ -171,9 +167,7 @@ static int php_runkit_import_class_methods(zend_class_entry *dce, zend_class_ent
 			}
 		}
 
-#ifdef ZEND_ENGINE_2
 		fe->common.scope = dce;
-#endif
 		if (zend_hash_add(&dce->function_table, fn, fn_len + 1, fe, sizeof(zend_function), NULL) == FAILURE) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Failure importing %s::%s()", ce->name, fe->common.function_name);
 			zend_hash_move_forward_ex(&ce->function_table, &pos);
@@ -189,14 +183,7 @@ static int php_runkit_import_class_methods(zend_class_entry *dce, zend_class_ent
 		}
 		PHP_RUNKIT_ADD_MAGIC_METHOD(dce, fn, fn_len, fe, dfe);
 		zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 7,
-		                               dce, dce, fe, fn, fn_len, dfe,
-#ifdef ZEND_ENGINE_2
-		                               0
-#else
-		                               !strncmp(ce->name, fe->common.function_name, ce->name_length)
-#endif
-		);
-
+		                               dce, dce, fe, fn, fn_len, dfe, 0);
 		zend_hash_move_forward_ex(&ce->function_table, &pos);
 	}
 
@@ -206,7 +193,6 @@ static int php_runkit_import_class_methods(zend_class_entry *dce, zend_class_ent
 }
 /* }}} */
 
-#ifdef ZEND_ENGINE_2
 /* {{{ php_runkit_import_class_consts
  */
 static int php_runkit_import_class_consts(zend_class_entry *dce, zend_class_entry *ce, int override TSRMLS_DC)
@@ -254,9 +240,7 @@ import_const_skip:
 	return SUCCESS;
 }
 /* }}} */
-#endif
 
-#ifdef ZEND_ENGINE_2
 /* {{{ php_runkit_import_class_static_props
  */
 static int php_runkit_import_class_static_props(zend_class_entry *dce, zend_class_entry *ce, int override, int remove_from_objects TSRMLS_DC)
@@ -325,7 +309,6 @@ import_st_prop_skip:
 	return SUCCESS;
 }
 /* }}} */
-#endif
 
 /* {{{ php_runkit_import_class_props
  */
@@ -337,7 +320,6 @@ static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry
 	zval **p;
 	ulong idx;
 
-#if PHP_MAJOR_VERSION >= 5
 	zend_property_info *property_info_ptr;
 
 	zend_hash_internal_pointer_reset_ex(&ce->properties_info, &pos);
@@ -354,7 +336,7 @@ static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry
 					goto import_st54_prop_skip;
 				}
 			}
-#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4)
 			p = &ce->default_properties_table[property_info_ptr->offset];
 #else
 			if (zend_hash_quick_find(&ce->default_properties, property_info_ptr->name, property_info_ptr->name_length + 1, property_info_ptr->h, (void*) &p) != SUCCESS) {
@@ -376,7 +358,7 @@ static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry
 			                            property_info_ptr->flags, property_info_ptr->doc_comment,
 			                            property_info_ptr->doc_comment_len, dce, override, remove_from_objects TSRMLS_CC);
 		}
-#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4) || (PHP_MAJOR_VERSION < 5)
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4)
 		else {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Property has invalid key name");
 		}
@@ -384,25 +366,6 @@ static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry
 import_st54_prop_skip:
 		zend_hash_move_forward_ex(&ce->properties_info, &pos);
 	}
-#else // PHP_MAJOR_VERSION >= 5
-	zend_hash_internal_pointer_reset_ex(&ce->default_properties, &pos);
-	while (zend_hash_get_current_data_ex(&ce->default_properties, (void*)&p, &pos) == SUCCESS && p && *p) {
-		if (zend_hash_get_current_key_ex(&ce->default_properties, &key, &key_len, &idx, 0, &pos) == HASH_KEY_IS_STRING) {
-			if (zend_hash_exists(&dce->default_properties, key, key_len)) {
-				if (!override) {
-					php_error_docref(NULL TSRMLS_CC, E_NOTICE, "%s->%s already exists, not importing", dce->name, key);
-					goto import_prop_skip;
-				}
-			}
-
-			php_runkit_def_prop_add_int(dce, key, key_len - 1, *p, 0, NULL, 0, dce, override, remove_from_objects TSRMLS_CC);
-		} else {
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Property has invalid key name");
-		}
-import_prop_skip:
-		zend_hash_move_forward_ex(&ce->default_properties, &pos);
-	}
-#endif // PHP_MAJOR_VERSION >= 5
 
 	return SUCCESS;
 }
@@ -431,11 +394,9 @@ static int php_runkit_import_classes(HashTable *class_table, long flags
 		zend_class_entry *dce;
 
 		zend_hash_get_current_data_ex(class_table, (void*)&ce, &pos);
-#ifdef ZEND_ENGINE_2
 		if (ce) {
 			ce = *((zend_class_entry**)ce);
 		}
-#endif
 
 		if (!ce) {
 			php_error_docref(NULL TSRMLS_CC, E_ERROR, "Non-class in class table!");
@@ -449,9 +410,7 @@ static int php_runkit_import_classes(HashTable *class_table, long flags
 
 		type = zend_hash_get_current_key_ex(class_table, &key, &key_len, &idx, 0, &pos);
 
-#ifdef ZEND_ENGINE_2
 		if (key[0] != 0) {
-#endif
 			lcname = estrndup(ce->name, ce->name_length);
 			if (lcname == NULL) {
 				php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
@@ -470,7 +429,6 @@ static int php_runkit_import_classes(HashTable *class_table, long flags
 				continue;
 			}
 
-#ifdef ZEND_ENGINE_2
 			if (flags & PHP_RUNKIT_IMPORT_CLASS_CONSTS) {
 				php_runkit_import_class_consts(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE) TSRMLS_CC);
 			}
@@ -479,7 +437,6 @@ static int php_runkit_import_classes(HashTable *class_table, long flags
 				                                     (flags & PHP_RUNKIT_OVERRIDE_OBJECTS) != 0
 				                                     TSRMLS_CC);
 			}
-#endif
 
 			if (flags & PHP_RUNKIT_IMPORT_CLASS_PROPS) {
 				php_runkit_import_class_props(dce, ce, (flags & PHP_RUNKIT_IMPORT_OVERRIDE) != 0,
@@ -494,9 +451,7 @@ static int php_runkit_import_classes(HashTable *class_table, long flags
 #endif
 				                                TSRMLS_CC);
 			}
-#ifdef ZEND_ENGINE_2
 		}
-#endif
 		zend_hash_move_forward_ex(class_table, &pos);
 
 		if (type == HASH_KEY_IS_STRING) {
@@ -547,11 +502,7 @@ static zend_op_array *php_runkit_compile_filename(int type, zval *filename TSRML
 
 	/* Use builtin compiler only -- bypass accelerators and whatnot */
 	retval = compile_file(&file_handle, type TSRMLS_CC);
-#ifdef ZEND_ENGINE_2
 	if (retval && file_handle.handle.stream.handle) {
-#else /* ZEND ENGINE 1 */
-	if (retval && ZEND_IS_VALID_FILE_HANDLE(&file_handle)) {
-#endif
 		int dummy = 1;
 
 		if (!file_handle.opened_path) {
@@ -613,13 +564,6 @@ PHP_FUNCTION(runkit_import)
 		RETURN_FALSE;
 	}
 	convert_to_string(filename);
-
-#ifndef ZEND_ENGINE_2
-	if (flags & PHP_RUNKIT_OVERRIDE_OBJECTS) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Overriding in objects is not supported for PHP versions below 5.0");
-		flags &= ~PHP_RUNKIT_OVERRIDE_OBJECTS;
-	}
-#endif
 
 	if (compile_file != zend_compile_file) {
 		/* An accellerator or other dark force is at work
@@ -706,11 +650,7 @@ PHP_FUNCTION(runkit_import)
 		for (;opline >= new_op_array->opcodes; --opline) {
 			if (opline->opcode == ZEND_DECLARE_INHERITED_CLASS) {
 				if (php_runkit_fetch_class_int(Z_STRVAL((opline-1)->op2.u.constant), Z_STRLEN((opline-1)->op2.u.constant), &pce TSRMLS_CC) == SUCCESS) {
-#ifdef ZEND_ENGINE_2
 					do_bind_inherited_class(opline, tmp_class_table, pce, 1 TSRMLS_CC);
-#else
-					do_bind_function_or_class(opline, tmp_function_table, tmp_class_table, 1);
-#endif
 				}
 			}
 		}
@@ -719,11 +659,7 @@ PHP_FUNCTION(runkit_import)
 #endif
 
 	/* We never really needed the main loop opcodes to begin with */
-#ifdef ZEND_ENGINE_2
 	destroy_op_array(new_op_array TSRMLS_CC);
-#else
-	destroy_op_array(new_op_array);
-#endif
 	efree(new_op_array);
 
 	if (flags & PHP_RUNKIT_IMPORT_FUNCTIONS) {

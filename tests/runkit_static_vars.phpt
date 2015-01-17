@@ -1,9 +1,7 @@
 --TEST--
 Static Variables in runkit modified functions
 --SKIPIF--
-<?php if(!extension_loaded("runkit") || !RUNKIT_FEATURE_MANIPULATION) print "skip";
-      if(version_compare(PHP_VERSION, '5.0.0', '<')) print "skip";
-?>
+<?php if(!extension_loaded("runkit") || !RUNKIT_FEATURE_MANIPULATION) print "skip"; ?>
 --FILE--
 <?php
 function orig() {

@@ -73,7 +73,6 @@ static int php_runkit_fetch_const(char *cname, int cname_len, zend_constant **co
 }
 /* }}} */
 
-#ifdef ZEND_ENGINE_2
 /* {{{ php_runkit_update_children_consts
 	Scan the class_table for children of the class just updated */
 int php_runkit_update_children_consts(RUNKIT_53_TSRMLS_ARG(void *pDest), int num_args, va_list args, zend_hash_key *hash_key)
@@ -85,10 +84,7 @@ int php_runkit_update_children_consts(RUNKIT_53_TSRMLS_ARG(void *pDest), int num
 	int cname_len = va_arg(args, int);
 	RUNKIT_UNDER53_TSRMLS_FETCH();
 
-/* Redundant I know, but it's too keep these things consistent */
-#ifdef ZEND_ENGINE_2
 	ce = *((zend_class_entry**)ce);
-#endif
 
 	if (ce->parent != parent_class) {
 		/* Not a child, ignore */
@@ -109,7 +105,6 @@ int php_runkit_update_children_consts(RUNKIT_53_TSRMLS_ARG(void *pDest), int num
 	return ZEND_HASH_APPLY_KEEP;
 }
 /* }}} */
-#endif
 
 /* {{{ php_runkit_constant_remove
  */
@@ -119,7 +114,6 @@ static int php_runkit_constant_remove(char *classname, int classname_len, char *
 	char *found_constname;
 
 	if (classname && (classname_len > 0)) {
-#ifdef ZEND_ENGINE_2
 		zend_class_entry *ce;
 
 		if (php_runkit_fetch_class(classname, classname_len, &ce TSRMLS_CC)==FAILURE) {
@@ -138,26 +132,13 @@ static int php_runkit_constant_remove(char *classname, int classname_len, char *
 		php_runkit_clear_all_functions_runtime_cache(TSRMLS_C);
 #endif
 		return SUCCESS;
-#else
-		/* PHP4 doesn't support class constants */
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Class constants require PHP 5.0 or above");
-		return FAILURE;
-#endif
 	}
 
 	if (php_runkit_fetch_const(constname, constname_len, &constant, &found_constname TSRMLS_CC) == FAILURE) {
 		return FAILURE;
 	}
 
-#ifdef ZEND_ENGINE_2
 	if (constant->module_number != PHP_USER_CONSTANT) {
-#else
-	/* Not strictly legal/safe
-	 * module_number can't necessarily be counted on to == 0 since it's not initialized (thanks guys)
-	 * But do you know of any internal constants that aren't persistent?  I don't.
-	 */
-	if (constant->flags & CONST_PERSISTENT) {
-#endif
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Only user defined constants may be removed.");
 		return FAILURE;
 	}
@@ -181,10 +162,8 @@ static int php_runkit_constant_remove(char *classname, int classname_len, char *
  */
 static int php_runkit_constant_add(char *classname, int classname_len, char *constname, int constname_len, zval *value TSRMLS_DC)
 {
-#ifdef ZEND_ENGINE_2
 	zend_class_entry *ce;
 	zval *copyval;
-#endif
 
 	switch (value->type) {
 		case IS_LONG:
@@ -215,15 +194,10 @@ static int php_runkit_constant_add(char *classname, int classname_len, char *con
 		c.flags = CONST_CS;
 		c.name = zend_strndup(constname, constname_len);
 		c.name_len = constname_len + 1;
-#ifdef ZEND_ENGINE_2
 		c.module_number = PHP_USER_CONSTANT;
-#else
-		c.module_number = 0;
-#endif
 		return zend_register_constant(&c TSRMLS_CC);
 	}
 
-#ifdef ZEND_ENGINE_2
 	if (php_runkit_fetch_class(classname, classname_len, &ce TSRMLS_CC)==FAILURE) {
 		return FAILURE;
 	}
@@ -244,21 +218,12 @@ static int php_runkit_constant_add(char *classname, int classname_len, char *con
 	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_consts, 4, ce, &copyval, constname, constname_len);
 
 	return SUCCESS;
-#else
-	php_error_docref(NULL TSRMLS_CC, E_WARNING, "Class constants require PHP 5.0 or above");
-
-	return FAILURE;
-#endif
 }
 /* }}} */
 
 /* *****************
    * Constants API *
    ***************** */
-
-/* Note: While PHP4 does not actually allow class based constants,
- * the parameter is left in so that the API remains consistent
- */
 
 /* {{{ proto bool runkit_constant_redefine(string constname, mixed newvalue)
  */

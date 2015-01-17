@@ -5,9 +5,7 @@ runkit_import() Importing and overriding class methods
 --FILE--
 <?php
 
-if (version_compare(phpversion(), "5.0.0") >= 0) {
-  error_reporting(E_ALL & ~E_STRICT);
-}
+error_reporting(E_ALL & ~E_STRICT);
 
 class ParentClass {
   function foo() {

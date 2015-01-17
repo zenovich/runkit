@@ -1,9 +1,7 @@
 --TEST--
 Bug#56662 - Wrong access level with RUNKIT_ACC_PUBLIC
 --SKIPIF--
-<?php if(!extension_loaded("runkit")) print "skip";
-      if(version_compare(PHP_VERSION, '5.0.0', '<')) print "skip";
-?>
+<?php if(!extension_loaded("runkit")) print "skip"; ?>
 --FILE--
 <?php
 class A {}

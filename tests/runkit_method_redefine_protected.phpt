@@ -1,8 +1,7 @@
 --TEST--
 runkit_method_redefine() function for protected methods
 --SKIPIF--
-<?php if(!extension_loaded("runkit") || !RUNKIT_FEATURE_MANIPULATION ||
-         version_compare(PHP_VERSION, '5.0.0', '<')) print "skip"; ?>
+<?php if(!extension_loaded("runkit") || !RUNKIT_FEATURE_MANIPULATION) print "skip"; ?>
 --INI--
 error_reporting=E_ALL
 display_errors=on

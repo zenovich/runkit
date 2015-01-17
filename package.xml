@@ -17,7 +17,7 @@ Execute code in restricted environment (sandboxing).
   <active>yes</active>
  </lead>
 
-   <date>2013-05-12</date>
+   <date>2015-01-17</date>
    <version>
     <release>1.0.4</release>
     <api>1.0.4</api>
@@ -30,6 +30,7 @@ Execute code in restricted environment (sandboxing).
    <notes>
      New features:
          + PHP 5.4 is now fully supported
+         - PHP 4.x is not supported anymore
          + Introduced new function "runkit_default_property_remove" (Thanks to Juhan Kundla)
          + Ability to add non-scalar default properties was added
          + Magic methods __isset, __unset, __callStatic, and __toString are now supported.
@@ -208,26 +209,17 @@ Execute code in restricted environment (sandboxing).
     <file name="bug4519.phpt" role="test" />
     <file name="namespaces.phpt" role="test" />
     <file name="runkit_default_property_add.phpt" role="test" />
-    <file name="runkit_default_property_add4.phpt" role="test" />
     <file name="runkit_default_property_add_and_remove_for_class_with_dynamic_properties.phpt" role="test" />
     <file name="runkit_default_property_add_to_subclasses.phpt" role="test" />
     <file name="runkit_default_property_remove.phpt" role="test" />
     <file name="runkit_default_property_remove_and_add_for_class_with_dynamic_properties.phpt" role="test" />
     <file name="runkit_default_property_remove_and_reflection.phpt" role="test" />
     <file name="runkit_default_property_remove_from_subclasses.phpt" role="test" />
-    <file name="runkit_default_property_remove_from_subclasses4.phpt" role="test" />
     <file name="runkit_default_property_remove_inheritance.phpt" role="test" />
-    <file name="runkit_default_property_remove4.phpt" role="test" />
-    <file name="runkit_import_class4.inc" role="test" />
-    <file name="runkit_import_class4.phpt" role="test" />
     <file name="runkit_import_class_property_not_overriding_subclasses.inc" role="test" />
     <file name="runkit_import_class_property_not_overriding_subclasses.phpt" role="test" />
-    <file name="runkit_import_class_property_not_overriding_subclasses4.inc" role="test" />
-    <file name="runkit_import_class_property_not_overriding_subclasses4.phpt" role="test" />
     <file name="runkit_import_class_property.inc" role="test" />
     <file name="runkit_import_class_property.phpt" role="test" />
-    <file name="runkit_import_class_property4.inc" role="test" />
-    <file name="runkit_import_class_property4.phpt" role="test" />
     <file name="runkit_import_non_existent_file.phpt" role="test" />
     <file name="runkit_import_static_properties_override.inc" role="test" />
     <file name="runkit_import_static_properties_override.phpt" role="test" />
@@ -240,21 +232,17 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_superglobals.phpt" role="test" />
     <file name="runkit_default_property_add_and_remove_for_class_with_dynamic_properties_overriding_in_objects.phpt" role="test" />
     <file name="runkit_default_property_add_overriding_objects.phpt" role="test" />
-    <file name="runkit_default_property_add_overriding_objects4.phpt" role="test" />
     <file name="runkit_default_property_add_to_subclasses_overriding_objects.phpt" role="test" />
     <file name="runkit_default_property_remove_and_add_for_class_with_dynamic_properties_overriding_objects.phpt" role="test" />
     <file name="runkit_default_property_remove_from_subclasses_overriding_objects.phpt" role="test" />
     <file name="runkit_default_property_remove_inheritance_overriding_objects.phpt" role="test" />
     <file name="runkit_default_property_remove_overriding_objects.phpt" role="test" />
-    <file name="runkit_default_property_remove_overriding_objects4.phpt" role="test" />
     <file name="runkit_default_property_remove_private_and_inheritance.phpt" role="test" />
     <file name="runkit_default_property_remove_private_and_inheritance_overriding_objects.phpt" role="test" />
     <file name="runkit_default_property_remove_private_shadow_and_inheritance.phpt" role="test" />
     <file name="runkit_default_property_remove_private_shadow_and_inheritance54.phpt" role="test" />
     <file name="runkit_default_property_remove_private_shadow_and_inheritance_overriding_objects.phpt" role="test" />
     <file name="runkit_import_class_property_and_inheritance_overriding_objects.phpt" role="test" />
-    <file name="runkit_import_function_overriding_objects4.inc" role="test" />
-    <file name="runkit_import_function_overriding_objects4.phpt" role="test" />
     <file name="bug56662.phpt" role="test" />
     <file name="bug56976.phpt" role="test" />
     <file name="bug57249.inc" role="test" />

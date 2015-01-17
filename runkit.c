@@ -74,9 +74,7 @@ PHP_FUNCTION(runkit_zval_inspect)
 zend_function_entry runkit_functions[] = {
 
 	PHP_FE(runkit_zval_inspect,										NULL)
-#ifdef ZEND_ENGINE_2
 	PHP_FE(runkit_object_id,										NULL)
-#endif
 	PHP_FE(runkit_return_value_used,								NULL)
 
 #ifdef PHP_RUNKIT_SUPERGLOBALS
@@ -163,7 +161,6 @@ ZEND_GET_MODULE(runkit)
 #endif
 
 #ifdef PHP_RUNKIT_MANIPULATION
-#	ifdef ZEND_ENGINE_2
 ZEND_FUNCTION(_php_runkit_removed_function) {
 	php_error_docref(NULL TSRMLS_CC, E_ERROR, "A function removed by runkit was somehow invoked");
 }
@@ -189,7 +186,6 @@ static inline void _php_runkit_init_stub_function(char *name, void (*handler)(IN
 #endif
 	(*result)->internal_function.module = &runkit_module_entry;
 }
-#	endif
 #endif
 
 #if defined(PHP_RUNKIT_SANDBOX) || defined(PHP_RUNKIT_MANIPULATION)
@@ -202,7 +198,6 @@ static void php_runkit_globals_ctor(void *pDest TSRMLS_DC)
 #ifdef PHP_RUNKIT_MANIPULATION
 	runkit_global->replaced_internal_functions = NULL;
 	runkit_global->misplaced_internal_functions = NULL;
-# ifdef ZEND_ENGINE_2
 	runkit_global->name_str = "name";
 	runkit_global->removed_method_str = "__method_removed_by_runkit__";
 	runkit_global->removed_function_str = "__function_removed_by_runkit__";
@@ -211,7 +206,6 @@ static void php_runkit_globals_ctor(void *pDest TSRMLS_DC)
 
 	_php_runkit_init_stub_function("__function_removed_by_runkit__", ZEND_FN(_php_runkit_removed_function), &runkit_global->removed_function);
 	_php_runkit_init_stub_function("__method_removed_by_runkit__", ZEND_FN(_php_runkit_removed_method), &runkit_global->removed_method);
-# endif
 #endif
 }
 #endif
@@ -260,25 +254,16 @@ PHP_MINIT_FUNCTION(runkit)
 
 	REGISTER_LONG_CONSTANT("RUNKIT_ACC_RETURN_REFERENCE",      PHP_RUNKIT_ACC_RETURN_REFERENCE,         CONST_CS | CONST_PERSISTENT);
 
-#ifdef ZEND_ENGINE_2
 	REGISTER_LONG_CONSTANT("RUNKIT_ACC_PUBLIC",                ZEND_ACC_PUBLIC,                         CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("RUNKIT_ACC_PROTECTED",             ZEND_ACC_PROTECTED,                      CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("RUNKIT_ACC_PRIVATE",               ZEND_ACC_PRIVATE,                        CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("RUNKIT_ACC_STATIC",                ZEND_ACC_STATIC,                         CONST_CS | CONST_PERSISTENT);
-#else
-	REGISTER_LONG_CONSTANT("RUNKIT_ACC_PUBLIC",                0x100,                                   CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("RUNKIT_ACC_PROTECTED",             0x200,                                   CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("RUNKIT_ACC_PRIVATE",               0x400,                                   CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("RUNKIT_ACC_STATIC",                0x001,                                   CONST_CS | CONST_PERSISTENT);
-#endif
 	REGISTER_LONG_CONSTANT("RUNKIT_OVERRIDE_OBJECTS",          PHP_RUNKIT_OVERRIDE_OBJECTS,             CONST_CS | CONST_PERSISTENT);
 
 #ifdef PHP_RUNKIT_CLASSKIT_COMPAT
-#ifdef ZEND_ENGINE_2
 	REGISTER_LONG_CONSTANT("CLASSKIT_ACC_PUBLIC",              ZEND_ACC_PUBLIC,                         CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("CLASSKIT_ACC_PROTECTED",           ZEND_ACC_PROTECTED,                      CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("CLASSKIT_ACC_PRIVATE",             ZEND_ACC_PRIVATE,                        CONST_CS | CONST_PERSISTENT);
-#endif
 	REGISTER_STRING_CONSTANT("CLASSKIT_VERSION",               PHP_RUNKIT_VERSION,                      CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("CLASSKIT_AGGREGATE_OVERRIDE",      PHP_RUNKIT_IMPORT_OVERRIDE,              CONST_CS | CONST_PERSISTENT);
 #endif
@@ -314,10 +299,8 @@ PHP_MINIT_FUNCTION(runkit)
 PHP_MSHUTDOWN_FUNCTION(runkit)
 {
 #ifdef PHP_RUNKIT_MANIPULATION
-# ifdef ZEND_ENGINE_2
 	pefree(RUNKIT_G(removed_function), 1);
 	pefree(RUNKIT_G(removed_method), 1);
-# endif
 #endif
 #if defined(PHP_RUNKIT_SUPERGLOBALS) || defined(PHP_RUNKIT_MANIPULATION)
 	UNREGISTER_INI_ENTRIES();
@@ -346,27 +329,23 @@ static void php_runkit_register_auto_global(char *s, int len TSRMLS_DC)
 		return;
 	}
 
-#ifdef ZEND_ENGINE_2
 	if (zend_register_auto_global(s, len,
-#    if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION >= 6)
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION >= 6)
 			0,
-#    endif
+#endif
 		    NULL TSRMLS_CC) == SUCCESS) {
 
-#    if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION >= 6)
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION >= 6)
 		if (zend_hash_find(CG(auto_globals), s, len + 1, (void *) &auto_global) != SUCCESS) {
 			php_error_docref(NULL TSRMLS_CC, E_ERROR, "Cannot locate the newly created autoglobal");
 			return;
 		}
 		auto_global->armed = 0;
-#    else
+#else
 		/* This shouldn't be necessary, but it is */
 		zend_auto_global_disable_jit(s, len TSRMLS_CC);
 
-#    endif
-#else
-	if (zend_register_auto_global(s, len TSRMLS_CC) == SUCCESS) {
-#endif // ZEND_ENGINE_2
+#endif
 
 		if (!RUNKIT_G(superglobals)) {
 			ALLOC_HASHTABLE(RUNKIT_G(superglobals));
