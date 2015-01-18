@@ -184,7 +184,9 @@ static inline void _php_runkit_init_stub_function(char *name, void (*handler)(IN
 #if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4
 	(*result)->internal_function.return_reference = 0;
 #endif
+#if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 2 || PHP_MAJOR_VERSION > 5
 	(*result)->internal_function.module = &runkit_module_entry;
+#endif
 }
 #endif
 

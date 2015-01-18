@@ -394,7 +394,9 @@ void php_runkit_remove_function_from_reflection_objects(zend_function *fe TSRMLS
 					zend_function *f = emalloc(sizeof(zend_function));
 					memcpy(f, RUNKIT_G(removed_method), sizeof(zend_function));
 					f->common.scope = fe->common.scope;
+#ifdef ZEND_ACC_CALL_VIA_HANDLER
 					f->internal_function.fn_flags |= ZEND_ACC_CALL_VIA_HANDLER; // This is a trigger to free it from destructor
+#endif
 #if RUNKIT_ABOVE53
 					f->internal_function.function_name = estrdup(f->internal_function.function_name);
 #endif
@@ -511,7 +513,7 @@ PHP_FUNCTION(runkit_function_add)
 	PHP_RUNKIT_DECL_STRING_PARAM(arglist)
 	PHP_RUNKIT_DECL_STRING_PARAM(code)
 	zend_bool return_ref = 0;
-	char *delta = NULL, *delta_desc;
+	char *delta = NULL, *delta_desc = NULL;
 	int retval;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,

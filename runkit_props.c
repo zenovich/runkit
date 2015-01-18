@@ -313,8 +313,9 @@ int php_runkit_def_prop_add_int(zend_class_entry *ce, const char *propname, int 
 			memcpy(&new_prop_info, prop_info_ptr, sizeof(zend_property_info));
 			new_prop_info.name = newkey;
 			new_prop_info.name_length = newkey_len;
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 2) || (PHP_MAJOR_VERSION > 5)
 			new_prop_info.ce = definer_class;
-
+#endif
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 			interned_name = zend_new_interned_string(new_prop_info.name, new_prop_info.name_length+1, 0 TSRMLS_CC);
 			if (interned_name != new_prop_info.name) {
@@ -330,7 +331,9 @@ int php_runkit_def_prop_add_int(zend_class_entry *ce, const char *propname, int 
 			pefree((void*)oldkey, ce->type & ZEND_INTERNAL_CLASS);
 			zend_hash_quick_find(&ce->properties_info, (char *) propname, propname_len + 1, h, (void*) &prop_info_ptr);
 		}
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 2) || (PHP_MAJOR_VERSION > 5)
 		prop_info_ptr->ce = definer_class;
+#endif
 	}
 	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)),
 	                               (apply_func_args_t)php_runkit_update_children_def_props, 8, ce, copyval,
@@ -501,7 +504,11 @@ static int php_runkit_def_prop_add(char *classname, int classname_len, char *pro
 	    || (Z_TYPE_P(copyval) & IS_CONSTANT_TYPE_MASK) == IS_CONSTANT
 #	endif
 	) {
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 2) || (PHP_MAJOR_VERSION > 5)
 		zval_update_constant_ex(&copyval, (void*) 1, ce TSRMLS_CC);
+#else
+		zval_update_constant(&copyval, ce TSRMLS_CC);
+#endif
 	}
 
 	if (php_runkit_def_prop_add_int(ce, propname, propname_len, copyval, visibility, NULL, 0, ce, 0,
@@ -554,9 +561,11 @@ int php_runkit_def_prop_remove_int(zend_class_entry *ce, const char *propname, i
 
 	h = zend_get_hash_value((char *) propname, propname_len + 1);
 	if (zend_hash_quick_find(&ce->properties_info, (char *) propname, propname_len + 1, h, (void*)&property_info_ptr) == SUCCESS) {
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 2) || (PHP_MAJOR_VERSION > 5)
 		if (class_we_originally_removing_from == NULL) {
 			class_we_originally_removing_from = property_info_ptr->ce;
 		}
+#endif
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 		if (parent_property &&
 		    ((parent_property->offset >= 0 && parent_property->offset != property_info_ptr->offset) ||
@@ -567,9 +576,11 @@ int php_runkit_def_prop_remove_int(zend_class_entry *ce, const char *propname, i
 		}
 #endif // PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4
 
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 2) || (PHP_MAJOR_VERSION > 5)
 		if (class_we_originally_removing_from != property_info_ptr->ce) {
 			return SUCCESS;
 		}
+#endif
 
 		if (property_info_ptr->flags & ZEND_ACC_STATIC) {
 			was_static = 1;

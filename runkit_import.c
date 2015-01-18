@@ -222,7 +222,11 @@ static int php_runkit_import_class_consts(zend_class_entry *dce, zend_class_entr
 				|| (Z_TYPE_PP(c) & IS_CONSTANT_TYPE_MASK) == IS_CONSTANT
 #endif
 			) {
+#if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 2 || PHP_MAJOR_VERSION > 5
 				zval_update_constant_ex(c, (void*) 1, dce TSRMLS_CC);
+#else
+				zval_update_constant(c, dce TSRMLS_CC);
+#endif
 			}
 			Z_ADDREF_P(*c);
 			if (zend_hash_add_or_update(&dce->constants_table, key, key_len, (void*)c, sizeof(zval*), NULL, action) == FAILURE) {
@@ -269,7 +273,11 @@ static int php_runkit_import_class_static_props(zend_class_entry *dce, zend_clas
 				|| (Z_TYPE_PP(pp) & IS_CONSTANT_TYPE_MASK) == IS_CONSTANT
 #endif // RUNKIT_ABOVE53
 			) {
+#if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 2 || PHP_MAJOR_VERSION > 5
 				zval_update_constant_ex(pp, (void*) 1, dce TSRMLS_CC);
+#else
+				zval_update_constant(pp, dce TSRMLS_CC);
+#endif
 			}
 #endif // (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 			if (zend_hash_find(&dce->properties_info, key, key_len, (void*) &ex_property_info_ptr) == SUCCESS && ex_property_info_ptr) {
@@ -351,7 +359,11 @@ static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry
 				|| (Z_TYPE_PP(p) & IS_CONSTANT_TYPE_MASK) == IS_CONSTANT
 #endif // RUNKIT_ABOVE53
 			) {
+#if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 2 || PHP_MAJOR_VERSION > 5
 				zval_update_constant_ex(p, (void*) 1, dce TSRMLS_CC);
+#else
+				zval_update_constant(p, dce TSRMLS_CC);
+#endif
 			}
 
 			php_runkit_def_prop_add_int(dce, key, key_len - 1, *p,

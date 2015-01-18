@@ -243,7 +243,7 @@ int php_runkit_update_children_methods(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce
 		return ZEND_HASH_APPLY_KEEP;
 	}
 	PHP_RUNKIT_FUNCTION_ADD_REF(fe);
-	PHP_RUNKIT_INHERIT_MAGIC(ce, fe, orig_fe, is_constr);
+	PHP_RUNKIT_INHERIT_MAGIC(ce, fe, orig_fe);
 
 	/* Process children of this child */
 	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 6,
