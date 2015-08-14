@@ -20,6 +20,8 @@
 /* $Id$ */
 
 #include "php_runkit.h"
+#include "SAPI.h"
+
 ZEND_DECLARE_MODULE_GLOBALS(runkit)
 
 #ifdef PHP_RUNKIT_SUPERGLOBALS
@@ -474,6 +476,19 @@ PHP_MINFO_FUNCTION(runkit)
 	php_info_print_table_start();
 	php_info_print_table_header(2, "runkit support", "enabled");
 	php_info_print_table_header(2, "version", PHP_RUNKIT_VERSION);
+
+	if (sapi_module.phpinfo_as_text) {
+	    php_info_print_table_row(2, "Donate Runkit", "https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=P2WY8LBB2YGMQ");
+	} else {
+		php_printf("<tr>"
+		              "<td colspan=\"2\" class=\"v\">"
+		                  "<strong style=\"font-size:300%%; color:#8822ff; font-style:italic\">&iexcl;Runkit needs your help!</strong>"
+		                  "<a href=\"https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&amp;hosted_button_id=P2WY8LBB2YGMQ\" target=\"_blank\">"
+		                      "<img src=\"https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif\" alt=\"Donate Runkit via PayPal\" style=\"max-width:100%%;\">"
+		                  "</a>"
+		              "</td>"
+		           "</tr>");
+	}
 
 #ifdef PHP_RUNKIT_CLASSKIT_COMPAT
 	php_info_print_table_header(2, "classkit compatability", "enabled");
