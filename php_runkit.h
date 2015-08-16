@@ -26,10 +26,9 @@
 #include "config.h"
 #endif
 
-#pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   #include "php.h"
-#pragma GCC diagnostic pop
+#pragma GCC diagnostic error "-Wdeprecated-declarations"
 
 #include "php_ini.h"
 #include "ext/standard/info.h"
