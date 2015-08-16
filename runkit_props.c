@@ -21,6 +21,16 @@
 
 #include "php_runkit.h"
 
+#ifndef IS_CONSTANT_AST
+#define IS_CONSTANT_AST IS_CONSTANT_ARRAY
+#endif
+
+#if PHP_VERSION_ID < 50600
+#define _CONSTANT_INDEX(a) (void*) a
+#else
+#define _CONSTANT_INDEX(a) a
+#endif
+
 #ifdef PHP_RUNKIT_MANIPULATION
 
 /* {{{ php_runkit_update_children_def_props
@@ -499,13 +509,13 @@ static int php_runkit_def_prop_add(char *classname, int classname_len, char *pro
 		return FAILURE;
 	}
 	if (
-	    Z_TYPE_P(copyval) == IS_CONSTANT_ARRAY
+	    Z_TYPE_P(copyval) == IS_CONSTANT_AST
 #	if RUNKIT_ABOVE53
 	    || (Z_TYPE_P(copyval) & IS_CONSTANT_TYPE_MASK) == IS_CONSTANT
 #	endif
 	) {
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 2) || (PHP_MAJOR_VERSION > 5)
-		zval_update_constant_ex(&copyval, (void*) 1, ce TSRMLS_CC);
+		zval_update_constant_ex(&copyval, _CONSTANT_INDEX(1), ce TSRMLS_CC);
 #else
 		zval_update_constant(&copyval, ce TSRMLS_CC);
 #endif
