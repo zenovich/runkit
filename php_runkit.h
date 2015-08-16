@@ -358,6 +358,10 @@ inline static void PHP_RUNKIT_ADD_MAGIC_METHOD(zend_class_entry *ce, char *lcmna
 #if RUNKIT_ABOVE53
 		} else if (!strncmp((lcmname), ZEND_CALLSTATIC_FUNC_NAME, (mname_len))) {
 			(ce)->__callstatic = (fe);
+		} else if (!strncmp((lcmname), "serialize", (mname_len))) {
+			(ce)->serialize_func = (fe);
+		} else if (!strncmp((lcmname), "unserialize", (mname_len))) {
+			(ce)->unserialize_func = (fe);
 #endif
 #if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 2 || PHP_MAJOR_VERSION > 5
 		} else if (!strncmp((lcmname), ZEND_TOSTRING_FUNC_NAME, (mname_len))) {
@@ -386,6 +390,8 @@ inline static void PHP_RUNKIT_DEL_MAGIC_METHOD(zend_class_entry *ce, const zend_
 		else if ((ce)->__call == (fe))            (ce)->__call       = NULL;
 #if RUNKIT_ABOVE53
 		else if ((ce)->__callstatic == (fe))      (ce)->__callstatic = NULL;
+		else if ((ce)->serialize_func == (fe))    (ce)->serialize_func = NULL;
+		else if ((ce)->unserialize_func == (fe))  (ce)->unserialize_func = NULL;
 #endif
 #if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 2 || PHP_MAJOR_VERSION > 5
 		else if ((ce)->__tostring == (fe))        (ce)->__tostring   = NULL;
