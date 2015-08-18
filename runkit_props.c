@@ -98,16 +98,6 @@ static int php_runkit_remove_property_by_full_name(zend_property_info *prop, zen
 }
 /* }}} */
 
-/* {{{ php_runkit_create_null_zval */
-static inline zval* php_runkit_create_null_zval() {
-	zval *null_zval = NULL;
-	ALLOC_ZVAL(null_zval);
-	Z_TYPE_P(null_zval) = IS_NULL;
-	Z_SET_REFCOUNT_P(null_zval, 1);
-	return null_zval;
-}
-/* }}} */
-
 /* {{{ php_runkit_remove_overlapped_property_from_childs
        Clean private properties by offset */
 int php_runkit_remove_overlapped_property_from_childs(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce), int num_args, va_list args, zend_hash_key *hash_key)
