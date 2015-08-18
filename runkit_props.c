@@ -98,6 +98,16 @@ static int php_runkit_remove_property_by_full_name(zend_property_info *prop, zen
 }
 /* }}} */
 
+/* {{{ php_runkit_create_null_zval */
+static inline zval* php_runkit_create_null_zval() {
+	zval *null_zval = NULL;
+	ALLOC_ZVAL(null_zval);
+	Z_TYPE_P(null_zval) = IS_NULL;
+	Z_SET_REFCOUNT_P(null_zval, 1);
+	return null_zval;
+}
+/* }}} */
+
 /* {{{ php_runkit_remove_overlapped_property_from_childs
        Clean private properties by offset */
 int php_runkit_remove_overlapped_property_from_childs(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce), int num_args, va_list args, zend_hash_key *hash_key)
@@ -216,6 +226,7 @@ st_success:
 	if (table[offset]) {
 		zval_ptr_dtor(&table[offset]);
 		table[offset] = NULL;
+		php_runkit_default_class_members_list_add(&RUNKIT_G(removed_default_class_members), ce, is_static, offset);
 	}
 #elif PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4
 	zend_hash_quick_del(&ce->default_properties, property_info_ptr->name, property_info_ptr->name_length+1,
@@ -598,6 +609,7 @@ int php_runkit_def_prop_remove_int(zend_class_entry *ce, const char *propname, i
 			if (ce->default_static_members_table[property_info_ptr->offset]) {
 				zval_ptr_dtor(&ce->default_static_members_table[property_info_ptr->offset]);
 				ce->default_static_members_table[property_info_ptr->offset] = NULL;
+				php_runkit_default_class_members_list_add(&RUNKIT_G(removed_default_class_members), ce, 1, property_info_ptr->offset);
 			}
 #else
 			php_runkit_remove_property_from_reflection_objects(ce, property_info_ptr->name, property_info_ptr->name_length TSRMLS_CC);
@@ -736,6 +748,7 @@ st_success:
 	if (was_static == 0 && ce->default_properties_table[property_info_ptr->offset]) {
 		zval_ptr_dtor(&ce->default_properties_table[property_info_ptr->offset]);
 		ce->default_properties_table[property_info_ptr->offset] = NULL;
+		php_runkit_default_class_members_list_add(&RUNKIT_G(removed_default_class_members), ce, 0, property_info_ptr->offset);
 	}
 #else
 	if (was_static == 0) {

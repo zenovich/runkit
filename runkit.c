@@ -202,6 +202,7 @@ static void php_runkit_globals_ctor(void *pDest TSRMLS_DC)
 #ifdef PHP_RUNKIT_MANIPULATION
 	runkit_global->replaced_internal_functions = NULL;
 	runkit_global->misplaced_internal_functions = NULL;
+	runkit_global->removed_default_class_members = NULL;
 	runkit_global->name_str = "name";
 	runkit_global->removed_method_str = "__method_removed_by_runkit__";
 	runkit_global->removed_function_str = "__function_removed_by_runkit__";
@@ -401,6 +402,7 @@ no_superglobals_defined:
 #ifdef PHP_RUNKIT_MANIPULATION
 	RUNKIT_G(replaced_internal_functions) = NULL;
 	RUNKIT_G(misplaced_internal_functions) = NULL;
+	RUNKIT_G(removed_default_class_members) = NULL;
 #endif
 
 	return SUCCESS;
@@ -435,6 +437,10 @@ int php_runkit_delete_user_functions(void *pDest TSRMLS_DC)
  */
 PHP_RSHUTDOWN_FUNCTION(runkit)
 {
+#ifdef PHP_RUNKIT_MANIPULATION
+	php_runkit_default_class_members_list_element *el;
+#endif
+
 #ifdef PHP_RUNKIT_SUPERGLOBALS
 	if (RUNKIT_G(superglobals)) {
 		zend_hash_apply(RUNKIT_G(superglobals), php_runkit_superglobal_dtor TSRMLS_CC);
@@ -463,6 +469,20 @@ PHP_RSHUTDOWN_FUNCTION(runkit)
 
 	zend_hash_apply(EG(function_table), php_runkit_delete_user_functions TSRMLS_CC);
 
+	el = RUNKIT_G(removed_default_class_members);
+	while (el) {
+		php_runkit_default_class_members_list_element *tmp;
+		zval **table = el->is_static ? el->ce->default_static_members_table : el->ce->default_properties_table;
+		zval **table_el = &table[el->offset];
+		if ( *table_el == NULL ) {
+			ALLOC_ZVAL(*table_el);
+			Z_TYPE_PP(table_el) = IS_NULL;
+			Z_SET_REFCOUNT_PP(table_el, 1);
+		}
+		tmp = el;
+		el = el->next;
+		efree(tmp);
+	}
 #endif /* PHP_RUNKIT_MANIPULATION */
 
 	return SUCCESS;

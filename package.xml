@@ -29,7 +29,7 @@ Execute code in restricted environment (sandboxing).
    <license uri="http://www.opensource.org/licenses/BSD-3-Clause">BSD License (3 Clause)</license>
    <notes>
      New features:
-         + PHP 5.4 is now fully supported
+         + PHP 5.4, 5.5, and 5.6 are now fully supported
          - PHP 4.x is not supported anymore
          + Introduced new function "runkit_default_property_remove" (Thanks to Juhan Kundla)
          + Ability to add non-scalar default properties was added

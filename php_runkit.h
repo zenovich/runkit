@@ -117,6 +117,10 @@ PHP_FUNCTION(runkit_lint_file);
 typedef struct _php_runkit_sandbox_object php_runkit_sandbox_object;
 #endif /* PHP_RUNKIT_SANDBOX */
 
+#ifdef PHP_RUNKIT_MANIPULATION
+typedef struct _php_runkit_default_class_members_list_element php_runkit_default_class_members_list_element;
+#endif
+
 #if defined(PHP_RUNKIT_SUPERGLOBALS) || defined(PHP_RUNKIT_SANDBOX) || defined(PHP_RUNKIT_MANIPULATION)
 ZEND_BEGIN_MODULE_GLOBALS(runkit)
 #ifdef PHP_RUNKIT_SUPERGLOBALS
@@ -128,6 +132,7 @@ ZEND_BEGIN_MODULE_GLOBALS(runkit)
 #ifdef PHP_RUNKIT_MANIPULATION
 	HashTable *misplaced_internal_functions;
 	HashTable *replaced_internal_functions;
+	php_runkit_default_class_members_list_element *removed_default_class_members;
 	zend_bool internal_override;
 	const char *name_str, *removed_method_str, *removed_function_str, *removed_parameter_str, *removed_property_str;
 	zend_function *removed_function, *removed_method;
@@ -258,6 +263,28 @@ typedef struct _zend_closure {
     zend_function  func;
     HashTable     *debug_info;
 } zend_closure;
+
+struct _php_runkit_default_class_members_list_element {
+    zend_class_entry* ce;
+    zend_bool is_static;
+    int offset;
+    php_runkit_default_class_members_list_element *next;
+};
+
+/* {{{ php_runkit_default_class_members_list_add */
+static inline void php_runkit_default_class_members_list_add(php_runkit_default_class_members_list_element **head,
+                                                             zend_class_entry* ce, zend_bool is_static,
+                                                             int offset) {
+	php_runkit_default_class_members_list_element *new_el = emalloc(sizeof(php_runkit_default_class_members_list_element));
+	if (new_el) {
+		new_el->ce = ce;
+		new_el->is_static = is_static;
+		new_el->offset = offset;
+		new_el->next = *head;
+		*head = new_el;
+	}
+}
+/* }}} */
 #endif /* PHP_RUNKIT_MANIPULATION */
 
 #ifdef PHP_RUNKIT_SANDBOX
