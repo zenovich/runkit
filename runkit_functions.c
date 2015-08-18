@@ -20,6 +20,7 @@
 /* $Id$ */
 
 #include "php_runkit.h"
+#include "php_runkit_hash.h"
 
 #ifdef PHP_RUNKIT_MANIPULATION
 /* {{{ php_runkit_check_call_stack
@@ -494,6 +495,12 @@ int php_runkit_restore_internal_functions(RUNKIT_53_TSRMLS_ARG(void *pDest), int
 #else
 	zend_hash_update(EG(function_table), hash_key->arKey, hash_key->nKeyLength, (void*)fe, sizeof(zend_function), NULL);
 #endif
+
+	/* It's possible for restored internal functions to now be blocking a ZEND_USER_FUNCTION
+	 * which will screw up post-request cleanup.
+	 * Avoid this by restoring internal functions to the front of the list where they won't be in the way
+	 */
+	php_runkit_hash_move_to_front(EG(function_table), php_runkit_hash_get_bucket(EG(function_table), hash_key));
 
 	return ZEND_HASH_APPLY_REMOVE;
 }

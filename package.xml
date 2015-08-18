@@ -73,6 +73,8 @@ Execute code in restricted environment (sandboxing).
          * Bug 57649 (https://bugs.php.net/bug.php?id=57649) has been fixed without apathy ;)
            Thanks to Sara Golemon for tests.
          * Importing class extending another class was fixed (Issue #48) (thanks to mido0258)
+         * User-defined functions should remain after Runkit's shutdown
+           (thanks to Sara Golemon for code and to https://github.com/cobrafast for test)
 
      Build system improvements:
          * Declarations after statement were restricted during compiling
@@ -255,10 +257,12 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_import_methods.phpt" role="test" />
     <file name="runkit_method_rename_002.phpt" role="test" />
     <file name="bug64496.phpt" role="test" />
+    <file name="runkit_user_functions_on_shutdown.phpt" role="test" />
    </dir> <!-- //tests -->
    <file name="config.m4" role="src" />
    <file name="config.w32" role="src" />
    <file name="php_runkit.h" role="src" />
+   <file name="php_runkit_hash.h" role="src" />
    <file name="LICENSE" role="doc" />
    <file name="README" role="doc" />
    <file name="runkit.c" role="src" />

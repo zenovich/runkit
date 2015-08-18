@@ -421,18 +421,6 @@ static int php_runkit_superglobal_dtor(void *pDest TSRMLS_DC)
 /* }}} */
 #endif /* PHP_RUNKIT_SUPERGLOBALS */
 
-/* {{{ php_runkit_delete_user_functions */
-int php_runkit_delete_user_functions(void *pDest TSRMLS_DC)
-{
-	if (pDest == NULL ||
-		((zend_function*)pDest)->type != ZEND_INTERNAL_FUNCTION) {
-		return ZEND_HASH_APPLY_REMOVE;
-	}
-
-	return ZEND_HASH_APPLY_KEEP;
-}
-/* }}} */
-
 /* {{{ PHP_RSHUTDOWN_FUNCTION
  */
 PHP_RSHUTDOWN_FUNCTION(runkit)
@@ -468,8 +456,6 @@ PHP_RSHUTDOWN_FUNCTION(runkit)
 		FREE_HASHTABLE(RUNKIT_G(replaced_internal_functions));
 		RUNKIT_G(replaced_internal_functions) = NULL;
 	}
-
-	zend_hash_apply(EG(function_table), php_runkit_delete_user_functions TSRMLS_CC);
 
 #if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4 || PHP_MAJOR_VERSION > 5
 	el = RUNKIT_G(removed_default_class_members);
