@@ -21,16 +21,6 @@
 
 #include "php_runkit.h"
 
-#ifndef IS_CONSTANT_AST
-#define IS_CONSTANT_AST IS_CONSTANT_ARRAY
-#endif
-
-#if PHP_VERSION_ID < 50600
-#define _CONSTANT_INDEX(a) (void*) a
-#else
-#define _CONSTANT_INDEX(a) a
-#endif
-
 #ifdef PHP_RUNKIT_MANIPULATION
 
 /* {{{ php_runkit_update_children_def_props
