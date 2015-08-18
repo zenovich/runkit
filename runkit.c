@@ -437,8 +437,10 @@ int php_runkit_delete_user_functions(void *pDest TSRMLS_DC)
  */
 PHP_RSHUTDOWN_FUNCTION(runkit)
 {
+#if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4 || PHP_MAJOR_VERSION > 5
 #ifdef PHP_RUNKIT_MANIPULATION
 	php_runkit_default_class_members_list_element *el;
+#endif
 #endif
 
 #ifdef PHP_RUNKIT_SUPERGLOBALS
@@ -469,6 +471,7 @@ PHP_RSHUTDOWN_FUNCTION(runkit)
 
 	zend_hash_apply(EG(function_table), php_runkit_delete_user_functions TSRMLS_CC);
 
+#if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4 || PHP_MAJOR_VERSION > 5
 	el = RUNKIT_G(removed_default_class_members);
 	while (el) {
 		php_runkit_default_class_members_list_element *tmp;
@@ -483,6 +486,7 @@ PHP_RSHUTDOWN_FUNCTION(runkit)
 		el = el->next;
 		efree(tmp);
 	}
+#endif
 #endif /* PHP_RUNKIT_MANIPULATION */
 
 	return SUCCESS;
