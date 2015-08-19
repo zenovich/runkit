@@ -93,6 +93,8 @@ static int php_runkit_fetch_function(int fname_type, const char *fname, int fnam
 
 	if (fe->type == ZEND_INTERNAL_FUNCTION &&
 		flag >= PHP_RUNKIT_FETCH_FUNCTION_REMOVE) {
+		zend_hash_key runkit_hash_key;
+
 		if (!RUNKIT_G(replaced_internal_functions)) {
 			ALLOC_HASHTABLE(RUNKIT_G(replaced_internal_functions));
 			zend_hash_init(RUNKIT_G(replaced_internal_functions), 4, NULL, NULL, 0);
@@ -112,7 +114,18 @@ static int php_runkit_fetch_function(int fname_type, const char *fname, int fnam
 			hash_key.nKeyLength = fname_len + 1;
 			PHP_RUNKIT_HASH_KEY(&hash_key) = estrndup(fname_lower, PHP_RUNKIT_HASH_KEYLEN(&hash_key));
 			zend_hash_next_index_insert(RUNKIT_G(misplaced_internal_functions), (void*)&hash_key, sizeof(zend_hash_key), NULL);
+
 		}
+
+		/*
+		 * If internal functions have been modified then runkit's request shutdown handler
+		 * should be called after all other modules' ones.
+		 */
+		runkit_hash_key.nKeyLength = sizeof("runkit");
+		PHP_RUNKIT_HASH_KEY(&runkit_hash_key) = "runkit";
+		runkit_hash_key.h = zend_get_hash_value("runkit", sizeof("runkit"));
+		php_runkit_hash_move_to_front(&module_registry, php_runkit_hash_get_bucket(&module_registry, &runkit_hash_key));
+		EG(full_tables_cleanup) = 1; // dirty hack!
 	}
 	efree(fname_lower);
 
