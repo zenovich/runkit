@@ -22,7 +22,9 @@
 #include "php_runkit.h"
 #include "php_runkit_hash.h"
 
+
 #ifdef PHP_RUNKIT_MANIPULATION
+
 /* {{{ php_runkit_check_call_stack
  */
 int php_runkit_check_call_stack(zend_op_array *op_array TSRMLS_DC)
@@ -357,21 +359,12 @@ void php_runkit_clear_all_functions_runtime_cache(TSRMLS_D)
 		memset(ptr->op_array->run_time_cache, 0, (ptr->op_array->last_cache_slot) * sizeof(void*));
 	}
 
-	if (!EG(objects_store).object_buckets) {
-		return;
-	}
-
-	for (i = 1; i < EG(objects_store).top ; i++) {
-		if (EG(objects_store).object_buckets[i].valid && (!EG(objects_store).object_buckets[i].destructor_called) &&
-		   EG(objects_store).object_buckets[i].bucket.obj.object) {
-			zend_object *object;
-			object = (zend_object *) EG(objects_store).object_buckets[i].bucket.obj.object;
-			if (object->ce == zend_ce_closure) {
-				zend_closure *cl = (zend_closure *) object;
-				php_runkit_clear_function_runtime_cache((void*) &cl->func TSRMLS_CC);
-			}
+	PHP_RUNKIT_ITERATE_THROUGH_OBJECTS_STORE_BEGIN(i)
+		if (object->ce == zend_ce_closure) {
+			zend_closure *cl = (zend_closure *) object;
+			php_runkit_clear_function_runtime_cache((void*) &cl->func TSRMLS_CC);
 		}
-	}
+	PHP_RUNKIT_ITERATE_THROUGH_OBJECTS_STORE_END
 }
 /* }}} */
 #endif
@@ -383,55 +376,46 @@ void php_runkit_remove_function_from_reflection_objects(zend_function *fe TSRMLS
 	extern PHPAPI zend_class_entry *reflection_method_ptr;
 	extern PHPAPI zend_class_entry *reflection_parameter_ptr;
 
-	if (!EG(objects_store).object_buckets) {
-		return;
-	}
-
-	for (i = 1; i < EG(objects_store).top ; i++) {
-		if (EG(objects_store).object_buckets[i].valid && (!EG(objects_store).object_buckets[i].destructor_called) &&
-		   EG(objects_store).object_buckets[i].bucket.obj.object) {
-			zend_object *object;
-			object = (zend_object *) EG(objects_store).object_buckets[i].bucket.obj.object;
-			if (object->ce == reflection_function_ptr) {
-				reflection_object *refl_obj = (reflection_object *) object;
-				if (refl_obj->ptr == fe) {
-					PHP_RUNKIT_DELETE_REFLECTION_FUNCTION_PTR(refl_obj);
-					refl_obj->ptr = RUNKIT_G(removed_function);
+	PHP_RUNKIT_ITERATE_THROUGH_OBJECTS_STORE_BEGIN(i)
+		if (object->ce == reflection_function_ptr) {
+			reflection_object *refl_obj = (reflection_object *) object;
+			if (refl_obj->ptr == fe) {
+				PHP_RUNKIT_DELETE_REFLECTION_FUNCTION_PTR(refl_obj);
+				refl_obj->ptr = RUNKIT_G(removed_function);
 #if !RUNKIT_ABOVE53
-					refl_obj->free_ptr = 0;
+				refl_obj->free_ptr = 0;
 #endif
-					PHP_RUNKIT_UPDATE_REFLECTION_OBJECT_NAME(object, i, RUNKIT_G(removed_function_str));
-				}
-			} else if (object->ce == reflection_method_ptr) {
-				reflection_object *refl_obj = (reflection_object *) object;
-				if (refl_obj->ptr == fe) {
-					zend_function *f = emalloc(sizeof(zend_function));
-					memcpy(f, RUNKIT_G(removed_method), sizeof(zend_function));
-					f->common.scope = fe->common.scope;
+				PHP_RUNKIT_UPDATE_REFLECTION_OBJECT_NAME(object, i, RUNKIT_G(removed_function_str));
+			}
+		} else if (object->ce == reflection_method_ptr) {
+			reflection_object *refl_obj = (reflection_object *) object;
+			if (refl_obj->ptr == fe) {
+				zend_function *f = emalloc(sizeof(zend_function));
+				memcpy(f, RUNKIT_G(removed_method), sizeof(zend_function));
+				f->common.scope = fe->common.scope;
 #ifdef ZEND_ACC_CALL_VIA_HANDLER
-					f->internal_function.fn_flags |= ZEND_ACC_CALL_VIA_HANDLER; // This is a trigger to free it from destructor
+				f->internal_function.fn_flags |= ZEND_ACC_CALL_VIA_HANDLER; // This is a trigger to free it from destructor
 #endif
 #if RUNKIT_ABOVE53
-					f->internal_function.function_name = estrdup(f->internal_function.function_name);
+				f->internal_function.function_name = estrdup(f->internal_function.function_name);
 #endif
-					PHP_RUNKIT_DELETE_REFLECTION_FUNCTION_PTR(refl_obj);
-					refl_obj->ptr = f;
+				PHP_RUNKIT_DELETE_REFLECTION_FUNCTION_PTR(refl_obj);
+				refl_obj->ptr = f;
 #if !RUNKIT_ABOVE53
-					refl_obj->free_ptr = 1;
+				refl_obj->free_ptr = 1;
 #endif
-					PHP_RUNKIT_UPDATE_REFLECTION_OBJECT_NAME(object, i, RUNKIT_G(removed_method_str));
-				}
-			} else if (object->ce == reflection_parameter_ptr) {
-				reflection_object *refl_obj = (reflection_object *) object;
-				parameter_reference *reference = (parameter_reference *) refl_obj->ptr;
-				if (reference && reference->fptr == fe) {
-					PHP_RUNKIT_DELETE_REFLECTION_FUNCTION_PTR(refl_obj);
-					refl_obj->ptr = NULL;
-					PHP_RUNKIT_UPDATE_REFLECTION_OBJECT_NAME(object, i, RUNKIT_G(removed_parameter_str));
-				}
+				PHP_RUNKIT_UPDATE_REFLECTION_OBJECT_NAME(object, i, RUNKIT_G(removed_method_str));
+			}
+		} else if (object->ce == reflection_parameter_ptr) {
+			reflection_object *refl_obj = (reflection_object *) object;
+			parameter_reference *reference = (parameter_reference *) refl_obj->ptr;
+			if (reference && reference->fptr == fe) {
+				PHP_RUNKIT_DELETE_REFLECTION_FUNCTION_PTR(refl_obj);
+				refl_obj->ptr = NULL;
+				PHP_RUNKIT_UPDATE_REFLECTION_OBJECT_NAME(object, i, RUNKIT_G(removed_parameter_str));
 			}
 		}
-	}
+	PHP_RUNKIT_ITERATE_THROUGH_OBJECTS_STORE_END
 }
 /* }}} */
 

@@ -126,81 +126,77 @@ int php_runkit_remove_overlapped_property_from_childs(RUNKIT_53_TSRMLS_ARG(zend_
 	                               8, ce, propname, propname_len, offset, is_static, remove_from_objects, property_info_ptr);
 	php_runkit_remove_property_from_reflection_objects(ce, propname, propname_len TSRMLS_CC);
 
-	if (is_static || !EG(objects_store).object_buckets) {
+	if (is_static) {
 		goto st_success;
 	}
 
-	for (i = 1; i < EG(objects_store).top ; i++) {
-		if (EG(objects_store).object_buckets[i].valid && (!EG(objects_store).object_buckets[i].destructor_called) &&
-		    EG(objects_store).object_buckets[i].bucket.obj.object) {
-			zend_object *object;
-			object = (zend_object *) EG(objects_store).object_buckets[i].bucket.obj.object;
-			if (object->ce == ce) {
-				if (!remove_from_objects) {
+	PHP_RUNKIT_ITERATE_THROUGH_OBJECTS_STORE_BEGIN(i)
+		if (object->ce == ce) {
+			if (!remove_from_objects) {
 #if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4
-					zval **prop_val;
-					h = zend_get_hash_value((char *) propname, propname_len + 1);
-					if (zend_hash_quick_find(object->properties, (char *) property_info_ptr->name,
-					                         property_info_ptr->name_length + 1,
-					                         property_info_ptr->h, (void *) &prop_val) == SUCCESS) {
-						zval **foo;
-						if ((property_info_ptr->flags & (ZEND_ACC_PRIVATE | ZEND_ACC_PROTECTED | ZEND_ACC_SHADOW)) && prop_val) {
-							Z_ADDREF_P(*prop_val);
-							if (PZVAL_IS_REF(*prop_val)) {
-								SEPARATE_ZVAL(prop_val);
-							}
-							zend_hash_quick_update(object->properties, (char *) propname,
-							                       propname_len + 1, h, prop_val,
-							                       sizeof(zval *), (void *) &foo);
-							php_error_docref(NULL TSRMLS_CC, E_NOTICE,
-							                 "Making %s::%s public to remove it "
-							                 "from class without objects overriding",
-							                 ce->name, propname);
-							zend_hash_quick_del(object->properties,
-							                    property_info_ptr->name,
-							                    property_info_ptr->name_length+1,
-							                    property_info_ptr->h);
+				zval **prop_val;
+				h = zend_get_hash_value((char *) propname, propname_len + 1);
+				if (zend_hash_quick_find(object->properties, (char *) property_info_ptr->name,
+							 property_info_ptr->name_length + 1,
+							 property_info_ptr->h, (void *) &prop_val) == SUCCESS) {
+					zval **foo;
+					if ((property_info_ptr->flags & (ZEND_ACC_PRIVATE | ZEND_ACC_PROTECTED | ZEND_ACC_SHADOW)) && prop_val) {
+						Z_ADDREF_P(*prop_val);
+						if (PZVAL_IS_REF(*prop_val)) {
+							SEPARATE_ZVAL(prop_val);
 						}
+						zend_hash_quick_update(object->properties, (char *) propname,
+								       propname_len + 1, h, prop_val,
+								       sizeof(zval *), (void *) &foo);
+						php_error_docref(NULL TSRMLS_CC, E_NOTICE,
+								 "Making %s::%s public to remove it "
+								 "from class without objects overriding",
+								 ce->name, propname);
+						zend_hash_quick_del(object->properties,
+								    property_info_ptr->name,
+								    property_info_ptr->name_length+1,
+								    property_info_ptr->h);
 					}
+				}
 #endif
 #if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4 || PHP_MAJOR_VERSION > 5
-					zval *prop_val = NULL;
-					h = zend_get_hash_value((char *) propname, propname_len + 1);
-					if (!object->properties) {
-						prop_val = object->properties_table[offset];
-						rebuild_object_properties(object);
-					} else if (object->properties_table[offset]) {
-						prop_val = *(zval **) object->properties_table[offset];
-					}
-					if ((property_info_ptr->flags & (ZEND_ACC_PRIVATE | ZEND_ACC_PROTECTED | ZEND_ACC_SHADOW)) && prop_val) {
-						Z_ADDREF_P(prop_val);
-						if (h != property_info_ptr->h) {
-							zend_hash_quick_del(object->properties, property_info_ptr->name, property_info_ptr->name_length+1, property_info_ptr->h);
-						}
-						zend_hash_quick_update(object->properties, propname, propname_len+1, h,
-						                 &prop_val, sizeof(zval *), (void *) &object->properties_table[offset]);
-						php_error_docref(NULL TSRMLS_CC, E_NOTICE, "Making %s::%s public to remove it "
-						                 "from class without objects overriding", ce->name, propname);
-					}
-#endif
-				} else {
-#if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4
-					zend_hash_quick_del(object->properties, property_info_ptr->name, property_info_ptr->name_length+1,
-					                    property_info_ptr->h);
-#else
-					if (object->properties_table[offset]) {
-						if (!object->properties) {
-							zval_ptr_dtor(&object->properties_table[offset]);
-							object->properties_table[offset] = NULL;
-						} else {
-							zend_hash_del(object->properties, propname, propname_len+1);
-						}
-					}
-#endif
+				zval *prop_val = NULL;
+				h = zend_get_hash_value((char *) propname, propname_len + 1);
+				if (!object->properties) {
+					prop_val = object->properties_table[offset];
+					rebuild_object_properties(object);
+				} else if (object->properties_table[offset]) {
+					prop_val = *(zval **) object->properties_table[offset];
 				}
+				if ((property_info_ptr->flags & (ZEND_ACC_PRIVATE | ZEND_ACC_PROTECTED | ZEND_ACC_SHADOW)) && prop_val) {
+					Z_ADDREF_P(prop_val);
+					if (h != property_info_ptr->h) {
+						zend_hash_quick_del(object->properties, property_info_ptr->name, property_info_ptr->name_length+1, property_info_ptr->h);
+					}
+					zend_hash_quick_update(object->properties, propname, propname_len+1, h,
+							 &prop_val, sizeof(zval *), (void *) &object->properties_table[offset]);
+					php_error_docref(NULL TSRMLS_CC, E_NOTICE, "Making %s::%s public to remove it "
+							 "from class without objects overriding", ce->name, propname);
+				}
+#endif
+			} else {
+#if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4
+				zend_hash_quick_del(object->properties, property_info_ptr->name, property_info_ptr->name_length+1,
+						    property_info_ptr->h);
+#else
+				if (object->properties_table[offset]) {
+					if (!object->properties) {
+						zval_ptr_dtor(&object->properties_table[offset]);
+						object->properties_table[offset] = NULL;
+					} else {
+						zend_hash_del(object->properties, propname, propname_len+1);
+					}
+				}
+#endif
 			}
 		}
-	}
+	PHP_RUNKIT_ITERATE_THROUGH_OBJECTS_STORE_END
+
 st_success:
 #if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4 || PHP_MAJOR_VERSION > 5
 	table = is_static ? ce->default_static_members_table : ce->default_properties_table;
@@ -350,122 +346,118 @@ int php_runkit_def_prop_add_int(zend_class_entry *ce, const char *propname, int 
 	offset = prop_info_ptr->offset;
 #endif
 
-	if ((visibility & ZEND_ACC_STATIC) || !EG(objects_store).object_buckets) {
+	if ((visibility & ZEND_ACC_STATIC)) {
 		return SUCCESS;
 	}
-	for (i = 1; i < EG(objects_store).top ; i++) {
-		if (EG(objects_store).object_buckets[i].valid && (!EG(objects_store).object_buckets[i].destructor_called) &&
-		   EG(objects_store).object_buckets[i].bucket.obj.object) {
-			zend_object *object;
-			object = (zend_object *) EG(objects_store).object_buckets[i].bucket.obj.object;
-			if (object->ce == ce) {
+
+	PHP_RUNKIT_ITERATE_THROUGH_OBJECTS_STORE_BEGIN(i)
+		if (object->ce == ce) {
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
-				int new_size = offset + 1;
-				if (!object->properties_table) {
-					object->properties_table = pemalloc(sizeof(void*) * (new_size), 0);
-					memset(object->properties_table, 0, new_size * sizeof(void *));
+			int new_size = offset + 1;
+			if (!object->properties_table) {
+				object->properties_table = pemalloc(sizeof(void*) * (new_size), 0);
+				memset(object->properties_table, 0, new_size * sizeof(void *));
+			} else {
+				object->properties_table = perealloc(object->properties_table, sizeof(void*) * (new_size), 0);
+				object->properties_table[new_size - 1] = NULL;
+			}
+			if (ce->default_properties_table[offset]) {
+				if (!object->properties) {
+					if (override_in_objects) {
+						Z_ADDREF_P(ce->default_properties_table[offset]);
+						object->properties_table[offset] = ce->default_properties_table[offset];
+					} else {
+						if (object->properties_table[offset]) {
+							zval_ptr_dtor(&object->properties_table[offset]);
+							object->properties_table[offset] = NULL;
+						}
+					}
 				} else {
-					object->properties_table = perealloc(object->properties_table, sizeof(void*) * (new_size), 0);
-					object->properties_table[new_size - 1] = NULL;
-				}
-				if (ce->default_properties_table[offset]) {
-					if (!object->properties) {
+					zval **prop_val;
+					if (zend_hash_quick_find(object->properties, prop_info_ptr->name,
+								 prop_info_ptr->name_length+1,
+								 prop_info_ptr->h, (void *) &prop_val) != SUCCESS &&
+					    (prop_info_ptr->h == h || zend_hash_quick_find(object->properties, propname,
+											   propname_len+1,
+											   h, (void *) &prop_val) != SUCCESS)) {
 						if (override_in_objects) {
-							Z_ADDREF_P(ce->default_properties_table[offset]);
-							object->properties_table[offset] = ce->default_properties_table[offset];
-						} else {
 							if (object->properties_table[offset]) {
-								zval_ptr_dtor(&object->properties_table[offset]);
+								zval_ptr_dtor((zval **) object->properties_table[offset]);
 								object->properties_table[offset] = NULL;
+							}
+							object->properties_table[offset] = ce->default_properties_table[offset];
+#if ZTS
+							ALLOC_ZVAL(object->properties_table[offset]);
+							MAKE_COPY_ZVAL(&ce->default_properties_table[offset], object->properties_table[offset]);
+#else
+							Z_ADDREF_P(ce->default_properties_table[offset]);
+#endif
+							zend_hash_quick_update(object->properties, prop_info_ptr->name, prop_info_ptr->name_length+1,
+									       prop_info_ptr->h, &object->properties_table[offset], sizeof(zval *),
+									       (void*)&object->properties_table[offset]);
+							if (prop_info_ptr->h != h) {
+								zend_hash_quick_del(object->properties, propname, propname_len+1, h);
 							}
 						}
 					} else {
-						zval **prop_val;
-						if (zend_hash_quick_find(object->properties, prop_info_ptr->name,
-						                         prop_info_ptr->name_length+1,
-						                         prop_info_ptr->h, (void *) &prop_val) != SUCCESS &&
-						    (prop_info_ptr->h == h || zend_hash_quick_find(object->properties, propname,
-						                                                   propname_len+1,
-						                                                   h, (void *) &prop_val) != SUCCESS)) {
-							if (override_in_objects) {
-								if (object->properties_table[offset]) {
-									zval_ptr_dtor((zval **) object->properties_table[offset]);
-									object->properties_table[offset] = NULL;
-								}
-								object->properties_table[offset] = ce->default_properties_table[offset];
-#if ZTS
-								ALLOC_ZVAL(object->properties_table[offset]);
-								MAKE_COPY_ZVAL(&ce->default_properties_table[offset], object->properties_table[offset]);
-#else
-								Z_ADDREF_P(ce->default_properties_table[offset]);
-#endif
-								zend_hash_quick_update(object->properties, prop_info_ptr->name, prop_info_ptr->name_length+1,
-								                       prop_info_ptr->h, &object->properties_table[offset], sizeof(zval *),
-								                       (void*)&object->properties_table[offset]);
-								if (prop_info_ptr->h != h) {
-									zend_hash_quick_del(object->properties, propname, propname_len+1, h);
-								}
+						if (!override_in_objects) {
+							object->properties_table[offset] = (zval *) *prop_val;
+							Z_ADDREF_P(object->properties_table[offset]);
+							zend_hash_quick_update(object->properties, prop_info_ptr->name,
+									       prop_info_ptr->name_length+1, prop_info_ptr->h,
+									       &object->properties_table[offset],
+									       sizeof(zval *),
+									       (void*)&object->properties_table[offset]);
+							if (prop_info_ptr->h != h) {
+								zend_hash_quick_del(object->properties, propname, propname_len+1, h);
 							}
 						} else {
-							if (!override_in_objects) {
-								object->properties_table[offset] = (zval *) *prop_val;
-								Z_ADDREF_P(object->properties_table[offset]);
-								zend_hash_quick_update(object->properties, prop_info_ptr->name,
-								                       prop_info_ptr->name_length+1, prop_info_ptr->h,
-								                       &object->properties_table[offset],
-								                       sizeof(zval *),
-								                       (void*)&object->properties_table[offset]);
-								if (prop_info_ptr->h != h) {
-									zend_hash_quick_del(object->properties, propname, propname_len+1, h);
-								}
-							} else {
-								object->properties_table[offset] = ce->default_properties_table[offset];
-								Z_ADDREF_P(object->properties_table[offset]);
-								zend_hash_quick_update(object->properties, prop_info_ptr->name,
-								                       prop_info_ptr->name_length+1, prop_info_ptr->h,
-								                       &object->properties_table[offset],
-								                       sizeof(zval *),
-								                       (void*)&object->properties_table[offset]);
-							}
+							object->properties_table[offset] = ce->default_properties_table[offset];
+							Z_ADDREF_P(object->properties_table[offset]);
+							zend_hash_quick_update(object->properties, prop_info_ptr->name,
+									       prop_info_ptr->name_length+1, prop_info_ptr->h,
+									       &object->properties_table[offset],
+									       sizeof(zval *),
+									       (void*)&object->properties_table[offset]);
 						}
 					}
 				}
-#else
-				if (!object->properties) {
-					ALLOC_HASHTABLE(object->properties);
-					zend_hash_init(object->properties, 0, NULL, ZVAL_PTR_DTOR, 0);
-				}
-				if (override_in_objects) {
-					Z_ADDREF_P(pcopyval);
-					zend_hash_quick_del(object->properties, (char *) prop_info_ptr->name,
-					                    prop_info_ptr->name_length + 1, prop_info_ptr->h);
-					zend_hash_quick_add(object->properties, (char *) prop_info_ptr->name,
-					                    prop_info_ptr->name_length + 1, prop_info_ptr->h, &pcopyval,
-					                    sizeof(zval *), NULL);
-				} else {
-					zval **prop_val = NULL;
-					if (zend_hash_quick_find(object->properties, prop_info_ptr->name,
-					                         prop_info_ptr->name_length+1,
-					                         prop_info_ptr->h, (void *) &prop_val) != SUCCESS &&
-					    (prop_info_ptr->h == h ||
-					     zend_hash_quick_find(object->properties, (char *) propname, propname_len+1,
-					                          h, (void *) &prop_val) != SUCCESS)) {
-					} else if (prop_info_ptr->h != h && prop_val) {
-						zval **foo;
-						Z_ADDREF_P(*prop_val);
-						if (PZVAL_IS_REF(*prop_val)) {
-							SEPARATE_ZVAL(prop_val);
-						}
-						zend_hash_quick_update(object->properties, prop_info_ptr->name,
-						                       prop_info_ptr->name_length+1,
-						                       prop_info_ptr->h, prop_val, sizeof(zval *), (void *) &foo);
-						zend_hash_quick_del(object->properties, (char *) propname, propname_len+1, h);
-					}
-				}
-#endif // (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 			}
+#else
+			if (!object->properties) {
+				ALLOC_HASHTABLE(object->properties);
+				zend_hash_init(object->properties, 0, NULL, ZVAL_PTR_DTOR, 0);
+			}
+			if (override_in_objects) {
+				Z_ADDREF_P(pcopyval);
+				zend_hash_quick_del(object->properties, (char *) prop_info_ptr->name,
+						    prop_info_ptr->name_length + 1, prop_info_ptr->h);
+				zend_hash_quick_add(object->properties, (char *) prop_info_ptr->name,
+						    prop_info_ptr->name_length + 1, prop_info_ptr->h, &pcopyval,
+						    sizeof(zval *), NULL);
+			} else {
+				zval **prop_val = NULL;
+				if (zend_hash_quick_find(object->properties, prop_info_ptr->name,
+							 prop_info_ptr->name_length+1,
+							 prop_info_ptr->h, (void *) &prop_val) != SUCCESS &&
+				    (prop_info_ptr->h == h ||
+				     zend_hash_quick_find(object->properties, (char *) propname, propname_len+1,
+							  h, (void *) &prop_val) != SUCCESS)) {
+				} else if (prop_info_ptr->h != h && prop_val) {
+					zval **foo;
+					Z_ADDREF_P(*prop_val);
+					if (PZVAL_IS_REF(*prop_val)) {
+						SEPARATE_ZVAL(prop_val);
+					}
+					zend_hash_quick_update(object->properties, prop_info_ptr->name,
+							       prop_info_ptr->name_length+1,
+							       prop_info_ptr->h, prop_val, sizeof(zval *), (void *) &foo);
+					zend_hash_quick_del(object->properties, (char *) propname, propname_len+1, h);
+				}
+			}
+#endif // (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 		}
-	}
+	PHP_RUNKIT_ITERATE_THROUGH_OBJECTS_STORE_END
 
 	return SUCCESS;
 }
@@ -640,79 +632,75 @@ int php_runkit_def_prop_remove_int(zend_class_entry *ce, const char *propname, i
 		}
 	}
 
-	if ((flags & ZEND_ACC_STATIC) || !EG(objects_store).object_buckets) {
+	if (flags & ZEND_ACC_STATIC) {
 		goto st_success;
 	}
-	for (i = 1; i < EG(objects_store).top ; i++) {
-		if (EG(objects_store).object_buckets[i].valid && (!EG(objects_store).object_buckets[i].destructor_called) &&
-		   EG(objects_store).object_buckets[i].bucket.obj.object) {
-			zend_object *object;
-			object = (zend_object *) EG(objects_store).object_buckets[i].bucket.obj.object;
-			if (object->ce == ce) {
+
+	PHP_RUNKIT_ITERATE_THROUGH_OBJECTS_STORE_BEGIN(i)
+		if (object->ce == ce) {
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
-				if (!remove_from_objects) {
-					zval *prop_val = NULL;
+			if (!remove_from_objects) {
+				zval *prop_val = NULL;
+				if (!object->properties) {
+					prop_val = object->properties_table[offset];
+					rebuild_object_properties(object);
+				} else if (object->properties_table[offset]) {
+					prop_val = *(zval **) object->properties_table[offset];
+				}
+				if ((property_info_ptr->flags & (ZEND_ACC_PRIVATE | ZEND_ACC_PROTECTED | ZEND_ACC_SHADOW)) && prop_val) {
+					Z_ADDREF_P(prop_val);
+					if (h != property_info_ptr->h) {
+						zend_hash_quick_del(object->properties, property_info_ptr->name, property_info_ptr->name_length+1, property_info_ptr->h);
+					}
+					zend_hash_quick_update(object->properties, propname, propname_len+1, h,
+							 &prop_val, sizeof(zval *), (void *) &object->properties_table[offset]);
+					php_error_docref(NULL TSRMLS_CC, E_NOTICE, "Making %s::%s public to remove it from class without objects overriding", ce->name, propname);
+				}
+			} else {
+				if (object->properties_table[offset]) {
 					if (!object->properties) {
-						prop_val = object->properties_table[offset];
-						rebuild_object_properties(object);
-					} else if (object->properties_table[offset]) {
-						prop_val = *(zval **) object->properties_table[offset];
-					}
-					if ((property_info_ptr->flags & (ZEND_ACC_PRIVATE | ZEND_ACC_PROTECTED | ZEND_ACC_SHADOW)) && prop_val) {
-						Z_ADDREF_P(prop_val);
-						if (h != property_info_ptr->h) {
-							zend_hash_quick_del(object->properties, property_info_ptr->name, property_info_ptr->name_length+1, property_info_ptr->h);
-						}
-						zend_hash_quick_update(object->properties, propname, propname_len+1, h,
-						                 &prop_val, sizeof(zval *), (void *) &object->properties_table[offset]);
-						php_error_docref(NULL TSRMLS_CC, E_NOTICE, "Making %s::%s public to remove it from class without objects overriding", ce->name, propname);
-					}
-				} else {
-					if (object->properties_table[offset]) {
-						if (!object->properties) {
-							zval_ptr_dtor(&object->properties_table[offset]);
-							object->properties_table[offset] = NULL;
-						} else {
-							zend_hash_quick_del(object->properties, property_info_ptr->name, property_info_ptr->name_length+1,
-							                    property_info_ptr->h);
-						}
+						zval_ptr_dtor(&object->properties_table[offset]);
+						object->properties_table[offset] = NULL;
+					} else {
+						zend_hash_quick_del(object->properties, property_info_ptr->name, property_info_ptr->name_length+1,
+								    property_info_ptr->h);
 					}
 				}
+			}
 #else
-				if (object->properties) {
-					if (remove_from_objects) {
-						zend_hash_quick_del(object->properties, (char *) property_info_ptr->name, property_info_ptr->name_length + 1,
-						                    property_info_ptr->h);
-					} else {
-						if (property_info_ptr->flags & (ZEND_ACC_PRIVATE | ZEND_ACC_PROTECTED)) {
-							zval **prop_val;
-							if (zend_hash_quick_find(object->properties, (char *) property_info_ptr->name,
-							                         property_info_ptr->name_length + 1,
-							                         property_info_ptr->h, (void *) &prop_val) == SUCCESS) {
-								if (h != property_info_ptr->h) {
-									Z_ADDREF_P(*prop_val);
-									if (PZVAL_IS_REF(*prop_val)) {
-										SEPARATE_ZVAL(prop_val);
-									}
-									zend_hash_quick_update(object->properties, (char *) propname,
-									                       propname_len+1, h, prop_val,
-									                       sizeof(zval *), (void *) NULL);
-									php_error_docref(NULL TSRMLS_CC, E_NOTICE,
-									                 "Making %s::%s public to remove it from class without objects overriding",
-									                 ce->name, propname);
-									zend_hash_quick_del(object->properties,
-									                    property_info_ptr->name,
-									                    property_info_ptr->name_length+1,
-									                    property_info_ptr->h);
+			if (object->properties) {
+				if (remove_from_objects) {
+					zend_hash_quick_del(object->properties, (char *) property_info_ptr->name, property_info_ptr->name_length + 1,
+							    property_info_ptr->h);
+				} else {
+					if (property_info_ptr->flags & (ZEND_ACC_PRIVATE | ZEND_ACC_PROTECTED)) {
+						zval **prop_val;
+						if (zend_hash_quick_find(object->properties, (char *) property_info_ptr->name,
+									 property_info_ptr->name_length + 1,
+									 property_info_ptr->h, (void *) &prop_val) == SUCCESS) {
+							if (h != property_info_ptr->h) {
+								Z_ADDREF_P(*prop_val);
+								if (PZVAL_IS_REF(*prop_val)) {
+									SEPARATE_ZVAL(prop_val);
 								}
+								zend_hash_quick_update(object->properties, (char *) propname,
+										       propname_len+1, h, prop_val,
+										       sizeof(zval *), (void *) NULL);
+								php_error_docref(NULL TSRMLS_CC, E_NOTICE,
+										 "Making %s::%s public to remove it from class without objects overriding",
+										 ce->name, propname);
+								zend_hash_quick_del(object->properties,
+										    property_info_ptr->name,
+										    property_info_ptr->name_length+1,
+										    property_info_ptr->h);
 							}
 						}
 					}
 				}
-#endif
 			}
+#endif
 		}
-	}
+	PHP_RUNKIT_ITERATE_THROUGH_OBJECTS_STORE_END
 
 st_success:
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
@@ -759,38 +747,29 @@ void php_runkit_remove_property_from_reflection_objects(zend_class_entry *ce, co
 	int i;
 	extern PHPAPI zend_class_entry *reflection_property_ptr;
 
-	if (!EG(objects_store).object_buckets) {
-		return;
-	}
-
-	for (i = 1; i < EG(objects_store).top ; i++) {
-		if (EG(objects_store).object_buckets[i].valid && (!EG(objects_store).object_buckets[i].destructor_called) &&
-		   EG(objects_store).object_buckets[i].bucket.obj.object) {
-			zend_object *object;
-			object = (zend_object *) EG(objects_store).object_buckets[i].bucket.obj.object;
-			if (object->ce == reflection_property_ptr) {
-				reflection_object *refl_obj = (reflection_object *) object;
-				if (refl_obj->ptr && refl_obj->ce == ce) {
-					property_reference *prop_ref = (property_reference *) refl_obj->ptr;
-					if (prop_ref->ce == ce && prop_ref->prop.name_length == propname_len &&
-					    !memcmp(prop_ref->prop.name, propname, propname_len)) {
+	PHP_RUNKIT_ITERATE_THROUGH_OBJECTS_STORE_BEGIN(i)
+		if (object->ce == reflection_property_ptr) {
+			reflection_object *refl_obj = (reflection_object *) object;
+			if (refl_obj->ptr && refl_obj->ce == ce) {
+				property_reference *prop_ref = (property_reference *) refl_obj->ptr;
+				if (prop_ref->ce == ce && prop_ref->prop.name_length == propname_len &&
+				    !memcmp(prop_ref->prop.name, propname, propname_len)) {
 #if RUNKIT_ABOVE53
-						if (refl_obj->ref_type == REF_TYPE_DYNAMIC_PROPERTY) {
-							efree((char *)prop_ref->prop.name);
-						}
-						efree(refl_obj->ptr);
-#else
-						if (refl_obj->free_ptr) {
-							efree(refl_obj->ptr);
-						}
-#endif
-						refl_obj->ptr = NULL;
+					if (refl_obj->ref_type == REF_TYPE_DYNAMIC_PROPERTY) {
+						efree((char *)prop_ref->prop.name);
 					}
-					PHP_RUNKIT_UPDATE_REFLECTION_OBJECT_NAME(object, i, RUNKIT_G(removed_property_str));
+					efree(refl_obj->ptr);
+#else
+					if (refl_obj->free_ptr) {
+						efree(refl_obj->ptr);
+					}
+#endif
+					refl_obj->ptr = NULL;
 				}
+				PHP_RUNKIT_UPDATE_REFLECTION_OBJECT_NAME(object, i, RUNKIT_G(removed_property_str));
 			}
 		}
-	}
+	PHP_RUNKIT_ITERATE_THROUGH_OBJECTS_STORE_END
 }
 /* }}} */
 

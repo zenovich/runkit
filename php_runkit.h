@@ -296,6 +296,20 @@ static inline void php_runkit_default_class_members_list_add(php_runkit_default_
 	}
 }
 /* }}} */
+
+#define PHP_RUNKIT_ITERATE_THROUGH_OBJECTS_STORE_BEGIN(i) { \
+	if (EG(objects_store).object_buckets) { \
+		for (i = 1; i < EG(objects_store).top ; i++) { \
+			if (EG(objects_store).object_buckets[i].valid && (!EG(objects_store).object_buckets[i].destructor_called) && \
+			   EG(objects_store).object_buckets[i].bucket.obj.object) { \
+				zend_object *object; \
+				object = (zend_object *) EG(objects_store).object_buckets[i].bucket.obj.object;
+#define PHP_RUNKIT_ITERATE_THROUGH_OBJECTS_STORE_END \
+			} \
+		}\
+	} \
+}
+
 #endif /* PHP_RUNKIT_MANIPULATION */
 
 #ifdef PHP_RUNKIT_SANDBOX
