@@ -54,6 +54,25 @@ static int php_runkit_remove_inherited_methods(zend_function *fe, zend_class_ent
 }
 /* }}} */
 
+/* {{{ php_runkit_memrchr */
+static inline const void *php_runkit_memrchr(const void *s, int c, size_t n)
+{
+	register const unsigned char *e;
+
+	if (n <= 0) {
+		return NULL;
+	}
+
+	for (e = (const unsigned char *)s + n - 1; e >= (const unsigned char *)s; e--) {
+		if (*e == (const unsigned char)c) {
+			return (const void *)e;
+		}
+	}
+
+	return NULL;
+}
+/* }}} */
+
 /* {{{ proto bool runkit_class_emancipate(string classname)
 	Convert an inherited class to a base class, removes any method whose scope is ancestral */
 PHP_FUNCTION(runkit_class_emancipate)
@@ -61,6 +80,12 @@ PHP_FUNCTION(runkit_class_emancipate)
 	zend_class_entry *ce;
 	char *classname;
 	int classname_len;
+	HashPosition pos;
+	char *key;
+	uint key_len;
+	ulong idx;
+	zend_property_info *property_info_ptr = NULL;
+
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s/", &classname, &classname_len) == FAILURE) {
 		RETURN_FALSE;
@@ -80,6 +105,26 @@ PHP_FUNCTION(runkit_class_emancipate)
 #endif
 
 	zend_hash_apply_with_argument(&ce->function_table, (apply_func_arg_t)php_runkit_remove_inherited_methods, ce TSRMLS_CC);
+
+	zend_hash_internal_pointer_reset_ex(&ce->parent->properties_info, &pos);
+	while (zend_hash_get_current_data_ex(&ce->parent->properties_info, (void*) &property_info_ptr, &pos) == SUCCESS && property_info_ptr) {
+		if (zend_hash_get_current_key_ex(&ce->parent->properties_info, &key, &key_len, &idx, 0, &pos) == HASH_KEY_IS_STRING) {
+			const char *propname = property_info_ptr->name;
+			int propname_len = property_info_ptr->name_length;
+			const char *last_null;
+
+			last_null = php_runkit_memrchr(propname, 0, propname_len);
+			if (last_null) {
+			    propname_len -= last_null - propname + 1;
+			    propname = last_null+1;
+			}
+
+			php_runkit_def_prop_remove_int(ce, propname, propname_len,
+			                            ce->parent, (property_info_ptr->flags & ZEND_ACC_STATIC) != 0,
+			                            1 /* remove_from_objects */, property_info_ptr TSRMLS_CC);
+		}
+		zend_hash_move_forward_ex(&ce->parent->properties_info, &pos);
+	}
 	ce->parent = NULL;
 
 	RETURN_TRUE;
@@ -191,6 +236,11 @@ PHP_FUNCTION(runkit_class_adopt)
 	zend_class_entry *ce, *parent;
 	char *classname, *parentname;
 	int classname_len, parentname_len;
+	HashPosition pos;
+	char *key;
+	uint key_len;
+	ulong idx;
+	zend_property_info *property_info_ptr = NULL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s/s/", &classname, &classname_len, &parentname, &parentname_len) == FAILURE) {
 		RETURN_FALSE;
@@ -210,6 +260,59 @@ PHP_FUNCTION(runkit_class_adopt)
 	}
 
 	ce->parent = parent;
+
+	zend_hash_internal_pointer_reset_ex(&parent->properties_info, &pos);
+	while (zend_hash_get_current_data_ex(&parent->properties_info, (void*) &property_info_ptr, &pos) == SUCCESS && property_info_ptr) {
+		if (zend_hash_get_current_key_ex(&parent->properties_info, &key, &key_len, &idx, 0, &pos) == HASH_KEY_IS_STRING) {
+			zval **pp;
+			const char *propname = property_info_ptr->name;
+			int propname_len = property_info_ptr->name_length;
+			const char *last_null;
+
+			if (property_info_ptr->flags & ZEND_ACC_STATIC) {
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+				pp = &CE_STATIC_MEMBERS(parent)[property_info_ptr->offset];
+#else
+				zend_hash_quick_find(CE_STATIC_MEMBERS(parent), property_info_ptr->name, property_info_ptr->name_length + 1, property_info_ptr->h, (void*) &pp);
+#endif
+			} else {
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4)
+				pp = &parent->default_properties_table[property_info_ptr->offset];
+#else
+				if (zend_hash_quick_find(&parent->default_properties, property_info_ptr->name, property_info_ptr->name_length + 1, property_info_ptr->h, (void*) &pp) != SUCCESS) {
+					php_error_docref(NULL TSRMLS_CC, E_WARNING,
+					                 "Cannot inherit broken default property %s->%s", parent->name, key);
+					zend_hash_move_forward_ex(&ce->properties_info, &pos);
+					continue;
+				}
+#endif // (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+			}
+			if (
+			    Z_TYPE_PP(pp) == IS_CONSTANT_AST
+#if RUNKIT_ABOVE53
+			    || (Z_TYPE_PP(pp) & IS_CONSTANT_TYPE_MASK) == IS_CONSTANT
+#endif
+			) {
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 2) || (PHP_MAJOR_VERSION > 5)
+				zval_update_constant_ex(pp, _CONSTANT_INDEX(1), parent TSRMLS_CC);
+#else
+				zval_update_constant(pp, parent TSRMLS_CC);
+#endif
+			}
+
+			last_null = php_runkit_memrchr(propname, 0, propname_len);
+			if (last_null) {
+			    propname_len -= last_null - propname + 1;
+			    propname = last_null+1;
+			}
+
+			php_runkit_def_prop_add_int(ce, propname, propname_len,
+			                            *pp, property_info_ptr->flags/*visibility*/,
+			                            property_info_ptr->doc_comment, property_info_ptr->doc_comment_len,
+			                            property_info_ptr->ce /*definer_class*/, 0 /*override*/, 1 /*override_in_objects*/ TSRMLS_CC);
+		}
+		zend_hash_move_forward_ex(&ce->properties_info, &pos);
+	}
 
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 	php_runkit_clear_all_functions_runtime_cache(TSRMLS_C);
