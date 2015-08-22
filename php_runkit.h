@@ -200,9 +200,9 @@ extern ZEND_DECLARE_MODULE_GLOBALS(runkit);
 #endif
 
 #if PHP_VERSION_ID < 50600
-#define _CONSTANT_INDEX(a) (void*) a
+#define PHP_RUNKIT_CONSTANT_INDEX(a) (void*) a
 #else
-#define _CONSTANT_INDEX(a) a
+#define PHP_RUNKIT_CONSTANT_INDEX(a) a
 #endif
 
 

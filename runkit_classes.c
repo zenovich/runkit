@@ -20,6 +20,7 @@
 /* $Id$ */
 
 #include "php_runkit.h"
+#include "php_runkit_zval.h"
 
 #ifdef PHP_RUNKIT_MANIPULATION
 /* {{{ php_runkit_remove_inherited_methods */
@@ -287,18 +288,8 @@ PHP_FUNCTION(runkit_class_adopt)
 				}
 #endif // (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 			}
-			if (
-			    Z_TYPE_PP(pp) == IS_CONSTANT_AST
-#if RUNKIT_ABOVE53
-			    || (Z_TYPE_PP(pp) & IS_CONSTANT_TYPE_MASK) == IS_CONSTANT
-#endif
-			) {
-#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 2) || (PHP_MAJOR_VERSION > 5)
-				zval_update_constant_ex(pp, _CONSTANT_INDEX(1), parent TSRMLS_CC);
-#else
-				zval_update_constant(pp, parent TSRMLS_CC);
-#endif
-			}
+
+			php_runkit_zval_resolve_class_constant(pp, parent TSRMLS_CC);
 
 			last_null = php_runkit_memrchr(propname, 0, propname_len);
 			if (last_null) {
