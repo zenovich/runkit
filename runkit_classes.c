@@ -26,19 +26,18 @@
 /* {{{ php_runkit_remove_inherited_methods */
 static int php_runkit_remove_inherited_methods(zend_function *fe, zend_class_entry *ce TSRMLS_DC)
 {
-	const char *function_name = fe->common.function_name;
-	int function_name_len = strlen(function_name);
-	char *fname_lower;
+	const char *fname = fe->common.function_name;
+	int fname_len = strlen(fname);
+	PHP_RUNKIT_DECL_STRING_PARAM(fname_lower)
 	zend_class_entry *ancestor_class;
 
-	fname_lower = estrndup(function_name, function_name_len);
+	PHP_RUNKIT_MAKE_LOWERCASE_COPY(fname);
 	if (fname_lower == NULL) {
-		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
+		PHP_RUNKIT_NOT_ENOUGH_MEMORY_ERROR;
 		return ZEND_HASH_APPLY_KEEP;
 	}
-	php_strtolower(fname_lower, function_name_len);
 
-	ancestor_class = php_runkit_locate_scope(ce, fe, fname_lower, function_name_len);
+	ancestor_class = php_runkit_locate_scope(ce, fe, fname_lower, fname_lower_len);
 
 	if (ancestor_class == ce) {
 		efree(fname_lower);
@@ -46,7 +45,7 @@ static int php_runkit_remove_inherited_methods(zend_function *fe, zend_class_ent
 	}
 
 	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_clean_children_methods, 5,
-	                               ancestor_class, ce, fname_lower, function_name_len, fe);
+				       ancestor_class, ce, fname_lower, fname_lower_len, fe);
 	PHP_RUNKIT_DEL_MAGIC_METHOD(ce, fe);
 	php_runkit_remove_function_from_reflection_objects(fe TSRMLS_CC);
 
@@ -79,14 +78,12 @@ static inline const void *php_runkit_memrchr(const void *s, int c, size_t n)
 PHP_FUNCTION(runkit_class_emancipate)
 {
 	zend_class_entry *ce;
-	char *classname;
-	int classname_len;
+	PHP_RUNKIT_DECL_STRING_PARAM(classname)
 	HashPosition pos;
 	char *key;
 	uint key_len;
 	ulong idx;
 	zend_property_info *property_info_ptr = NULL;
-
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s/", &classname, &classname_len) == FAILURE) {
 		RETURN_FALSE;
@@ -136,45 +133,44 @@ PHP_FUNCTION(runkit_class_emancipate)
 	Inherit methods from a new ancestor */
 static int php_runkit_inherit_methods(zend_function *fe, zend_class_entry *ce TSRMLS_DC)
 {
-	const char *function_name = fe->common.function_name;
-	char *lower_function_name;
-	int function_name_len = strlen(function_name);
+	const char *fname = fe->common.function_name;
+	int fname_len = strlen(fname);
+	PHP_RUNKIT_DECL_STRING_PARAM(fname_lower)
 	zend_class_entry *ancestor_class;
 
 	/* method name keys must be lower case */
-	lower_function_name = estrndup(function_name, function_name_len);
-	if (lower_function_name == NULL) {
-		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
-		return ZEND_HASH_APPLY_KEEP;
-	}
-	php_strtolower(lower_function_name, function_name_len);
-
-	if (zend_hash_exists(&ce->function_table, (char *) lower_function_name, function_name_len + 1)) {
-		efree(lower_function_name);
+	PHP_RUNKIT_MAKE_LOWERCASE_COPY(fname);
+	if (fname_lower == NULL) {
+		PHP_RUNKIT_NOT_ENOUGH_MEMORY_ERROR;
 		return ZEND_HASH_APPLY_KEEP;
 	}
 
-	ancestor_class = php_runkit_locate_scope(ce, fe, lower_function_name, function_name_len);
+	if (zend_hash_exists(&ce->function_table, (char *) fname_lower, fname_lower_len + 1)) {
+		efree(fname_lower);
+		return ZEND_HASH_APPLY_KEEP;
+	}
 
-	if (zend_hash_add_or_update(&ce->function_table, lower_function_name, function_name_len + 1, fe, sizeof(zend_function), NULL, HASH_ADD) == FAILURE) {
+	ancestor_class = php_runkit_locate_scope(ce, fe, fname_lower, fname_lower_len);
+
+	if (zend_hash_add_or_update(&ce->function_table, fname_lower, fname_lower_len + 1, fe, sizeof(zend_function), NULL, HASH_ADD) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error inheriting parent method: %s()", fe->common.function_name);
-		efree(lower_function_name);
+		efree(fname_lower);
 		return ZEND_HASH_APPLY_KEEP;
 	}
 
-	if (zend_hash_find(&ce->function_table, lower_function_name, function_name_len + 1, (void*)&fe) == FAILURE ||
+	if (zend_hash_find(&ce->function_table, fname_lower, fname_lower_len + 1, (void*)&fe) == FAILURE ||
 	    !fe) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to locate newly added method");
-		efree(lower_function_name);
+		efree(fname_lower);
 		return ZEND_HASH_APPLY_KEEP;
 	}
 
 	PHP_RUNKIT_FUNCTION_ADD_REF(fe);
-	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, lower_function_name, function_name_len, fe, NULL);
+	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, fname_lower, fname_lower_len, fe, NULL);
 
 	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 6,
-	                               ancestor_class, ce, fe, lower_function_name, function_name_len, NULL);
-	efree(lower_function_name);
+				       ancestor_class, ce, fe, fname_lower, fname_lower_len, NULL);
+	efree(fname_lower);
 
 	return ZEND_HASH_APPLY_KEEP;
 }
@@ -185,9 +181,13 @@ static int php_runkit_inherit_methods(zend_function *fe, zend_class_entry *ce TS
 int php_runkit_class_copy(zend_class_entry *src, const char *classname, int classname_len TSRMLS_DC)
 {
 	zend_class_entry *new_class_entry, *parent = NULL;
-	char *lcname;
-	lcname = estrndup(classname, classname_len);
-	php_strtolower(lcname, classname_len);
+	PHP_RUNKIT_DECL_STRING_PARAM(classname_lower)
+
+	PHP_RUNKIT_MAKE_LOWERCASE_COPY(classname);
+	if (!classname_lower) {
+		PHP_RUNKIT_NOT_ENOUGH_MEMORY_ERROR;
+		return FAILURE;
+	}
 
 	new_class_entry = emalloc(sizeof(zend_class_entry));
 	if (src->parent && src->parent->name) {
@@ -216,10 +216,10 @@ int php_runkit_class_copy(zend_class_entry *src, const char *classname, int clas
 #endif
 	new_class_entry->ce_flags = src->ce_flags;
 
-	zend_hash_update(EG(class_table), lcname, classname_len + 1, &new_class_entry, sizeof(zend_class_entry *), NULL);
+	zend_hash_update(EG(class_table), classname_lower, classname_lower_len + 1, &new_class_entry, sizeof(zend_class_entry *), NULL);
 
 	new_class_entry->num_interfaces = src->num_interfaces;
-	efree(lcname);
+	efree(classname_lower);
 
 	if (new_class_entry->parent) {
 		zend_hash_apply_with_argument(&(new_class_entry->parent->function_table),
@@ -235,8 +235,8 @@ int php_runkit_class_copy(zend_class_entry *src, const char *classname, int clas
 PHP_FUNCTION(runkit_class_adopt)
 {
 	zend_class_entry *ce, *parent;
-	char *classname, *parentname;
-	int classname_len, parentname_len;
+	PHP_RUNKIT_DECL_STRING_PARAM(classname)
+	PHP_RUNKIT_DECL_STRING_PARAM(parentname)
 	HashPosition pos;
 	char *key;
 	uint key_len;

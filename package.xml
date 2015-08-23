@@ -265,6 +265,7 @@ Execute code in restricted environment (sandboxing).
    <file name="config.w32" role="src" />
    <file name="php_runkit.h" role="src" />
    <file name="php_runkit_hash.h" role="src" />
+   <file name="php_runkit_sandbox.h" role="src" />
    <file name="php_runkit_zval.h" role="src" />
    <file name="LICENSE" role="doc" />
    <file name="README" role="doc" />

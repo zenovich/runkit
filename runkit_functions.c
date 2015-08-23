@@ -59,17 +59,15 @@ static void php_runkit_hash_key_dtor(void *hash_key)
 static int php_runkit_fetch_function(int fname_type, const char *fname, int fname_len, zend_function **pfe, int flag TSRMLS_DC)
 {
 	zend_function *fe;
-	char *fname_lower;
-	int fname_lower_len = fname_len;
+	PHP_RUNKIT_DECL_STRING_PARAM(fname_lower)
 
-	fname_lower = estrndup(fname, fname_len);
+	PHP_RUNKIT_MAKE_LOWERCASE_COPY(fname);
 	if (fname_lower == NULL) {
-		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
+		PHP_RUNKIT_NOT_ENOUGH_MEMORY_ERROR;
 		return FAILURE;
 	}
-	PHP_RUNKIT_STRTOLOWER(fname_lower);
 
-	if (zend_hash_find(EG(function_table), fname_lower, fname_len + 1, (void*)&fe) == FAILURE) {
+	if (zend_hash_find(EG(function_table), fname_lower, fname_lower_len + 1, (void*)&fe) == FAILURE) {
 		efree(fname_lower);
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s() not found", fname);
 		return FAILURE;
@@ -102,9 +100,9 @@ static int php_runkit_fetch_function(int fname_type, const char *fname, int fnam
 			zend_hash_init(RUNKIT_G(replaced_internal_functions), 4, NULL, NULL, 0);
 		}
 #if PHP_MAJOR_VERSION >= 6
-		zend_u_hash_add(RUNKIT_G(replaced_internal_functions), fname_type, fname_lower, fname_len + 1, (void*)fe, sizeof(zend_function), NULL);
+		zend_u_hash_add(RUNKIT_G(replaced_internal_functions), fname_type, fname_lower, fname_lower_len + 1, (void*)fe, sizeof(zend_function), NULL);
 #else
-		zend_hash_add(RUNKIT_G(replaced_internal_functions), fname_lower, fname_len + 1, (void*)fe, sizeof(zend_function), NULL);
+		zend_hash_add(RUNKIT_G(replaced_internal_functions), fname_lower, fname_lower_len + 1, (void*)fe, sizeof(zend_function), NULL);
 #endif
 		if (flag >= PHP_RUNKIT_FETCH_FUNCTION_RENAME) {
 			zend_hash_key hash_key;
@@ -113,10 +111,9 @@ static int php_runkit_fetch_function(int fname_type, const char *fname, int fnam
 				ALLOC_HASHTABLE(RUNKIT_G(misplaced_internal_functions));
 				zend_hash_init(RUNKIT_G(misplaced_internal_functions), 4, NULL, php_runkit_hash_key_dtor, 0);
 			}
-			hash_key.nKeyLength = fname_len + 1;
+			hash_key.nKeyLength = fname_lower_len + 1;
 			PHP_RUNKIT_HASH_KEY(&hash_key) = estrndup(fname_lower, PHP_RUNKIT_HASH_KEYLEN(&hash_key));
 			zend_hash_next_index_insert(RUNKIT_G(misplaced_internal_functions), (void*)&hash_key, sizeof(zend_hash_key), NULL);
-
 		}
 
 		/*
@@ -530,13 +527,11 @@ PHP_FUNCTION(runkit_function_add)
 	}
 
 	/* UTODO */
-	funcname_lower = estrndup(funcname, funcname_len);
+	PHP_RUNKIT_MAKE_LOWERCASE_COPY(funcname);
 	if (funcname_lower == NULL) {
-		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
+		PHP_RUNKIT_NOT_ENOUGH_MEMORY_ERROR;
 		RETURN_FALSE;
 	}
-	funcname_lower_len = funcname_len;
-	PHP_RUNKIT_STRTOLOWER(funcname_lower);
 
 	if (zend_hash_exists(EG(function_table), funcname_lower, funcname_len + 1)) {
 		efree(funcname_lower);
@@ -570,30 +565,29 @@ PHP_FUNCTION(runkit_function_add)
  */
 PHP_FUNCTION(runkit_function_remove)
 {
-	PHP_RUNKIT_DECL_STRING_PARAM(funcname)
-	char *funcname_lower;
+	PHP_RUNKIT_DECL_STRING_PARAM(fname)
+	PHP_RUNKIT_DECL_STRING_PARAM(fname_lower)
 	int result;
 	zend_function *fe;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, PHP_RUNKIT_STRING_SPEC "/", PHP_RUNKIT_STRING_PARAM(funcname)) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, PHP_RUNKIT_STRING_SPEC "/", PHP_RUNKIT_STRING_PARAM(fname)) == FAILURE) {
 		RETURN_FALSE;
 	}
 
-	if (php_runkit_fetch_function(PHP_RUNKIT_STRING_TYPE(funcname), funcname, funcname_len, &fe, PHP_RUNKIT_FETCH_FUNCTION_REMOVE TSRMLS_CC) == FAILURE) {
+	if (php_runkit_fetch_function(PHP_RUNKIT_STRING_TYPE(funcname), fname, fname_len, &fe, PHP_RUNKIT_FETCH_FUNCTION_REMOVE TSRMLS_CC) == FAILURE) {
 		RETURN_FALSE;
 	}
 
-	funcname_lower = estrndup(funcname, funcname_len);
-	if (funcname_lower == NULL) {
-		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
+	PHP_RUNKIT_MAKE_LOWERCASE_COPY(fname);
+	if (fname_lower == NULL) {
+		PHP_RUNKIT_NOT_ENOUGH_MEMORY_ERROR;
 		RETURN_FALSE;
 	}
-	php_strtolower(funcname_lower, funcname_len);
 
 	php_runkit_remove_function_from_reflection_objects(fe TSRMLS_CC);
 
-	result = (zend_hash_del(EG(function_table), funcname_lower, funcname_len + 1) == SUCCESS);
-	efree(funcname_lower);
+	result = (zend_hash_del(EG(function_table), fname_lower, fname_lower_len + 1) == SUCCESS);
+	efree(fname_lower);
 
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 	php_runkit_clear_all_functions_runtime_cache(TSRMLS_C);
@@ -603,54 +597,56 @@ PHP_FUNCTION(runkit_function_remove)
 }
 /* }}} */
 
+#define PHP_RUNKIT_FUNCTION_PARSE_RENAME_COPY_PARAMS \
+	PHP_RUNKIT_DECL_STRING_PARAM(sfunc) \
+	PHP_RUNKIT_DECL_STRING_PARAM(dfunc) \
+	PHP_RUNKIT_DECL_STRING_PARAM(sfunc_lower) \
+	PHP_RUNKIT_DECL_STRING_PARAM(dfunc_lower) \
+	\
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, \
+			PHP_RUNKIT_STRING_SPEC "/" PHP_RUNKIT_STRING_SPEC "/", \
+			PHP_RUNKIT_STRING_PARAM(sfunc), \
+			PHP_RUNKIT_STRING_PARAM(dfunc)) == FAILURE ) { \
+		RETURN_FALSE; \
+	} \
+	\
+	/* UTODO */ \
+	PHP_RUNKIT_MAKE_LOWERCASE_COPY(dfunc); \
+	if (dfunc_lower == NULL) { \
+		PHP_RUNKIT_NOT_ENOUGH_MEMORY_ERROR; \
+		RETURN_FALSE; \
+	} \
+	\
+	if (zend_hash_exists(EG(function_table), dfunc_lower, dfunc_len + 1)) { \
+		efree(dfunc_lower); \
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s() already exists", dfunc); \
+		RETURN_FALSE; \
+	}
+
+
 /* {{{ proto bool runkit_function_rename(string funcname, string newname)
  */
 PHP_FUNCTION(runkit_function_rename)
 {
-	zend_function *fe, func;
-	PHP_RUNKIT_DECL_STRING_PARAM(sfunc)
-	PHP_RUNKIT_DECL_STRING_PARAM(dfunc)
-	PHP_RUNKIT_DECL_STRING_PARAM(dfunc_lower)
-	PHP_RUNKIT_DECL_STRING_PARAM(sfunc_lower)
+	zend_function func, *sfe;
+	PHP_RUNKIT_FUNCTION_PARSE_RENAME_COPY_PARAMS;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, PHP_RUNKIT_STRING_SPEC "/" PHP_RUNKIT_STRING_SPEC "/",
-			PHP_RUNKIT_STRING_PARAM(sfunc), PHP_RUNKIT_STRING_PARAM(dfunc)) == FAILURE ) {
-		RETURN_FALSE;
-	}
-
-	/* UTODO */
-	dfunc_lower = estrndup(dfunc, dfunc_len);
-	if (dfunc_lower == NULL) {
-		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
-		RETURN_FALSE;
-	}
-	dfunc_lower_len = dfunc_len;
-	PHP_RUNKIT_STRTOLOWER(dfunc_lower);
-
-	if (zend_hash_exists(EG(function_table), dfunc_lower, dfunc_len + 1)) {
-		efree(dfunc_lower);
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s() already exists", dfunc);
-		RETURN_FALSE;
-	}
-
-	if (php_runkit_fetch_function(PHP_RUNKIT_STRING_TYPE(sfunc), sfunc, sfunc_len, &fe, PHP_RUNKIT_FETCH_FUNCTION_RENAME TSRMLS_CC) == FAILURE) {
+	if (php_runkit_fetch_function(PHP_RUNKIT_STRING_TYPE(sfunc), sfunc, sfunc_len, &sfe, PHP_RUNKIT_FETCH_FUNCTION_RENAME TSRMLS_CC) == FAILURE) {
 		efree(dfunc_lower);
 		RETURN_FALSE;
 	}
 
-	sfunc_lower = estrndup(sfunc, sfunc_len);
+	PHP_RUNKIT_MAKE_LOWERCASE_COPY(sfunc);
 	if (sfunc_lower == NULL) {
 		efree(dfunc_lower);
-		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
+		PHP_RUNKIT_NOT_ENOUGH_MEMORY_ERROR;
 		RETURN_FALSE;
 	}
-	sfunc_lower_len = sfunc_len;
-	PHP_RUNKIT_STRTOLOWER(sfunc_lower);
 
-	func = *fe;
+	func = *sfe;
 	PHP_RUNKIT_FUNCTION_ADD_REF(&func);
 
-	php_runkit_remove_function_from_reflection_objects(fe TSRMLS_CC);
+	php_runkit_remove_function_from_reflection_objects(sfe TSRMLS_CC);
 
 	if (zend_hash_del(EG(function_table), sfunc_lower, sfunc_len + 1) == FAILURE) {
 		efree(dfunc_lower);
@@ -669,7 +665,7 @@ PHP_FUNCTION(runkit_function_rename)
 	if (zend_hash_add(EG(function_table), dfunc_lower, dfunc_len + 1, &func, sizeof(zend_function), NULL) == FAILURE) {
 		efree(dfunc_lower);
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to add reference to new function name %s()", dfunc);
-		zend_function_dtor(fe);
+		zend_function_dtor(sfe);
 		RETURN_FALSE;
 	}
 	efree(dfunc_lower);
@@ -709,13 +705,11 @@ PHP_FUNCTION(runkit_function_redefine)
 		RETURN_FALSE;
 	}
 
-	funcname_lower = estrndup(funcname, funcname_len);
+	PHP_RUNKIT_MAKE_LOWERCASE_COPY(funcname);
 	if (funcname_lower == NULL) {
-		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
+		PHP_RUNKIT_NOT_ENOUGH_MEMORY_ERROR;
 		RETURN_FALSE;
 	}
-	funcname_lower_len = funcname_len;
-	PHP_RUNKIT_STRTOLOWER(funcname_lower);
 
 	php_runkit_remove_function_from_reflection_objects(fe TSRMLS_CC);
 
@@ -750,48 +744,20 @@ PHP_FUNCTION(runkit_function_redefine)
  */
 PHP_FUNCTION(runkit_function_copy)
 {
-	PHP_RUNKIT_DECL_STRING_PARAM(sfunc)
-	PHP_RUNKIT_DECL_STRING_PARAM(dfunc)
-	PHP_RUNKIT_DECL_STRING_PARAM(sfunc_lower)
-	PHP_RUNKIT_DECL_STRING_PARAM(dfunc_lower)
-	zend_function *sfe, fe;
-
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
-			PHP_RUNKIT_STRING_SPEC "/" PHP_RUNKIT_STRING_SPEC "/",
-			PHP_RUNKIT_STRING_PARAM(sfunc),
-			PHP_RUNKIT_STRING_PARAM(dfunc)) == FAILURE) {
-		RETURN_FALSE;
-	}
-
-	dfunc_lower = estrndup(dfunc, dfunc_len);
-	if (dfunc_lower == NULL) {
-		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
-		RETURN_FALSE;
-	}
-	dfunc_lower_len = dfunc_len;
-	/* UTODO */
-	PHP_RUNKIT_STRTOLOWER(dfunc_lower);
-
-	if (zend_hash_exists(EG(function_table), dfunc_lower, dfunc_len + 1)) {
-		efree(dfunc_lower);
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s() already exists", dfunc);
-		RETURN_FALSE;
-	}
+	zend_function fe, *sfe;
+	PHP_RUNKIT_FUNCTION_PARSE_RENAME_COPY_PARAMS;
 
 	if (php_runkit_fetch_function(PHP_RUNKIT_STRING_TYPE(sfunc), sfunc, sfunc_len, &sfe, PHP_RUNKIT_FETCH_FUNCTION_INSPECT TSRMLS_CC) == FAILURE) {
 		efree(dfunc_lower);
 		RETURN_FALSE;
 	}
 
-	sfunc_lower = estrndup(sfunc, sfunc_len);
+	PHP_RUNKIT_MAKE_LOWERCASE_COPY(sfunc);
 	if (sfunc_lower == NULL) {
 		efree(dfunc_lower);
-		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
+		PHP_RUNKIT_NOT_ENOUGH_MEMORY_ERROR;
 		RETURN_FALSE;
 	}
-	sfunc_lower_len = sfunc_len;
-	/* UTODO */
-	PHP_RUNKIT_STRTOLOWER(sfunc_lower);
 
 	fe = *sfe;
 	if (fe.type == ZEND_USER_FUNCTION) {

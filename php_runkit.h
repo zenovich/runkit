@@ -232,12 +232,12 @@ int php_runkit_fetch_interface(const char *classname, int classname_len, zend_cl
 #define PHP_RUNKIT_FUNCTION_ADD_REF(f)	function_add_ref(f TSRMLS_CC)
 #define php_runkit_locate_scope(ce, fe, methodname_lower, methodname_len)   fe->common.scope
 #define PHP_RUNKIT_DECL_STRING_PARAM(param)		void *param; int32_t param##_len; zend_uchar param##_type;
-#define PHP_RUNKIT_STRING_SPEC					"t"
+#define PHP_RUNKIT_STRING_SPEC				"t"
 #define PHP_RUNKIT_STRING_PARAM(param)			&param, &param##_len, &param##_type
 #define PHP_RUNKIT_STRTOLOWER(param)			php_u_strtolower(param, &param##_len, UG(default_locale))
 #define PHP_RUNKIT_STRING_LEN(param,addtl)		(param##_type == IS_UNICODE ? UBYTES(param##_len + (addtl)) : (param##_len + (addtl)))
 #define PHP_RUNKIT_STRING_TYPE(param)			(param##_type)
-#define PHP_RUNKIT_HASH_FIND(hash,param,ppvar)	zend_u_hash_find(hash, param##_type, (UChar *)param, param##_len + 1, (void*)ppvar)
+#define PHP_RUNKIT_HASH_FIND(hash,param,ppvar)		zend_u_hash_find(hash, param##_type, (UChar *)param, param##_len + 1, (void*)ppvar)
 #define PHP_RUNKIT_HASH_EXISTS(hash,param)		zend_u_hash_exists(hash, param##_type, (UChar *)param, param##_len + 1)
 #define PHP_RUNKIT_HASH_KEY(hash_key)			((hash_key)->type == HASH_KEY_IS_UNICODE ? (hash_key)->u.unicode : (hash_key)->u.string)
 #define PHP_RUNKIT_HASH_KEYLEN(hash_key)		((hash_key)->type == HASH_KEY_IS_UNICODE ? UBYTES((hash_key)->nKeyLength) : (hash_key)->nKeyLength)
@@ -245,16 +245,25 @@ int php_runkit_fetch_interface(const char *classname, int classname_len, zend_cl
 #define PHP_RUNKIT_FUNCTION_ADD_REF(f)	function_add_ref(f)
 #define php_runkit_locate_scope(ce, fe, methodname_lower, methodname_len)   fe->common.scope
 #define PHP_RUNKIT_DECL_STRING_PARAM(p)			char *p; int p##_len;
-#define PHP_RUNKIT_STRING_SPEC					"s"
-#define PHP_RUNKIT_STRING_PARAM(p)				&p, &p##_len
-#define PHP_RUNKIT_STRTOLOWER(p)				php_strtolower(p, p##_len)
+#define PHP_RUNKIT_STRING_SPEC				"s"
+#define PHP_RUNKIT_STRING_PARAM(p)			&p, &p##_len
+#define PHP_RUNKIT_STRTOLOWER(p)			php_strtolower(p, p##_len)
 #define PHP_RUNKIT_STRING_LEN(param,addtl)		(param##_len + (addtl))
 #define PHP_RUNKIT_STRING_TYPE(param)			IS_STRING
-#define PHP_RUNKIT_HASH_FIND(hash,param,ppvar)	zend_hash_find(hash, param, param##_len + 1, (void*)ppvar)
+#define PHP_RUNKIT_HASH_FIND(hash,param,ppvar)		zend_hash_find(hash, param, param##_len + 1, (void*)ppvar)
 #define PHP_RUNKIT_HASH_EXISTS(hash,param)		zend_hash_exists(hash, param##_type, param, param##_len + 1)
 #define PHP_RUNKIT_HASH_KEY(hash_key)			((hash_key)->arKey)
 #define PHP_RUNKIT_HASH_KEYLEN(hash_key)		((hash_key)->nKeyLength)
 #endif /* Version Agnosticism */
+
+#define PHP_RUNKIT_MAKE_LOWERCASE_COPY(name) \
+	name##_lower = estrndup(name, name##_len); \
+	name##_lower_len = name##_len; \
+	if (name##_lower) { \
+		PHP_RUNKIT_STRTOLOWER(name##_lower); \
+	}
+
+#define PHP_RUNKIT_NOT_ENOUGH_MEMORY_ERROR php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory")
 
 /* runkit_constants.c */
 int php_runkit_update_children_consts(RUNKIT_53_TSRMLS_ARG(void *pDest), int num_args, va_list args, zend_hash_key *hash_key);
@@ -564,6 +573,16 @@ inline static void PHP_RUNKIT_INHERIT_MAGIC(zend_class_entry *ce, const zend_fun
 #endif
 	} reflection_object;
 #endif /* PHP_RUNKIT_MANIPULATION */
+
+#if RUNKIT_ABOVE53
+/* {{{ php_runkit_zend_object_store_get_obj */
+inline static zend_object_store_bucket *php_runkit_zend_object_store_get_obj(const zval *zobject TSRMLS_DC)
+{
+	zend_object_handle handle = Z_OBJ_HANDLE_P(zobject);
+	return &EG(objects_store).object_buckets[handle];
+}
+/* }}} */
+#endif
 
 #endif	/* PHP_RUNKIT_H */
 

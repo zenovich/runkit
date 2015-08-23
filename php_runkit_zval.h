@@ -2,7 +2,7 @@
 #define PHP_RUNKIT_ZVAL_H
 
 /* {{{ php_runkit_zval_resolve_class_constant */
-static void php_runkit_zval_resolve_class_constant(zval **pp, zend_class_entry *ce TSRMLS_DC) {
+inline static void php_runkit_zval_resolve_class_constant(zval **pp, zend_class_entry *ce TSRMLS_DC) {
 	if (
 	    Z_TYPE_PP(pp) == IS_CONSTANT_AST
 #if RUNKIT_ABOVE53
@@ -17,5 +17,15 @@ static void php_runkit_zval_resolve_class_constant(zval **pp, zend_class_entry *
 	}
 }
 /* }}} */
+
+
+#define PHP_RUNKIT_ZVAL_CONVERT_TO_STRING_IF_NEEDED(val, val_copy) \
+	if (Z_TYPE_P(member) != IS_STRING) { \
+		val_copy = *val; \
+		val = &val_copy; \
+		zval_copy_ctor(val); \
+		val->RUNKIT_REFCOUNT = 1; \
+		convert_to_string(val); \
+	}
 
 #endif

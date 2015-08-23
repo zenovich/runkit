@@ -24,6 +24,31 @@
 
 #ifdef PHP_RUNKIT_MANIPULATION
 
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+/* {{{ php_runkit_make_object_property_public */
+static inline void php_runkit_make_object_property_public(const char *propname, int propname_len, zend_object *object, int offset, zend_property_info *property_info_ptr TSRMLS_DC) {
+	zval *prop_val = NULL;
+	long h = zend_get_hash_value((char *) propname, propname_len + 1);
+	if (!object->properties) {
+		prop_val = object->properties_table[offset];
+		rebuild_object_properties(object);
+	} else if (object->properties_table[offset]) {
+		prop_val = *(zval **) object->properties_table[offset];
+	}
+	if ((property_info_ptr->flags & (ZEND_ACC_PRIVATE | ZEND_ACC_PROTECTED | ZEND_ACC_SHADOW)) && prop_val) {
+		Z_ADDREF_P(prop_val);
+		if (h != property_info_ptr->h) {
+			zend_hash_quick_del(object->properties, property_info_ptr->name, property_info_ptr->name_length+1, property_info_ptr->h);
+		}
+		zend_hash_quick_update(object->properties, propname, propname_len+1, h,
+				 &prop_val, sizeof(zval *), (void *) &object->properties_table[offset]);
+		php_error_docref(NULL TSRMLS_CC, E_NOTICE, "Making %s::%s public to remove it "
+				 "from class without objects overriding", object->ce->name, propname);
+	}
+}
+/* }}} */
+#endif
+
 /* {{{ php_runkit_update_children_def_props
 	Scan the class_table for children of the class just updated */
 int php_runkit_update_children_def_props(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce), int num_args, va_list args, zend_hash_key *hash_key)
@@ -160,24 +185,7 @@ int php_runkit_remove_overlapped_property_from_childs(RUNKIT_53_TSRMLS_ARG(zend_
 				}
 #endif
 #if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4 || PHP_MAJOR_VERSION > 5
-				zval *prop_val = NULL;
-				h = zend_get_hash_value((char *) propname, propname_len + 1);
-				if (!object->properties) {
-					prop_val = object->properties_table[offset];
-					rebuild_object_properties(object);
-				} else if (object->properties_table[offset]) {
-					prop_val = *(zval **) object->properties_table[offset];
-				}
-				if ((property_info_ptr->flags & (ZEND_ACC_PRIVATE | ZEND_ACC_PROTECTED | ZEND_ACC_SHADOW)) && prop_val) {
-					Z_ADDREF_P(prop_val);
-					if (h != property_info_ptr->h) {
-						zend_hash_quick_del(object->properties, property_info_ptr->name, property_info_ptr->name_length+1, property_info_ptr->h);
-					}
-					zend_hash_quick_update(object->properties, propname, propname_len+1, h,
-							 &prop_val, sizeof(zval *), (void *) &object->properties_table[offset]);
-					php_error_docref(NULL TSRMLS_CC, E_NOTICE, "Making %s::%s public to remove it "
-							 "from class without objects overriding", ce->name, propname);
-				}
+				php_runkit_make_object_property_public(propname, propname_len, object, offset, property_info_ptr TSRMLS_CC);
 #endif
 			} else {
 #if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4
@@ -640,22 +648,7 @@ int php_runkit_def_prop_remove_int(zend_class_entry *ce, const char *propname, i
 		if (object->ce == ce) {
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 			if (!remove_from_objects) {
-				zval *prop_val = NULL;
-				if (!object->properties) {
-					prop_val = object->properties_table[offset];
-					rebuild_object_properties(object);
-				} else if (object->properties_table[offset]) {
-					prop_val = *(zval **) object->properties_table[offset];
-				}
-				if ((property_info_ptr->flags & (ZEND_ACC_PRIVATE | ZEND_ACC_PROTECTED | ZEND_ACC_SHADOW)) && prop_val) {
-					Z_ADDREF_P(prop_val);
-					if (h != property_info_ptr->h) {
-						zend_hash_quick_del(object->properties, property_info_ptr->name, property_info_ptr->name_length+1, property_info_ptr->h);
-					}
-					zend_hash_quick_update(object->properties, propname, propname_len+1, h,
-							 &prop_val, sizeof(zval *), (void *) &object->properties_table[offset]);
-					php_error_docref(NULL TSRMLS_CC, E_NOTICE, "Making %s::%s public to remove it from class without objects overriding", ce->name, propname);
-				}
+				php_runkit_make_object_property_public(propname, propname_len, object, offset, property_info_ptr TSRMLS_CC);
 			} else {
 				if (object->properties_table[offset]) {
 					if (!object->properties) {
@@ -782,8 +775,8 @@ Add a property to a class with a given visibility
  */
 PHP_FUNCTION(runkit_default_property_add)
 {
-	char *classname, *propname;
-	int classname_len, propname_len;
+	PHP_RUNKIT_DECL_STRING_PARAM(classname)
+	PHP_RUNKIT_DECL_STRING_PARAM(propname)
 	zval *value;
 	long visibility = 0;
 	int override_in_objects = 0;
@@ -808,8 +801,8 @@ Remove a property from a class
  */
 PHP_FUNCTION(runkit_default_property_remove)
 {
-	char *classname, *propname;
-	int classname_len, propname_len;
+	PHP_RUNKIT_DECL_STRING_PARAM(classname)
+	PHP_RUNKIT_DECL_STRING_PARAM(propname)
 	zend_bool remove_from_objects = 0;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s/s/|b", &classname, &classname_len, &propname, &propname_len,

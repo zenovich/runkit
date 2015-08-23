@@ -22,6 +22,8 @@
 #include "php_runkit.h"
 
 #ifdef PHP_RUNKIT_SANDBOX
+#include "php_runkit_sandbox.h"
+#include "php_runkit_zval.h"
 
 static zend_object_handlers php_runkit_sandbox_parent_handlers;
 static zend_class_entry *php_runkit_sandbox_parent_entry;
@@ -170,7 +172,6 @@ PHP_METHOD(Runkit_Sandbox_Parent,__call)
 {
 	zval *func_name, *args, *retval = NULL;
 	php_runkit_sandbox_parent_object *objval;
-	int argc;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "za", &func_name, &args) == FAILURE) {
 		RETURN_NULL();
@@ -182,15 +183,9 @@ PHP_METHOD(Runkit_Sandbox_Parent,__call)
 		RETURN_FALSE;
 	}
 
-	argc = zend_hash_num_elements(Z_ARRVAL_P(args));
-
 	PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval)
 	{
-		HashPosition pos;
-		zval **tmpzval, ***sandbox_args;
 		char *name = NULL;
-		int i;
-
 
 		if (!RUNKIT_IS_CALLABLE(func_name, IS_CALLABLE_CHECK_NO_ACCESS, &name)) {
 			php_error_docref1(NULL TSRMLS_CC, name, E_WARNING, "Function not defined");
@@ -201,41 +196,7 @@ PHP_METHOD(Runkit_Sandbox_Parent,__call)
 			RETURN_FALSE;
 		}
 
-		sandbox_args = safe_emalloc(sizeof(zval**), argc, 0);
-		for(zend_hash_internal_pointer_reset_ex(Z_ARRVAL_P(args), &pos), i = 0;
-			(zend_hash_get_current_data_ex(Z_ARRVAL_P(args), (void*)&tmpzval, &pos) == SUCCESS) && (i < argc);
-			zend_hash_move_forward_ex(Z_ARRVAL_P(args), &pos), i++) {
-			sandbox_args[i] = emalloc(sizeof(zval*));
-			MAKE_STD_ZVAL(*sandbox_args[i]);
-			**sandbox_args[i] = **tmpzval;
-			PHP_SANDBOX_CROSS_SCOPE_ZVAL_COPY_CTOR(*sandbox_args[i]);
-		}
-		/* Shouldn't be necessary */
-		argc = i;
-
-		/* Note: If this function is disabled by disable_functions or disable_classes,
-		 * The user will get a confusing error message about (null)() being disabled for security reasons on line 0
-		 * This will be fixable with a properly set EG(function_state_ptr)....just not yet
-		 */
-		if (call_user_function_ex(EG(function_table), NULL, func_name, &retval, argc, sandbox_args, 0, NULL TSRMLS_CC) == SUCCESS) {
-			if (retval) {
-				*return_value = *retval;
-			} else {
-				RETVAL_TRUE;
-			}
-		} else {
-			php_error_docref1(NULL TSRMLS_CC, name, E_WARNING, "Unable to call function");
-			RETVAL_FALSE;
-		}
-		if (name) {
-			efree(name);
-		}
-
-		for(i = 0; i < argc; i++) {
-			zval_ptr_dtor(sandbox_args[i]);
-			efree(sandbox_args[i]);
-		}
-		efree(sandbox_args);
+		php_runkit_sandbox_call_int(func_name, &name, &retval, args, return_value, prior_context TSRMLS_CC);
 	}
 	PHP_RUNKIT_SANDBOX_PARENT_END(objval)
 
@@ -281,33 +242,7 @@ static void php_runkit_sandbox_parent_include_or_eval(INTERNAL_FUNCTION_PARAMETE
 		zend_op_array *op_array = NULL;
 		int already_included = 0;
 
-		if (type == ZEND_EVAL) {
-			/* eval() */
-			char *eval_desc = zend_make_compiled_string_description("Runkit_Sandbox Eval Code" TSRMLS_CC);
-			op_array = compile_string(zcode, eval_desc TSRMLS_CC);
-			efree(eval_desc);
-		} else if (!once) {
-			/* include() & requre() */
-			op_array = compile_filename(type, zcode TSRMLS_CC);
-		} else {
-			/* include_once() & require_once() */
-			int dummy = 1;
-			zend_file_handle file_handle;
-
-			if (SUCCESS == zend_stream_open(Z_STRVAL_P(zcode), &file_handle TSRMLS_CC)) {
-				if (!file_handle.opened_path) {
-					file_handle.opened_path = estrndup(Z_STRVAL_P(zcode), Z_STRLEN_P(zcode));
-				}
-				if (zend_hash_add(&EG(included_files), file_handle.opened_path, strlen(file_handle.opened_path)+1, (void*)&dummy, sizeof(int), NULL)==SUCCESS) {
-					op_array = zend_compile_file(&file_handle, type TSRMLS_CC);
-					zend_destroy_file_handle(&file_handle TSRMLS_CC);
-				} else {
-					RUNKIT_FILE_HANDLE_DTOR(&file_handle);
-					RETVAL_TRUE;
-					already_included = 1;
-				}
-			}
-		}
+		op_array = php_runkit_sandbox_include_or_eval_int(return_value, zcode, type, once, &already_included TSRMLS_CC);
 
 		if (op_array) {
 			HashTable *old_symbol_table = EG(active_symbol_table);
@@ -519,7 +454,7 @@ static zval *php_runkit_sandbox_parent_read_property(zval *object, zval *member,
 	TSRMLS_DC)
 {
 	php_runkit_sandbox_parent_object *objval = PHP_RUNKIT_SANDBOX_PARENT_FETCHBOX(object);
-	zval *tmp_member = NULL;
+	zval tmp_member;
 	zval retval;
 	int prop_found = 0;
 
@@ -531,14 +466,7 @@ static zval *php_runkit_sandbox_parent_read_property(zval *object, zval *member,
 		return EG(uninitialized_zval_ptr);
 	}
 
-	if (Z_TYPE_P(member) != IS_STRING) {
-		ALLOC_ZVAL(tmp_member);
-		*tmp_member = *member;
-		INIT_PZVAL(tmp_member);
-		zval_copy_ctor(tmp_member);
-		convert_to_string(tmp_member);
-		member = tmp_member;
-	}
+	PHP_RUNKIT_ZVAL_CONVERT_TO_STRING_IF_NEEDED(member, tmp_member);
 
 	PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval)
 		zval **value;
@@ -549,25 +477,11 @@ static zval *php_runkit_sandbox_parent_read_property(zval *object, zval *member,
 		}
 	PHP_RUNKIT_SANDBOX_PARENT_END(objval)
 
-	if (tmp_member) {
-		zval_ptr_dtor(&tmp_member);
+	if (member == &tmp_member) {
+		zval_dtor(member);
 	}
 
-	if (prop_found) {
-		zval *return_value;
-
-		ALLOC_ZVAL(return_value);
-		*return_value = retval;
-
-		/* ZE expects refcount == 0 for unowned values */
-		INIT_PZVAL(return_value);
-		PHP_SANDBOX_CROSS_SCOPE_ZVAL_COPY_CTOR(return_value);
-		return_value->RUNKIT_REFCOUNT--;
-
-		return return_value;
-	} else {
-		return EG(uninitialized_zval_ptr);
-	}
+	return php_runkit_sandbox_return_property_value(prop_found, &retval TSRMLS_CC);
 }
 /* }}} */
 
@@ -580,7 +494,7 @@ static void php_runkit_sandbox_parent_write_property(zval *object, zval *member,
 	TSRMLS_DC)
 {
 	php_runkit_sandbox_parent_object *objval = PHP_RUNKIT_SANDBOX_PARENT_FETCHBOX(object);
-	zval *tmp_member = NULL;
+	zval tmp_member;
 
 	if (!objval) {
 		return;
@@ -590,14 +504,7 @@ static void php_runkit_sandbox_parent_write_property(zval *object, zval *member,
 		return;
 	}
 
-	if (Z_TYPE_P(member) != IS_STRING) {
-		ALLOC_ZVAL(tmp_member);
-		*tmp_member = *member;
-		INIT_PZVAL(tmp_member);
-		zval_copy_ctor(tmp_member);
-		convert_to_string(tmp_member);
-		member = tmp_member;
-	}
+	PHP_RUNKIT_ZVAL_CONVERT_TO_STRING_IF_NEEDED(member, tmp_member);
 
 	PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval)
 		zval *copyval;
@@ -608,8 +515,8 @@ static void php_runkit_sandbox_parent_write_property(zval *object, zval *member,
 		ZEND_SET_SYMBOL(php_runkit_sandbox_parent_resolve_symbol_table(objval TSRMLS_CC), Z_STRVAL_P(member), copyval);
 	PHP_RUNKIT_SANDBOX_PARENT_END(objval)
 
-	if (tmp_member) {
-		zval_ptr_dtor(&tmp_member);
+	if (member == &tmp_member) {
+		zval_dtor(member);
 	}
 }
 /* }}} */
@@ -617,7 +524,7 @@ static void php_runkit_sandbox_parent_write_property(zval *object, zval *member,
 /* {{{ php_runkit_sandbox_parent_has_property
 	has_property handler */
 static int php_runkit_sandbox_parent_has_property(zval *object, zval *member, int has_set_exists
-#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 6)
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 	, const zend_literal *key
 #endif
 	TSRMLS_DC)
@@ -626,67 +533,15 @@ static int php_runkit_sandbox_parent_has_property(zval *object, zval *member, in
 	zval member_copy;
 	int result = 0;
 
-#if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 1
-	/* Map PHP 5.0 has_property flag to PHP 5.1+ flag */
-	has_set_exists = (has_set_exists == 0) ? 2 : 1;
-#endif
-
-	if (!objval) {
-		return 0;
-	}
-	if (!objval->self->parent_access || !objval->self->parent_read) {
+	if (!objval || !objval->self->parent_access || !objval->self->parent_read) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Access to read parent's symbol table is disallowed");
 		return 0;
 	}
 
-	if (Z_TYPE_P(member) != IS_STRING) {
-		member_copy = *member;
-		member = &member_copy;
-		zval_copy_ctor(member);
-		member->RUNKIT_REFCOUNT = 1;
-		convert_to_string(member);
-	}
+	PHP_RUNKIT_ZVAL_CONVERT_TO_STRING_IF_NEEDED(member, member_copy);
 
 	PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval)
-	{
-		zval **tmpzval;
-
-		if (zend_hash_find(php_runkit_sandbox_parent_resolve_symbol_table(objval TSRMLS_CC), Z_STRVAL_P(member), Z_STRLEN_P(member) + 1, (void*)&tmpzval) == SUCCESS) {
-			switch (has_set_exists) {
-				case 0:
-					result = (Z_TYPE_PP(tmpzval) != IS_NULL);
-					break;
-				case 1:
-					switch (Z_TYPE_PP(tmpzval)) {
-						case IS_BOOL: case IS_LONG: case IS_RESOURCE:
-							result = (Z_LVAL_PP(tmpzval) != 0);
-							break;
-						case IS_DOUBLE:
-							result = (Z_DVAL_PP(tmpzval) != 0);
-							break;
-						case IS_STRING:
-							result = (Z_STRLEN_PP(tmpzval) > 1 || (Z_STRLEN_PP(tmpzval) == 1 && Z_STRVAL_PP(tmpzval)[0] != '0'));
-							break;
-						case IS_ARRAY:
-							result = zend_hash_num_elements(Z_ARRVAL_PP(tmpzval)) > 0;
-							break;
-						case IS_OBJECT:
-							/* TODO: Use ZE2 logic for this rather than ZE1 logic */
-							result = zend_hash_num_elements(Z_OBJPROP_PP(tmpzval)) > 0;
-							break;
-						case IS_NULL:
-						default:
-							result = 0;
-					}
-					break;
-				case 2:
-					result = 1;
-					break;
-			}
-		} else {
-			result = 0;
-		}
-	}
+		php_runkit_sandbox_has_property_int(has_set_exists, member TSRMLS_CC);
 	PHP_RUNKIT_SANDBOX_PARENT_END(objval)
 
 	if (member == &member_copy) {
@@ -716,13 +571,7 @@ static void php_runkit_sandbox_parent_unset_property(zval *object, zval *member
 		return;
 	}
 
-	if (Z_TYPE_P(member) != IS_STRING) {
-		member_copy = *member;
-		member = &member_copy;
-		zval_copy_ctor(member);
-		member->RUNKIT_REFCOUNT = 1;
-		convert_to_string(member);
-	}
+	PHP_RUNKIT_ZVAL_CONVERT_TO_STRING_IF_NEEDED(member, member_copy);
 
 	PHP_RUNKIT_SANDBOX_PARENT_BEGIN(objval)
 		if (zend_hash_exists(php_runkit_sandbox_parent_resolve_symbol_table(objval TSRMLS_CC), Z_STRVAL_P(member), Z_STRLEN_P(member) + 1)) {

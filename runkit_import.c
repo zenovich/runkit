@@ -383,7 +383,6 @@ static int php_runkit_import_classes(HashTable *class_table, long flags
 		uint key_len;
 		int type;
 		ulong idx;
-		char *lcname;
 		zend_class_entry *dce;
 
 		zend_hash_get_current_data_ex(class_table, (void*)&ce, &pos);
@@ -404,17 +403,19 @@ static int php_runkit_import_classes(HashTable *class_table, long flags
 		type = zend_hash_get_current_key_ex(class_table, &key, &key_len, &idx, 0, &pos);
 
 		if (key[0] != 0) {
-			lcname = estrndup(ce->name, ce->name_length);
-			if (lcname == NULL) {
-				php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
+			const char *classname = ce->name;
+			int classname_len = ce->name_length;
+			PHP_RUNKIT_DECL_STRING_PARAM(classname_lower)
+			PHP_RUNKIT_MAKE_LOWERCASE_COPY(classname);
+			if (classname_lower == NULL) {
+				PHP_RUNKIT_NOT_ENOUGH_MEMORY_ERROR;
 				return FAILURE;
 			}
-			php_strtolower(lcname, ce->name_length);
 
-			if (!zend_hash_exists(EG(class_table), lcname, ce->name_length + 1)) {
+			if (!zend_hash_exists(EG(class_table), classname_lower, classname_lower_len + 1)) {
 				php_runkit_class_copy(ce, ce->name, ce->name_length TSRMLS_CC);
 			}
-			efree(lcname);
+			efree(classname_lower);
 
 			if (php_runkit_fetch_class(ce->name, ce->name_length, &dce TSRMLS_CC) == FAILURE) {
 				/* Oddly non-existant target class or error retreiving it... Or it's an internal class... */
