@@ -224,7 +224,7 @@ int php_runkit_update_children_methods(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce
 		return ZEND_HASH_APPLY_KEEP;
 	}
 	PHP_RUNKIT_FUNCTION_ADD_REF(fe);
-	PHP_RUNKIT_INHERIT_MAGIC(ce, fe, orig_fe);
+	PHP_RUNKIT_INHERIT_MAGIC(ce, fe, orig_fe TSRMLS_CC);
 
 	/* Process children of this child */
 	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 6,
@@ -275,7 +275,7 @@ int php_runkit_clean_children_methods(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce)
 
 	zend_hash_del(&ce->function_table, fname_lower, fname_lower_len + 1);
 
-	PHP_RUNKIT_DEL_MAGIC_METHOD(ce, orig_cfe);
+	PHP_RUNKIT_DEL_MAGIC_METHOD(ce, orig_cfe TSRMLS_CC);
 
 	return ZEND_HASH_APPLY_KEEP;
 }
@@ -392,7 +392,7 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 	fe->common.scope = ce;
 	fe->common.prototype = _php_runkit_get_method_prototype(ce->parent, methodname_lower, methodname_lower_len TSRMLS_CC);
 
-	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, methodname_lower, methodname_lower_len, fe, orig_fe);
+	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, methodname_lower, methodname_lower_len, fe, orig_fe TSRMLS_CC);
 	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 6,
 				       ancestor_class, ce, fe, methodname_lower, methodname_lower_len, orig_fe);
 
@@ -443,7 +443,7 @@ static int php_runkit_method_copy(const char *dclass, int dclass_len, const char
 	dfeInHashTable->common.scope = dce;
 	dfeInHashTable->common.prototype = _php_runkit_get_method_prototype(dce->parent, dfunc_lower, dfunc_lower_len TSRMLS_CC);
 
-	PHP_RUNKIT_ADD_MAGIC_METHOD(dce, dfunc_lower, dfunc_lower_len, dfeInHashTable, NULL);
+	PHP_RUNKIT_ADD_MAGIC_METHOD(dce, dfunc_lower, dfunc_lower_len, dfeInHashTable, NULL TSRMLS_CC);
 
 	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 7,
 				       dce, dce, dfeInHashTable, dfunc_lower, dfunc_lower_len, NULL, 0);
@@ -522,7 +522,7 @@ PHP_FUNCTION(runkit_method_remove)
 	}
 
 	efree(methodname_lower);
-	PHP_RUNKIT_DEL_MAGIC_METHOD(ce, fe);
+	PHP_RUNKIT_DEL_MAGIC_METHOD(ce, fe TSRMLS_CC);
 
 	RETURN_TRUE;
 }
@@ -603,7 +603,7 @@ PHP_FUNCTION(runkit_method_rename)
 		RETURN_FALSE;
 	}
 
-	PHP_RUNKIT_DEL_MAGIC_METHOD(ce, fe);
+	PHP_RUNKIT_DEL_MAGIC_METHOD(ce, fe TSRMLS_CC);
 
 	if (php_runkit_fetch_class_method(classname, classname_len, newname, newname_len, &ce, &fe TSRMLS_CC) == FAILURE) {
 		efree(newname_lower);
@@ -615,7 +615,7 @@ PHP_FUNCTION(runkit_method_rename)
 	fe->common.scope = ce;
 	fe->common.prototype = _php_runkit_get_method_prototype(ce->parent, newname_lower, newname_lower_len TSRMLS_CC);;
 
-	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, newname_lower, newname_lower_len, fe, NULL);
+	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, newname_lower, newname_lower_len, fe, NULL TSRMLS_CC);
 	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 7,
 				       ce, ce, fe, newname_lower, newname_lower_len, NULL, 0);
 

@@ -182,7 +182,7 @@ static int php_runkit_import_class_methods(zend_class_entry *dce, zend_class_ent
 			zend_hash_move_forward_ex(&ce->function_table, &pos);
 			continue;
 		}
-		PHP_RUNKIT_ADD_MAGIC_METHOD(dce, fn, fn_len, fe, dfe);
+		PHP_RUNKIT_ADD_MAGIC_METHOD(dce, fn, fn_len, fe, dfe TSRMLS_CC);
 		zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 7,
 		                               dce, dce, fe, fn, fn_len, dfe, 0);
 		zend_hash_move_forward_ex(&ce->function_table, &pos);

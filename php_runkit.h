@@ -38,6 +38,8 @@
 #include "Zend/zend_closures.h"
 #endif
 
+#include "Zend/zend_interfaces.h"
+
 #define PHP_RUNKIT_VERSION					"1.0.4-dev"
 #define PHP_RUNKIT_SANDBOX_CLASSNAME		"Runkit_Sandbox"
 #define PHP_RUNKIT_SANDBOX_PARENT_CLASSNAME	"Runkit_Sandbox_Parent"
@@ -171,6 +173,12 @@ extern ZEND_DECLARE_MODULE_GLOBALS(runkit);
 #     define RUNKIT_UNDER53                          1
 #     define RUNKIT_ABOVE53                          0
 #     define zend_hash_quick_del(ht, key, key_len, h) zend_hash_del(ht, key, key_len)
+#endif
+
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 6) || (PHP_MAJOR_VERSION >= 6)
+#     define RUNKIT_ABOVE56                          1
+#else
+#     define RUNKIT_ABOVE56                          0
 #endif
 
 #ifdef ZEND_ACC_RETURN_REFERENCE
@@ -397,7 +405,7 @@ struct _php_runkit_sandbox_object {
 	} \
 }
 
-inline static void PHP_RUNKIT_ADD_MAGIC_METHOD(zend_class_entry *ce, char *lcmname, int mname_len, zend_function *fe, const zend_function *orig_fe) {
+inline static void PHP_RUNKIT_ADD_MAGIC_METHOD(zend_class_entry *ce, char *lcmname, int mname_len, zend_function *fe, const zend_function *orig_fe TSRMLS_DC) {
 	if (!strncmp((lcmname), ZEND_CLONE_FUNC_NAME, (mname_len))) {
 		(ce)->clone = (fe); (fe)->common.fn_flags |= ZEND_ACC_CLONE;
 	} else if (!strncmp((lcmname), ZEND_CONSTRUCTOR_FUNC_NAME, (mname_len))) {
@@ -424,6 +432,14 @@ inline static void PHP_RUNKIT_ADD_MAGIC_METHOD(zend_class_entry *ce, char *lcmna
 	} else if (!strncmp((lcmname), ZEND_TOSTRING_FUNC_NAME, (mname_len))) {
 		(ce)->__tostring = (fe);
 #endif
+#if RUNKIT_ABOVE56
+	} else if (!strncmp((lcmname), ZEND_DEBUGINFO_FUNC_NAME, (mname_len))) {
+		(ce)->__debugInfo = (fe);
+#endif
+	} else if (instanceof_function_ex(ce, zend_ce_serializable, 1 TSRMLS_CC) && !strncmp((lcmname), "serialize", (mname_len))) {
+		(ce)->serialize_func = (fe);
+	} else if (instanceof_function_ex(ce, zend_ce_serializable, 1 TSRMLS_CC) && !strncmp((lcmname), "unserialize", (mname_len))) {
+		(ce)->unserialize_func = (fe);
 	} else if ((ce)->name_length == (mname_len)) {
 		char *lowercase_name = emalloc((ce)->name_length + 1);
 		zend_str_tolower_copy(lowercase_name, (ce)->name, (ce)->name_length);
@@ -437,24 +453,31 @@ inline static void PHP_RUNKIT_ADD_MAGIC_METHOD(zend_class_entry *ce, char *lcmna
 	}
 }
 
-inline static void PHP_RUNKIT_DEL_MAGIC_METHOD(zend_class_entry *ce, const zend_function *fe) {
-	if      ((ce)->constructor == (fe))       (ce)->constructor  = NULL;
-	else if ((ce)->destructor == (fe))        (ce)->destructor   = NULL;
-	else if ((ce)->__get == (fe))             (ce)->__get        = NULL;
-	else if ((ce)->__set == (fe))             (ce)->__set        = NULL;
-	else if ((ce)->__unset == (fe))           (ce)->__unset      = NULL;
-	else if ((ce)->__isset == (fe))           (ce)->__isset      = NULL;
-	else if ((ce)->__call == (fe))            (ce)->__call       = NULL;
+inline static void PHP_RUNKIT_DEL_MAGIC_METHOD(zend_class_entry *ce, const zend_function *fe TSRMLS_DC) {
+	if      ((ce)->constructor == (fe))       (ce)->constructor      = NULL;
+	else if ((ce)->destructor == (fe))        (ce)->destructor       = NULL;
+	else if ((ce)->__get == (fe))             (ce)->__get            = NULL;
+	else if ((ce)->__set == (fe))             (ce)->__set            = NULL;
+	else if ((ce)->__unset == (fe))           (ce)->__unset          = NULL;
+	else if ((ce)->__isset == (fe))           (ce)->__isset          = NULL;
+	else if ((ce)->__call == (fe))            (ce)->__call           = NULL;
 #if RUNKIT_ABOVE53
-	else if ((ce)->__callstatic == (fe))      (ce)->__callstatic = NULL;
+	else if ((ce)->__callstatic == (fe))      (ce)->__callstatic     = NULL;
 #endif
 #if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 2 || PHP_MAJOR_VERSION > 5
-	else if ((ce)->__tostring == (fe))        (ce)->__tostring   = NULL;
+	else if ((ce)->__tostring == (fe))        (ce)->__tostring       = NULL;
 #endif
-	else if ((ce)->clone == (fe))             (ce)->clone        = NULL;
+#if RUNKIT_ABOVE56
+	else if ((ce)->__debugInfo == (fe))       (ce)->__debugInfo      = NULL;
+#endif
+	else if ((ce)->clone == (fe))             (ce)->clone            = NULL;
+	else if (instanceof_function_ex(ce, zend_ce_serializable, 1 TSRMLS_CC) && (ce)->serialize_func == (fe))
+		(ce)->serialize_func   = NULL;
+	else if (instanceof_function_ex(ce, zend_ce_serializable, 1 TSRMLS_CC) && (ce)->unserialize_func == (fe))
+		(ce)->unserialize_func = NULL;
 }
 
-inline static void PHP_RUNKIT_INHERIT_MAGIC(zend_class_entry *ce, const zend_function *fe, const zend_function *orig_fe) {
+inline static void PHP_RUNKIT_INHERIT_MAGIC(zend_class_entry *ce, const zend_function *fe, const zend_function *orig_fe TSRMLS_DC) {
 	if ((ce)->__get == (orig_fe) && (ce)->parent->__get == (fe)) {
 		(ce)->__get        = (ce)->parent->__get;
 	} else if ((ce)->__set        == (orig_fe) && (ce)->parent->__set == (fe)) {
@@ -479,6 +502,16 @@ inline static void PHP_RUNKIT_INHERIT_MAGIC(zend_class_entry *ce, const zend_fun
 		(ce)->destructor   = (ce)->parent->destructor;
 	} else if ((ce)->constructor  == (orig_fe) && (ce)->parent->constructor == (fe)) {
 		(ce)->constructor  = (ce)->parent->constructor;
+#if RUNKIT_ABOVE56
+	} else if ((ce)->__debugInfo  == (orig_fe) && (ce)->parent->__debugInfo == (fe)) {
+		(ce)->__debugInfo  = (ce)->parent->__debugInfo;
+#endif
+	} else if (instanceof_function_ex(ce, zend_ce_serializable, 1 TSRMLS_CC) &&
+		   (ce)->serialize_func == (orig_fe) && (ce)->parent->serialize_func == (fe)) {
+		(ce)->serialize_func = (ce)->parent->serialize_func;
+	} else if (instanceof_function_ex(ce, zend_ce_serializable, 1 TSRMLS_CC) &&
+		   (ce)->unserialize_func == (orig_fe) && (ce)->parent->unserialize_func == (fe)) {
+		(ce)->unserialize_func = (ce)->parent->unserialize_func;
 	}
 }
 

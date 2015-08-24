@@ -60,7 +60,7 @@ Execute code in restricted environment (sandboxing).
 
      Fixes:
          * All ways of adding and removing magic methods and old-style constructors
-           were reworked and corrected (Thanks to Anthony Dovgal for issue #35).
+           were reworked and corrected (Thanks to Anthony Dovgal for issues #35, #57, and #79).
          * Side effect of redefining, adding and removing class constant (Issue #25) was eliminated
          * Adding of non-lowercase default properties was fixed (removed lowercasing)
          * Skip the leading slash in class names
@@ -94,6 +94,7 @@ Execute code in restricted environment (sandboxing).
     <file name="_fpm_include.inc" role="test" />
     <file name="_fpm_skipif.inc" role="test" />
     <file name="runkit_add_magic_methods.phpt" role="test" />
+    <file name="runkit_add_magic_serialize_method_ignored_for_common_classes.phpt" role="test" />
     <file name="runkit_add_old_style_ctor.phpt" role="test" />
     <file name="runkit_add_old_style_ctor1.phpt" role="test" />
     <file name="runkit_add_old_style_ctor_by_adopting.phpt" role="test" />
@@ -181,6 +182,11 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_methods_redefining_and_cache.phpt" role="test" />
     <file name="runkit_methods_returning_by_reference.phpt" role="test" />
     <file name="runkit_redefine_old_style_ctor.phpt" role="test" />
+    <file name="runkit_remove_magic_call_method.phpt" role="test" />
+    <file name="runkit_remove_magic_callstatic_method.phpt" role="test" />
+    <file name="runkit_remove_magic_serialize_method.phpt" role="test" />
+    <file name="runkit_remove_magic_tostring_method.phpt" role="test" />
+    <file name="runkit_remove_magic_unserialize_method.phpt" role="test" />
     <file name="runkit_return_value_used.phpt" role="test" />
     <file name="runkit_zval_inspect.phpt" role="test" />
     <file name="runkit_static_vars.phpt" role="test" />
