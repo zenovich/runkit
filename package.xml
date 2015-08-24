@@ -57,6 +57,7 @@ Execute code in restricted environment (sandboxing).
          * The possible crash on manipulating constants having length less than two characters was eliminated
          * Crash after using runkit_class_adopt when inherited methods access properties of the parent class (issue #59)
          * Crash on calling renamed private/protected method (issue #64)
+         * Crash when copied function contains finally (issue #77) (Thanks to Antony Dovgal)
 
      Fixes:
          * All ways of adding and removing magic methods and old-style constructors

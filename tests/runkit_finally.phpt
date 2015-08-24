@@ -1,5 +1,9 @@
 --TEST--
-copy method with finally 
+copy method with finally
+--SKIPIF--
+<?
+	if(!extension_loaded("runkit") || !RUNKIT_FEATURE_MANIPULATION) print "skip";
+	if(version_compare(PHP_VERSION, '5.5.0', '<')) print "skip";
 --FILE--
 <?php
 
