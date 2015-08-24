@@ -194,6 +194,9 @@ void php_runkit_function_copy_ctor(zend_function *fe, const char *newname, int n
 #ifdef ZEND_GOTO
 					case ZEND_GOTO:
 #endif
+#ifdef ZEND_FAST_CALL
+					case ZEND_FAST_CALL:
+#endif
 					case ZEND_JMP:
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 						if (opcode_copy[i].op1.jmp_addr >= fe->op_array.opcodes &&
