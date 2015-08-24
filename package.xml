@@ -55,7 +55,8 @@ Execute code in restricted environment (sandboxing).
          * Building and working with PHP4 were fixed
          * Crash on syntax error in source file importing with runkit_import was fixed
          * The possible crash on manipulating constants having length less than two characters was eliminated
-         * Crash after using runkit_class_adopt when inherited methods access properties of the parent class
+         * Crash after using runkit_class_adopt when inherited methods access properties of the parent class (issue #59)
+         * Crash on calling renamed private/protected method (issue #64)
 
      Fixes:
          * All ways of adding and removing magic methods and old-style constructors
@@ -168,6 +169,7 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_method_remove_and_reflection.phpt" role="test" />
     <file name="runkit_method_remove_and_reflection_with_inheritance.phpt" role="test" />
     <file name="runkit_method_rename.phpt" role="test" />
+    <file name="runkit_method_rename_and_access.phpt" role="test" />
     <file name="runkit_method_rename_and_reflection.phpt" role="test" />
     <file name="runkit_method_rename_inheritance.phpt" role="test" />
     <file name="runkit_methods_redefining_and_cache.inc" role="test" />

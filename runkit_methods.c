@@ -612,6 +612,9 @@ PHP_FUNCTION(runkit_method_rename)
 		RETURN_FALSE;
 	}
 
+	fe->common.scope = ce;
+	fe->common.prototype = _php_runkit_get_method_prototype(ce->parent, newname_lower, newname_lower_len TSRMLS_CC);;
+
 	PHP_RUNKIT_ADD_MAGIC_METHOD(ce, newname_lower, newname_lower_len, fe, NULL);
 	zend_hash_apply_with_arguments(RUNKIT_53_TSRMLS_PARAM(EG(class_table)), (apply_func_args_t)php_runkit_update_children_methods, 7,
 				       ce, ce, fe, newname_lower, newname_lower_len, NULL, 0);
