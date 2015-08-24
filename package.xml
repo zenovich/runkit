@@ -77,6 +77,7 @@ Execute code in restricted environment (sandboxing).
          * Importing class extending another class was fixed (Issue #48) (thanks to mido0258)
          * User-defined functions should remain after Runkit's shutdown
            (thanks to Sara Golemon for code and to https://github.com/cobrafast for test)
+         * Restoring of misplaced internal functions was corrected (issue #63)
 
      Build system improvements:
          * Declarations after statement were restricted during compiling
@@ -89,6 +90,9 @@ Execute code in restricted environment (sandboxing).
  <contents>
   <dir name="/">
    <dir name="tests">
+    <file name="_fcgi.inc" role="test" />
+    <file name="_fpm_include.inc" role="test" />
+    <file name="_fpm_skipif.inc" role="test" />
     <file name="runkit_add_magic_methods.phpt" role="test" />
     <file name="runkit_add_old_style_ctor.phpt" role="test" />
     <file name="runkit_add_old_style_ctor1.phpt" role="test" />
@@ -126,6 +130,7 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_functions_redefining_and_cache.inc" role="test" />
     <file name="runkit_functions_redefining_and_cache.phpt" role="test" />
     <file name="runkit_functions_returning_by_reference.phpt" role="test" />
+    <file name="runkit_fpm_internal_function_restore.phpt" role="test" />
     <file name="runkit_import_class.inc" role="test" />
     <file name="runkit_import_class.phpt" role="test" />
     <file name="runkit_import_class_extend.inc" role="test" />

@@ -104,18 +104,6 @@ static int php_runkit_fetch_function(int fname_type, const char *fname, int fnam
 #else
 		zend_hash_add(RUNKIT_G(replaced_internal_functions), fname_lower, fname_lower_len + 1, (void*)fe, sizeof(zend_function), NULL);
 #endif
-		if (flag >= PHP_RUNKIT_FETCH_FUNCTION_RENAME) {
-			zend_hash_key hash_key;
-
-			if (!RUNKIT_G(misplaced_internal_functions)) {
-				ALLOC_HASHTABLE(RUNKIT_G(misplaced_internal_functions));
-				zend_hash_init(RUNKIT_G(misplaced_internal_functions), 4, NULL, php_runkit_hash_key_dtor, 0);
-			}
-			hash_key.nKeyLength = fname_lower_len + 1;
-			PHP_RUNKIT_HASH_KEY(&hash_key) = estrndup(fname_lower, PHP_RUNKIT_HASH_KEYLEN(&hash_key));
-			zend_hash_next_index_insert(RUNKIT_G(misplaced_internal_functions), (void*)&hash_key, sizeof(zend_hash_key), NULL);
-		}
-
 		/*
 		 * If internal functions have been modified then runkit's request shutdown handler
 		 * should be called after all other modules' ones.
@@ -662,12 +650,25 @@ PHP_FUNCTION(runkit_function_rename)
 		func.common.function_name = estrndup(dfunc, dfunc_len);
 	}
 
-	if (zend_hash_add(EG(function_table), dfunc_lower, dfunc_len + 1, &func, sizeof(zend_function), NULL) == FAILURE) {
+	if (zend_hash_add(EG(function_table), dfunc_lower, dfunc_lower_len + 1, &func, sizeof(zend_function), NULL) == FAILURE) {
 		efree(dfunc_lower);
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to add reference to new function name %s()", dfunc);
 		zend_function_dtor(sfe);
 		RETURN_FALSE;
 	}
+
+	if (func.type == ZEND_INTERNAL_FUNCTION) {
+		zend_hash_key hash_key;
+
+		if (!RUNKIT_G(misplaced_internal_functions)) {
+			ALLOC_HASHTABLE(RUNKIT_G(misplaced_internal_functions));
+			zend_hash_init(RUNKIT_G(misplaced_internal_functions), 4, NULL, php_runkit_hash_key_dtor, 0);
+		}
+		hash_key.nKeyLength = dfunc_lower_len + 1;
+		PHP_RUNKIT_HASH_KEY(&hash_key) = estrndup(dfunc_lower, PHP_RUNKIT_HASH_KEYLEN(&hash_key));
+		zend_hash_next_index_insert(RUNKIT_G(misplaced_internal_functions), (void*)&hash_key, sizeof(zend_hash_key), NULL);
+	}
+
 	efree(dfunc_lower);
 
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
