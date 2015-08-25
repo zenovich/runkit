@@ -121,6 +121,16 @@ Then just rebuild using the --enable-maintainer-zts option specified above.
 
 runkit_lint() and runkit_lint_file() also exist as a simpler approach to verifying the syntactic legality of passed code within an isolated environment.
 
+## BUILDING AND INSTALLING IN UNIX
+```
+git clone https://github.com/zenovich/runkit.git
+cd runkit
+phpize
+./configure
+make
+make test
+sudo make install
+```
 
 ## BUILDING THE RUNKIT MODULE FOR WINDOWS
 First, place source code of runkit into a temporary directory, for example "C:\runkit-source".
