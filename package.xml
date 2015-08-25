@@ -168,6 +168,7 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_method_add.phpt" role="test" />
     <file name="runkit_method_add_and_doc_comment.phpt" role="test" />
     <file name="runkit_method_copy.phpt" role="test" />
+    <file name="runkit_method_copy_and_doc_comment.phpt" role="test" />
     <file name="runkit_method_copy_uninit_read.phpt" role="test" />
     <file name="runkit_method_redefine.phpt" role="test" />
     <file name="runkit_method_redefine_and_doc_comment.phpt" role="test" />
