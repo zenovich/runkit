@@ -708,11 +708,11 @@ PHP_FUNCTION(runkit_function_redefine)
 	zend_bool return_ref = 0;
 	char *delta = NULL, *delta_desc;
 	int retval;
-	zend_function *fe;
+	zend_function *fe = NULL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
 			PHP_RUNKIT_STRING_SPEC "/" PHP_RUNKIT_STRING_SPEC PHP_RUNKIT_STRING_SPEC "|b"
-			PHP_RUNKIT_STRING_SPEC PHP_RUNKIT_STRING_SPEC,
+			PHP_RUNKIT_STRING_SPEC "!",
 			PHP_RUNKIT_STRING_PARAM(funcname),
 			PHP_RUNKIT_STRING_PARAM(arglist),
 			PHP_RUNKIT_STRING_PARAM(code),
@@ -735,8 +735,18 @@ PHP_FUNCTION(runkit_function_redefine)
 
 	php_runkit_remove_function_from_reflection_objects(fe TSRMLS_CC);
 
+	if (doc_comment == NULL && fe && fe->type == ZEND_USER_FUNCTION && fe->op_array.doc_comment) {
+		doc_comment_len = fe->op_array.doc_comment_len;
+		doc_comment = estrndup(fe->op_array.doc_comment, fe->op_array.doc_comment_len);
+	} else if (doc_comment) {
+		doc_comment = estrndup(doc_comment, doc_comment_len);
+	}
+
 	if (zend_hash_del(EG(function_table), funcname_lower, funcname_lower_len + 1) == FAILURE) {
 		efree(funcname_lower);
+		if (doc_comment) {
+			efree(doc_comment);
+		}
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to remove old function definition for %s()", funcname);
 		RETURN_FALSE;
 	}
@@ -750,6 +760,9 @@ PHP_FUNCTION(runkit_function_redefine)
 	if (!delta) {
 		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
 		efree(funcname_lower);
+		if (doc_comment) {
+			efree(doc_comment);
+		}
 		RETURN_FALSE;
 	}
 
@@ -762,12 +775,19 @@ PHP_FUNCTION(runkit_function_redefine)
 		!fe) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to locate newly added function");
 		efree(funcname_lower);
+		if (doc_comment) {
+			efree(doc_comment);
+		}
 		RETURN_FALSE;
 	}
 
 	efree(funcname_lower);
 
-	php_runkit_modify_function_doc_comment(fe, doc_comment, doc_comment_len);
+	if (fe->op_array.doc_comment) {
+		efree((void *)fe->op_array.doc_comment);
+	}
+	fe->op_array.doc_comment = doc_comment;
+	fe->op_array.doc_comment_len = doc_comment_len;
 
 	RETURN_BOOL(retval == SUCCESS);
 }

@@ -30,6 +30,18 @@ $r = new ReflectionMethod('runkit_class', 'runkit_method1');
 echo $r->getDocComment(), "\n";
 $r = new ReflectionMethod('runkit_class', 'runkit_method');
 echo $r->getDocComment(), "\n";
+echo "After redefine\n";
+runkit_method_redefine('runkit_class','runkit_method','', '', NULL, NULL);
+$r = new ReflectionMethod('runkit_class', 'runkit_method');
+echo $r->getDocComment(), "\n";
+echo "After redefine 2\n";
+runkit_method_redefine('runkit_class','runkit_method','', '');
+$r = new ReflectionMethod('runkit_class', 'runkit_method');
+echo $r->getDocComment(), "\n";
+echo "After redefine 3\n";
+runkit_method_redefine('runkit_class','runkit_method','', '', NULL, '');
+$r = new ReflectionMethod('runkit_class', 'runkit_method');
+echo $r->getDocComment(), "\n";
 ?>
 --EXPECT--
 /**
@@ -39,3 +51,9 @@ echo $r->getDocComment(), "\n";
 	 * old doc_comment
 	 */
 new doc_comment
+After redefine
+new doc_comment
+After redefine 2
+new doc_comment
+After redefine 3
+

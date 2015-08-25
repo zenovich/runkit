@@ -317,11 +317,16 @@ static inline void php_runkit_default_class_members_list_add(php_runkit_default_
 /* {{{ php_runkit_modify_function_doc_comment */
 static inline void php_runkit_modify_function_doc_comment(zend_function *fe, const char* doc_comment, int doc_comment_len) {
 	if (doc_comment && doc_comment_len > 0) {
-		if (fe->op_array.doc_comment) {
-			efree((void *)fe->op_array.doc_comment);
+		char *tmp = (char *) fe->op_array.doc_comment;
+		if (doc_comment) {
+			fe->op_array.doc_comment = estrndup(doc_comment, doc_comment_len);
+			fe->op_array.doc_comment_len = doc_comment_len;
+		} else {
+			fe->op_array.doc_comment = NULL;
 		}
-		fe->op_array.doc_comment = estrndup(doc_comment, doc_comment_len);
-		fe->op_array.doc_comment_len = doc_comment_len;
+		if (tmp) {
+			efree(tmp);
+		}
 	}
 }
 /* }}} */

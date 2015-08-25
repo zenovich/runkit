@@ -21,7 +21,15 @@ $r1 = new ReflectionFunction('runkit_function');
 echo $r1->getDocComment(), "\n";
 $r2 = new ReflectionFunction('runkitFunction');
 echo $r2->getDocComment(), "\n";
+runkit_function_redefine('runkitFunction','$b', 'echo "b is $b\n";', NULL, NULL);
+$r2 = new ReflectionFunction('runkitFunction');
+echo $r2->getDocComment(), "\n";
+runkit_function_redefine('runkitFunction','$b', 'echo "b is $b\n";');
+$r2 = new ReflectionFunction('runkitFunction');
+echo $r2->getDocComment(), "\n";
 ?>
 --EXPECT--
 new doc_comment1
+new doc_comment2
+new doc_comment2
 new doc_comment2

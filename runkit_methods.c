@@ -293,7 +293,7 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 	long argc = ZEND_NUM_ARGS();
 	long flags = ZEND_ACC_PUBLIC;
 
-	if (zend_parse_parameters(argc TSRMLS_CC, "ssss|ls",
+	if (zend_parse_parameters(argc TSRMLS_CC, "ssss|ls!",
 	                          &classname, &classname_len,
 	                          &methodname, &methodname_len,
 	                          &arguments, &arguments_len,
@@ -363,6 +363,10 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 		func.common.fn_flags |= ZEND_ACC_ALLOW_STATIC;
 	}
 
+	if (doc_comment == NULL && orig_fe && orig_fe->type == ZEND_USER_FUNCTION && orig_fe->op_array.doc_comment) {
+		doc_comment = orig_fe->op_array.doc_comment;
+		doc_comment_len = orig_fe->op_array.doc_comment_len;
+	}
 	php_runkit_modify_function_doc_comment(&func, doc_comment, doc_comment_len);
 
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)

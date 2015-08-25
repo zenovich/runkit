@@ -4,7 +4,7 @@ http://pear.php.net/dtd/tasks-1.0.xsd
 http://pear.php.net/dtd/package-2.0
 http://pear.php.net/dtd/package-2.0.xsd">
  <name>runkit</name>
- <uri>http://github.com/downloads/zenovich/runkit/runkit-1.0.3</uri>
+ <uri>http://github.com/zenovich/runkit/</uri>
  <summary>For all those things you.... probably shouldn&apos;t have been doing anyway....</summary>
  <description>Replace, rename, and remove user defined functions and classes.
 Define customized superglobal variables for general purpose use.
@@ -49,6 +49,7 @@ Execute code in restricted environment (sandboxing).
          + Allow disabling of allow_url_include in a Runkit_Sandbox (PHP >= 5.2) (Thanks to Sara Golemon)
          + New optional argument 'doc_comment' of functions runkit_method_add, runkit_method_redefine, runkit_function_add,
            and runkit_function_redefine was introduced to specify doc_comments.
+         + Preserve doc_comments on copying and redefining functions and methods.
 
      Critical fixes:
          * Highly probable crashes on using Reflection objects after modifying removing or renaming of functions, methods, and properties,
