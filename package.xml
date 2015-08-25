@@ -33,7 +33,7 @@ Execute code in restricted environment (sandboxing).
          - PHP 4.x is not supported anymore
          + Introduced new function "runkit_default_property_remove" (Thanks to Juhan Kundla)
          + Ability to add non-scalar default properties was added
-         + Magic methods __isset, __unset, __callStatic, and __toString are now supported.
+         + Magic methods __isset, __unset, __callStatic, serialize, unserialize, debugInfo and __toString are now supported.
          + Functions runkit_class_adopt &amp; runkit_class_emancipate now change class-hierarchy (issue #13)
          + Adding and redefining functions and methods, which return references, were fully implemented
            New optional argument 'return_ref' of functions runkit_function_add and runkit_function_redefine was introduced
@@ -47,6 +47,8 @@ Execute code in restricted environment (sandboxing).
            This feature works in PHP 5.x and above. The default value for this parameter is FALSE.
          + Namespaces are fully supported by constants manipulation functions (Thanks to Antony Dovgal)
          + Allow disabling of allow_url_include in a Runkit_Sandbox (PHP >= 5.2) (Thanks to Sara Golemon)
+         + New optional argument 'doc_comment' of functions runkit_method_add, runkit_method_redefine, runkit_function_add,
+           and runkit_function_redefine was introduced to specify doc_comments.
 
      Critical fixes:
          * Highly probable crashes on using Reflection objects after modifying removing or renaming of functions, methods, and properties,
@@ -79,6 +81,7 @@ Execute code in restricted environment (sandboxing).
          * User-defined functions should remain after Runkit's shutdown
            (thanks to Sara Golemon for code and to https://github.com/cobrafast for test)
          * Restoring of misplaced internal functions was corrected (issue #63)
+         * Delete temporary function on errors of adding/redefining methods
 
      Build system improvements:
          * Declarations after statement were restricted during compiling
@@ -118,8 +121,10 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_function_redefine_and_reflection.phpt" role="test" />
     <file name="runkit_function_redefine_and_revert.phpt" role="test" />
     <file name="runkit_function_add.phpt" role="test" />
+    <file name="runkit_function_add_and_doc_comment.phpt" role="test" />
     <file name="runkit_function_copy.phpt" role="test" />
     <file name="runkit_function_redefine.phpt" role="test" />
+    <file name="runkit_function_redefine_and_doc_comment.phpt" role="test" />
     <file name="runkit_function_redefine_from_anonymous.phpt" role="test" />
     <file name="runkit_function_remove.phpt" role="test" />
     <file name="runkit_function_remove_and_reflection_parameter.phpt" role="test" />
@@ -161,9 +166,11 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_import_properies_modified_via_reflection.phpt" role="test" />
     <file name="runkit_lint.phpt" role="test" />
     <file name="runkit_method_add.phpt" role="test" />
+    <file name="runkit_method_add_and_doc_comment.phpt" role="test" />
     <file name="runkit_method_copy.phpt" role="test" />
     <file name="runkit_method_copy_uninit_read.phpt" role="test" />
     <file name="runkit_method_redefine.phpt" role="test" />
+    <file name="runkit_method_redefine_and_doc_comment.phpt" role="test" />
     <file name="runkit_method_redefine_and_reflection.phpt" role="test" />
     <file name="runkit_method_redefine_and_reflection_with_inheritance.phpt" role="test" />
     <file name="runkit_method_redefine_protected.phpt" role="test" />

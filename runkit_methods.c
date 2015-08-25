@@ -285,20 +285,21 @@ int php_runkit_clean_children_methods(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce)
  */
 static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int add_or_update)
 {
-	const char *classname, *methodname, *arguments, *phpcode;
-	int classname_len, methodname_len, arguments_len, phpcode_len;
+	const char *classname, *methodname, *arguments, *phpcode, *doc_comment=NULL;
+	int classname_len, methodname_len, arguments_len, phpcode_len, doc_comment_len=0;
 	zend_class_entry *ce, *ancestor_class = NULL;
 	zend_function func, *fe, *orig_fe = NULL;
 	PHP_RUNKIT_DECL_STRING_PARAM(methodname_lower)
 	long argc = ZEND_NUM_ARGS();
 	long flags = ZEND_ACC_PUBLIC;
 
-	if (zend_parse_parameters(argc TSRMLS_CC, "s/s/ss|l",
+	if (zend_parse_parameters(argc TSRMLS_CC, "ssss|ls",
 	                          &classname, &classname_len,
 	                          &methodname, &methodname_len,
 	                          &arguments, &arguments_len,
 	                          &phpcode, &phpcode_len,
-	                          &flags) == FAILURE) {
+				  &flags,
+				  &doc_comment, &doc_comment_len) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -362,6 +363,8 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 		func.common.fn_flags |= ZEND_ACC_ALLOW_STATIC;
 	}
 
+	php_runkit_modify_function_doc_comment(&func, doc_comment, doc_comment_len);
+
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 	php_runkit_clear_all_functions_runtime_cache(TSRMLS_C);
 #endif
@@ -373,6 +376,9 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 	if (zend_hash_add_or_update(&ce->function_table, methodname_lower, methodname_lower_len + 1, &func, sizeof(zend_function), NULL, add_or_update) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to add method to class");
 		efree(methodname_lower);
+		if (zend_hash_del(EG(function_table), RUNKIT_TEMP_FUNCNAME, sizeof(RUNKIT_TEMP_FUNCNAME)) == FAILURE) {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to remove temporary function entry");
+		}
 		RETURN_FALSE;
 	}
 
@@ -457,7 +463,7 @@ static int php_runkit_method_copy(const char *dclass, int dclass_len, const char
    * Method API *
    ************** */
 
-/* {{{ proto bool runkit_method_add(string classname, string methodname, string args, string code[, long flags])
+/* {{{ proto bool runkit_method_add(string classname, string methodname, string args, string code[, long flags[, string doc_comment]])
 	Add a method to an already defined class */
 PHP_FUNCTION(runkit_method_add)
 {
@@ -465,7 +471,7 @@ PHP_FUNCTION(runkit_method_add)
 }
 /* }}} */
 
-/* {{{ proto bool runkit_method_redefine(string classname, string methodname, string args, string code[, long flags])
+/* {{{ proto bool runkit_method_redefine(string classname, string methodname, string args, string code[, long flags[, string doc_comment]])
 	Redefine an already defined class method */
 PHP_FUNCTION(runkit_method_redefine)
 {

@@ -239,7 +239,7 @@ int php_runkit_fetch_interface(const char *classname, int classname_len, zend_cl
 #if PHP_MAJOR_VERSION >= 6
 #define PHP_RUNKIT_FUNCTION_ADD_REF(f)	function_add_ref(f TSRMLS_CC)
 #define php_runkit_locate_scope(ce, fe, methodname_lower, methodname_len)   fe->common.scope
-#define PHP_RUNKIT_DECL_STRING_PARAM(param)		void *param; int32_t param##_len; zend_uchar param##_type;
+#define PHP_RUNKIT_DECL_STRING_PARAM(param)		void *param = NULL; int32_t param##_len = 0; zend_uchar param##_type;
 #define PHP_RUNKIT_STRING_SPEC				"t"
 #define PHP_RUNKIT_STRING_PARAM(param)			&param, &param##_len, &param##_type
 #define PHP_RUNKIT_STRTOLOWER(param)			php_u_strtolower(param, &param##_len, UG(default_locale))
@@ -252,7 +252,7 @@ int php_runkit_fetch_interface(const char *classname, int classname_len, zend_cl
 #else
 #define PHP_RUNKIT_FUNCTION_ADD_REF(f)	function_add_ref(f)
 #define php_runkit_locate_scope(ce, fe, methodname_lower, methodname_len)   fe->common.scope
-#define PHP_RUNKIT_DECL_STRING_PARAM(p)			char *p; int p##_len;
+#define PHP_RUNKIT_DECL_STRING_PARAM(p)			char *p = NULL; int p##_len = 0;
 #define PHP_RUNKIT_STRING_SPEC				"s"
 #define PHP_RUNKIT_STRING_PARAM(p)			&p, &p##_len
 #define PHP_RUNKIT_STRTOLOWER(p)			php_strtolower(p, p##_len)
@@ -310,6 +310,18 @@ static inline void php_runkit_default_class_members_list_add(php_runkit_default_
 		new_el->offset = offset;
 		new_el->next = *head;
 		*head = new_el;
+	}
+}
+/* }}} */
+
+/* {{{ php_runkit_modify_function_doc_comment */
+static inline void php_runkit_modify_function_doc_comment(zend_function *fe, const char* doc_comment, int doc_comment_len) {
+	if (doc_comment && doc_comment_len > 0) {
+		if (fe->op_array.doc_comment) {
+			efree((void *)fe->op_array.doc_comment);
+		}
+		fe->op_array.doc_comment = estrndup(doc_comment, doc_comment_len);
+		fe->op_array.doc_comment_len = doc_comment_len;
 	}
 }
 /* }}} */

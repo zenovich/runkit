@@ -495,7 +495,7 @@ int php_runkit_restore_internal_functions(RUNKIT_53_TSRMLS_ARG(void *pDest), int
    * Functions API *
    ***************** */
 
-/* {{{ proto bool runkit_function_add(string funcname, string arglist, string code[, bool return_reference = FALSE])
+/* {{{ proto bool runkit_function_add(string funcname, string arglist, string code[, bool return_reference = FALSE[, doc_comment = ""]])
 	Add a new function, similar to create_function, but allows specifying name
 	There's nothing about this function that's better than eval(), it's here for completeness */
 PHP_FUNCTION(runkit_function_add)
@@ -504,16 +504,20 @@ PHP_FUNCTION(runkit_function_add)
 	PHP_RUNKIT_DECL_STRING_PARAM(funcname_lower)
 	PHP_RUNKIT_DECL_STRING_PARAM(arglist)
 	PHP_RUNKIT_DECL_STRING_PARAM(code)
+	PHP_RUNKIT_DECL_STRING_PARAM(doc_comment)
 	zend_bool return_ref = 0;
 	char *delta = NULL, *delta_desc = NULL;
 	int retval;
+	zend_function *fe;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
-			PHP_RUNKIT_STRING_SPEC "/" PHP_RUNKIT_STRING_SPEC PHP_RUNKIT_STRING_SPEC "|b",
+			PHP_RUNKIT_STRING_SPEC "/" PHP_RUNKIT_STRING_SPEC PHP_RUNKIT_STRING_SPEC "|bs",
 			PHP_RUNKIT_STRING_PARAM(funcname),
 			PHP_RUNKIT_STRING_PARAM(arglist),
 			PHP_RUNKIT_STRING_PARAM(code),
-			&return_ref) == FAILURE) {
+			&return_ref,
+			PHP_RUNKIT_STRING_PARAM(doc_comment)
+			) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -546,7 +550,17 @@ PHP_FUNCTION(runkit_function_add)
 	retval = zend_eval_string(delta, NULL, delta_desc TSRMLS_CC);
 	efree(delta_desc);
 	efree(delta);
+
+	if (zend_hash_find(EG(function_table), funcname_lower, funcname_lower_len + 1, (void*)&fe) == FAILURE ||
+		!fe) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to locate newly added function");
+		efree(funcname_lower);
+		RETURN_FALSE;
+	}
+
 	efree(funcname_lower);
+
+	php_runkit_modify_function_doc_comment(fe, doc_comment, doc_comment_len);
 
 	RETURN_BOOL(retval == SUCCESS);
 }
@@ -690,17 +704,21 @@ PHP_FUNCTION(runkit_function_redefine)
 	PHP_RUNKIT_DECL_STRING_PARAM(funcname_lower)
 	PHP_RUNKIT_DECL_STRING_PARAM(arglist)
 	PHP_RUNKIT_DECL_STRING_PARAM(code)
+	PHP_RUNKIT_DECL_STRING_PARAM(doc_comment)
 	zend_bool return_ref = 0;
 	char *delta = NULL, *delta_desc;
 	int retval;
 	zend_function *fe;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
-			PHP_RUNKIT_STRING_SPEC "/" PHP_RUNKIT_STRING_SPEC PHP_RUNKIT_STRING_SPEC "|b",
+			PHP_RUNKIT_STRING_SPEC "/" PHP_RUNKIT_STRING_SPEC PHP_RUNKIT_STRING_SPEC "|b"
+			PHP_RUNKIT_STRING_SPEC PHP_RUNKIT_STRING_SPEC,
 			PHP_RUNKIT_STRING_PARAM(funcname),
 			PHP_RUNKIT_STRING_PARAM(arglist),
 			PHP_RUNKIT_STRING_PARAM(code),
-			&return_ref) == FAILURE) {
+			&return_ref,
+			PHP_RUNKIT_STRING_PARAM(doc_comment)
+			) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -717,17 +735,21 @@ PHP_FUNCTION(runkit_function_redefine)
 
 	php_runkit_remove_function_from_reflection_objects(fe TSRMLS_CC);
 
-	if (zend_hash_del(EG(function_table), funcname_lower, funcname_len + 1) == FAILURE) {
+	if (zend_hash_del(EG(function_table), funcname_lower, funcname_lower_len + 1) == FAILURE) {
 		efree(funcname_lower);
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to remove old function definition for %s()", funcname);
 		RETURN_FALSE;
 	}
-	efree(funcname_lower);
+
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+	php_runkit_clear_all_functions_runtime_cache(TSRMLS_C);
+#endif
 
 	spprintf(&delta, 0, "function %s%s(%s){%s}", return_ref ? "&" : "", funcname, arglist, code);
 
 	if (!delta) {
 		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
+		efree(funcname_lower);
 		RETURN_FALSE;
 	}
 
@@ -736,9 +758,16 @@ PHP_FUNCTION(runkit_function_redefine)
 	efree(delta_desc);
 	efree(delta);
 
-#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
-	php_runkit_clear_all_functions_runtime_cache(TSRMLS_C);
-#endif
+	if (zend_hash_find(EG(function_table), funcname_lower, funcname_lower_len + 1, (void*)&fe) == FAILURE ||
+		!fe) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to locate newly added function");
+		efree(funcname_lower);
+		RETURN_FALSE;
+	}
+
+	efree(funcname_lower);
+
+	php_runkit_modify_function_doc_comment(fe, doc_comment, doc_comment_len);
 
 	RETURN_BOOL(retval == SUCCESS);
 }
