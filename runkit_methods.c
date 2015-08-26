@@ -371,9 +371,7 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 	}
 
 	func = *source_fe;
-	PHP_RUNKIT_FUNCTION_ADD_REF(&func);
-	efree((void*)func.common.function_name);
-	func.common.function_name = estrndup(methodname, methodname_len);
+	php_runkit_function_copy_ctor(&func, methodname, methodname_len TSRMLS_CC);
 
 	if (flags & ZEND_ACC_PRIVATE) {
 		func.common.fn_flags &= ~ZEND_ACC_PPP_MASK;
