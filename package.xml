@@ -85,6 +85,7 @@ Execute code in restricted environment (sandboxing).
            (thanks to Sara Golemon for code and to https://github.com/cobrafast for test)
          * Restoring of misplaced internal functions was corrected (issue #63)
          * Delete temporary function on errors of adding/redefining methods
+         * runkit_method_add, runkit_method_copy, and runkit_method_rename now override derived methods (issue #62)
 
      Build system improvements:
          * Declarations after statement were restricted during compiling
@@ -181,6 +182,7 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_method_add_closure_and_doc_comment.phpt" role="test" />
     <file name="runkit_method_add_closure_and_doc_comment_from_closure.phpt" role="test" />
     <file name="runkit_method_add_closure_and_flags.phpt" role="test" />
+    <file name="runkit_method_add_overriding_parent_method.phpt" role="test" />
     <file name="runkit_method_copy.phpt" role="test" />
     <file name="runkit_method_copy_and_doc_comment.phpt" role="test" />
     <file name="runkit_method_copy_uninit_read.phpt" role="test" />

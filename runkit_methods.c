@@ -358,6 +358,16 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 			RETURN_FALSE;
 		}
 		ancestor_class = ce;
+		if (zend_hash_find(&ce->function_table, methodname_lower, methodname_lower_len + 1, (void*)&fe) != FAILURE) {
+			if (php_runkit_locate_scope(ce, fe, methodname_lower, methodname_lower_len) == ce) {
+				php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s::%s() already exists", classname, methodname);
+				efree(methodname_lower);
+				RETURN_FALSE;
+			} else {
+				php_runkit_remove_function_from_reflection_objects(fe TSRMLS_CC);
+				zend_hash_del(&ce->function_table, methodname_lower, methodname_lower_len + 1);
+			}
+		}
 	}
 
 	if (!source_fe) {
@@ -449,6 +459,7 @@ static int php_runkit_method_copy(const char *dclass, int dclass_len, const char
 	zend_class_entry *dce, *sce;
 	zend_function dfe, *sfe, *dfeInHashTable;
 	PHP_RUNKIT_DECL_STRING_PARAM(dfunc_lower)
+	zend_function *fe;
 
 	if (php_runkit_fetch_class_method(sclass, sclass_len, sfunc, sfunc_len, &sce, &sfe TSRMLS_CC) == FAILURE) {
 		return FAILURE;
@@ -464,10 +475,18 @@ static int php_runkit_method_copy(const char *dclass, int dclass_len, const char
 		return FAILURE;
 	}
 
-	if (zend_hash_exists(&dce->function_table, dfunc_lower, dfunc_lower_len + 1)) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Destination method %s::%s() already exists", dclass, dfunc);
-		efree(dfunc_lower);
-		return FAILURE;
+	if (zend_hash_find(&dce->function_table, dfunc_lower, dfunc_lower_len + 1, (void*)&fe) != FAILURE) {
+		if (php_runkit_locate_scope(dce, fe, dfunc_lower, dfunc_lower_len) == dce) {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Destination method %s::%s() already exists", dclass, dfunc);
+			efree(dfunc_lower);
+			return FAILURE;
+		} else {
+			php_runkit_remove_function_from_reflection_objects(fe TSRMLS_CC);
+			zend_hash_del(&dce->function_table, dfunc_lower, dfunc_lower_len + 1);
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+			php_runkit_clear_all_functions_runtime_cache(TSRMLS_C);
+#endif
+		}
 	}
 
 	dfe = *sfe;
@@ -574,7 +593,7 @@ PHP_FUNCTION(runkit_method_remove)
 PHP_FUNCTION(runkit_method_rename)
 {
 	zend_class_entry *ce, *ancestor_class = NULL;
-	zend_function *fe, func;
+	zend_function *fe, func, *old_fe;
 	PHP_RUNKIT_DECL_STRING_PARAM(classname)
 	PHP_RUNKIT_DECL_STRING_PARAM(methodname)
 	PHP_RUNKIT_DECL_STRING_PARAM(newname)
@@ -609,11 +628,16 @@ PHP_FUNCTION(runkit_method_rename)
 		RETURN_FALSE;
 	}
 
-	if (zend_hash_exists(&ce->function_table, newname_lower, newname_lower_len + 1)) {
-		efree(newname_lower);
-		efree(methodname_lower);
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s::%s() already exists", classname, newname);
-		RETURN_FALSE;
+	if (zend_hash_find(&ce->function_table, newname_lower, newname_lower_len + 1, (void*)&old_fe) != FAILURE) {
+		if (php_runkit_locate_scope(ce, old_fe, newname_lower, newname_lower_len) == ce) {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s::%s() already exists", classname, methodname);
+			efree(methodname_lower);
+			efree(newname_lower);
+			RETURN_FALSE;
+		} else {
+			php_runkit_remove_function_from_reflection_objects(old_fe TSRMLS_CC);
+			zend_hash_del(&ce->function_table, newname_lower, newname_lower_len + 1);
+		}
 	}
 
 	ancestor_class = php_runkit_locate_scope(ce, fe, methodname_lower, methodname_lower_len);
