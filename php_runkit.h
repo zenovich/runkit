@@ -316,16 +316,14 @@ static inline void php_runkit_default_class_members_list_add(php_runkit_default_
 
 /* {{{ php_runkit_modify_function_doc_comment */
 static inline void php_runkit_modify_function_doc_comment(zend_function *fe, const char* doc_comment, int doc_comment_len) {
-	if (doc_comment && doc_comment_len > 0) {
-		char *tmp = (char *) fe->op_array.doc_comment;
+	if (fe->type == ZEND_USER_FUNCTION) {
 		if (doc_comment) {
+			char *tmp = (char *) fe->op_array.doc_comment;
 			fe->op_array.doc_comment = estrndup(doc_comment, doc_comment_len);
 			fe->op_array.doc_comment_len = doc_comment_len;
-		} else {
-			fe->op_array.doc_comment = NULL;
-		}
-		if (tmp) {
-			efree(tmp);
+			if (tmp) {
+				efree(tmp);
+			}
 		}
 	}
 }
@@ -531,6 +529,62 @@ inline static void PHP_RUNKIT_INHERIT_MAGIC(zend_class_entry *ce, const zend_fun
 		(ce)->unserialize_func = (ce)->parent->unserialize_func;
 	}
 }
+
+/* {{{ php_runkit_parse_doc_comment_arg */
+inline static void php_runkit_parse_doc_comment_arg(int argc, zval ***args, int arg_pos, const char **pdoc_comment, int *pdoc_comment_len TSRMLS_DC) {
+	if (argc > arg_pos) {
+		if (Z_TYPE_PP(args[arg_pos]) == IS_STRING) {
+			*pdoc_comment = Z_STRVAL_PP(args[arg_pos]);
+			*pdoc_comment_len = Z_STRLEN_PP(args[arg_pos]);
+		} else if (Z_TYPE_PP(args[arg_pos])) {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Doc comment should be a string or NULL");
+		}
+	}
+}
+/* }}} */
+
+/* {{{ php_runkit_parse_args_to_zvals */
+inline static zend_bool php_runkit_parse_args_to_zvals(int argc, zval ****pargs TSRMLS_DC) {
+	*pargs = (zval ***) emalloc(argc * sizeof(zval **));
+	if (*pargs == NULL) {
+		PHP_RUNKIT_NOT_ENOUGH_MEMORY_ERROR;
+		return 0;
+	}
+	if (zend_get_parameters_array_ex(argc, *pargs) == FAILURE) {
+		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Internal error occured while parsing arguments");
+		efree(*pargs);
+		return 0;
+	}
+	return 1;
+}
+/* }}} */
+
+#define PHP_RUNKIT_BODY_ERROR_MSG "%s's body should be either a closure or two strings"
+
+/* {{{ zend_bool php_runkit_parse_function_arg */
+inline static zend_bool php_runkit_parse_function_arg(int argc, zval ***args, int arg_pos, zend_function **fe, const char **arguments, int *arguments_len, const char **phpcode, int *phpcode_len, long *opt_arg_pos, char *type TSRMLS_DC) {
+#if RUNKIT_ABOVE53
+	if (Z_TYPE_PP(args[arg_pos]) == IS_OBJECT && zend_get_class_entry(*args[arg_pos] TSRMLS_CC) == zend_ce_closure) {
+		*fe = (zend_function *) zend_get_closure_method_def(*args[arg_pos] TSRMLS_CC);
+	} else
+#endif
+	  if (Z_TYPE_PP(args[arg_pos]) == IS_STRING) {
+		(*opt_arg_pos)++;
+		*arguments = Z_STRVAL_PP(args[arg_pos]);
+		*arguments_len = Z_STRLEN_PP(args[arg_pos]);
+		if (argc < arg_pos+2 || Z_TYPE_PP(args[arg_pos+1]) != IS_STRING) {
+			php_error_docref(NULL TSRMLS_CC, E_ERROR, PHP_RUNKIT_BODY_ERROR_MSG, type);
+			return 0;
+		}
+		*phpcode = Z_STRVAL_PP(args[arg_pos+1]);
+		*phpcode_len = Z_STRLEN_PP(args[arg_pos+1]);
+	} else {
+		php_error_docref(NULL TSRMLS_CC, E_ERROR, PHP_RUNKIT_BODY_ERROR_MSG, type);
+		return 0;
+	}
+	return 1;
+}
+/* }}} */
 
 #	define PHP_RUNKIT_DESTROY_FUNCTION(fe) 	destroy_zend_function(fe TSRMLS_CC);
 

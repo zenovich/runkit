@@ -423,6 +423,7 @@ int php_runkit_generate_lambda_method(const char *arguments, int arguments_len, 
 		efree(eval_code);
 		efree(eval_name);
 		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Cannot create temporary function");
+		zend_hash_del(EG(function_table), RUNKIT_TEMP_FUNCNAME, sizeof(RUNKIT_TEMP_FUNCNAME));
 		return FAILURE;
 	}
 	efree(eval_code);
@@ -491,33 +492,61 @@ int php_runkit_restore_internal_functions(RUNKIT_53_TSRMLS_ARG(void *pDest), int
 }
 /* }}} */
 
-/* *****************
-   * Functions API *
-   ***************** */
-
-/* {{{ proto bool runkit_function_add(string funcname, string arglist, string code[, bool return_reference = FALSE[, doc_comment = ""]])
-	Add a new function, similar to create_function, but allows specifying name
-	There's nothing about this function that's better than eval(), it's here for completeness */
-PHP_FUNCTION(runkit_function_add)
-{
+/* {{{ php_runkit_function_add_or_update */
+static void php_runkit_function_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int add_or_update) {
 	PHP_RUNKIT_DECL_STRING_PARAM(funcname)
 	PHP_RUNKIT_DECL_STRING_PARAM(funcname_lower)
-	PHP_RUNKIT_DECL_STRING_PARAM(arglist)
-	PHP_RUNKIT_DECL_STRING_PARAM(code)
-	PHP_RUNKIT_DECL_STRING_PARAM(doc_comment)
+	const PHP_RUNKIT_DECL_STRING_PARAM(arguments)
+	const PHP_RUNKIT_DECL_STRING_PARAM(phpcode)
+	const PHP_RUNKIT_DECL_STRING_PARAM(doc_comment)
 	zend_bool return_ref = 0;
-	char *delta = NULL, *delta_desc = NULL;
-	int retval;
-	zend_function *fe;
+	zend_function *orig_fe = NULL, *source_fe = NULL, *fe, func;
+	zval ***args;
+	int remove_temp = 0;
+	long argc = ZEND_NUM_ARGS();
+	long opt_arg_pos = 2;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
-			PHP_RUNKIT_STRING_SPEC "/" PHP_RUNKIT_STRING_SPEC PHP_RUNKIT_STRING_SPEC "|bs",
-			PHP_RUNKIT_STRING_PARAM(funcname),
-			PHP_RUNKIT_STRING_PARAM(arglist),
-			PHP_RUNKIT_STRING_PARAM(code),
-			&return_ref,
-			PHP_RUNKIT_STRING_PARAM(doc_comment)
-			) == FAILURE) {
+	if (argc < 1 || zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, 1 TSRMLS_CC, "s",
+				     &funcname, &funcname_len) == FAILURE || !funcname_len) {
+		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Function name should not be empty");
+		RETURN_FALSE;
+	}
+
+	if (argc < 2) {
+		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Function body should be provided");
+		RETURN_FALSE;
+	}
+
+	if (!php_runkit_parse_args_to_zvals(argc, &args TSRMLS_CC)) {
+		RETURN_FALSE;
+	}
+
+	if (!php_runkit_parse_function_arg(argc, args, 1, &source_fe, &arguments, &arguments_len, &phpcode, &phpcode_len, &opt_arg_pos, "Function" TSRMLS_CC)) {
+		efree(args);
+		RETURN_FALSE;
+	}
+
+	if (argc > opt_arg_pos && !source_fe) {
+		switch (Z_TYPE_PP(args[opt_arg_pos])) {
+			case IS_NULL:
+			case IS_STRING:
+			case IS_LONG:
+			case IS_DOUBLE:
+			case IS_BOOL:
+				convert_to_boolean_ex(args[opt_arg_pos]);
+				return_ref = Z_BVAL_PP(args[opt_arg_pos]);
+				break;
+			default:
+				php_error_docref(NULL TSRMLS_CC, E_WARNING, "return_ref should be boolean");
+		}
+		opt_arg_pos++;
+	}
+
+	php_runkit_parse_doc_comment_arg(argc, args, opt_arg_pos, &doc_comment, &doc_comment_len TSRMLS_CC);
+	efree(args);
+
+	if (add_or_update == HASH_UPDATE &&
+	    php_runkit_fetch_function(PHP_RUNKIT_STRING_TYPE(funcname), funcname, funcname_len, &orig_fe, PHP_RUNKIT_FETCH_FUNCTION_REMOVE TSRMLS_CC) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -528,28 +557,56 @@ PHP_FUNCTION(runkit_function_add)
 		RETURN_FALSE;
 	}
 
-	if (zend_hash_exists(EG(function_table), funcname_lower, funcname_len + 1)) {
+	if (add_or_update == HASH_ADD && zend_hash_exists(EG(function_table), funcname_lower, funcname_len + 1)) {
 		efree(funcname_lower);
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Function %s() already exists", funcname);
 		RETURN_FALSE;
 	}
 
-#if PHP_MAJOR_VERSION >= 6
-	spprintf(&delta, 0, "function %s%R(%R){%R}", return_ref ? "&" : "", funcname_type, funcname, arglist_type, arglist, code_type, code);
-#else
-	spprintf(&delta, 0, "function %s%s(%s){%s}", return_ref ? "&" : "", funcname, arglist, code);
+	if (!source_fe) {
+		if (php_runkit_generate_lambda_method(arguments, arguments_len, phpcode, phpcode_len, &source_fe,
+						     return_ref TSRMLS_CC) == FAILURE) {
+			efree(funcname_lower);
+			RETURN_FALSE;
+		}
+		remove_temp = 1;
+	}
+
+	func = *source_fe;
+	php_runkit_function_copy_ctor(&func, funcname, funcname_len TSRMLS_CC);
+	func.common.scope = NULL;
+#if RUNKIT_ABOVE53
+	func.common.fn_flags &= ~ZEND_ACC_CLOSURE;
 #endif
 
-	if (!delta) {
+	if (doc_comment == NULL && source_fe->op_array.doc_comment == NULL &&
+	    orig_fe && orig_fe->type == ZEND_USER_FUNCTION && orig_fe->op_array.doc_comment) {
+		doc_comment = orig_fe->op_array.doc_comment;
+		doc_comment_len = orig_fe->op_array.doc_comment_len;
+	}
+	php_runkit_modify_function_doc_comment(&func, doc_comment, doc_comment_len);
+
+	if (add_or_update == HASH_UPDATE) {
+		php_runkit_remove_function_from_reflection_objects(orig_fe TSRMLS_CC);
+
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+		php_runkit_clear_all_functions_runtime_cache(TSRMLS_C);
+#endif
+	}
+
+	if (zend_hash_add_or_update(EG(function_table), funcname_lower, funcname_lower_len + 1, &func, sizeof(zend_function), NULL, add_or_update) == FAILURE) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to add new function");
 		efree(funcname_lower);
-		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
+		if (remove_temp && zend_hash_del(EG(function_table), RUNKIT_TEMP_FUNCNAME, sizeof(RUNKIT_TEMP_FUNCNAME)) == FAILURE) {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to remove temporary function entry");
+		}
+		zend_function_dtor(&func);
 		RETURN_FALSE;
 	}
 
-	delta_desc = zend_make_compiled_string_description("runkit created function" TSRMLS_CC);
-	retval = zend_eval_string(delta, NULL, delta_desc TSRMLS_CC);
-	efree(delta_desc);
-	efree(delta);
+	if (remove_temp && zend_hash_del(EG(function_table), RUNKIT_TEMP_FUNCNAME, sizeof(RUNKIT_TEMP_FUNCNAME)) == FAILURE) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to remove temporary function entry");
+	}
 
 	if (zend_hash_find(EG(function_table), funcname_lower, funcname_lower_len + 1, (void*)&fe) == FAILURE ||
 		!fe) {
@@ -560,9 +617,21 @@ PHP_FUNCTION(runkit_function_add)
 
 	efree(funcname_lower);
 
-	php_runkit_modify_function_doc_comment(fe, doc_comment, doc_comment_len);
+	RETURN_TRUE;
+}
+/* }}} */
 
-	RETURN_BOOL(retval == SUCCESS);
+/* *****************
+   * Functions API *
+   ***************** */
+
+/* {{{  proto bool runkit_function_add(string funcname, string arglist, string code[, bool return_by_reference=NULL[, string doc_comment]])
+	proto bool runkit_function_add(string funcname, closure code[, string doc_comment])
+	Add a new function, similar to create_function, but allows specifying name
+	*/
+PHP_FUNCTION(runkit_function_add)
+{
+	php_runkit_function_add_or_update(INTERNAL_FUNCTION_PARAM_PASSTHRU, HASH_ADD);
 }
 /* }}} */
 
@@ -696,100 +765,12 @@ PHP_FUNCTION(runkit_function_rename)
 }
 /* }}} */
 
-/* {{{ proto bool runkit_function_redefine(string funcname, string arglist, string code)
+/* {{{ proto bool runkit_function_redefine(string funcname, string arglist, string code[, bool return_by_reference=NULL[, string doc_comment]])
+ *     proto bool runkit_function_redefine(string funcname, closure code[, string doc_comment])
  */
 PHP_FUNCTION(runkit_function_redefine)
 {
-	PHP_RUNKIT_DECL_STRING_PARAM(funcname)
-	PHP_RUNKIT_DECL_STRING_PARAM(funcname_lower)
-	PHP_RUNKIT_DECL_STRING_PARAM(arglist)
-	PHP_RUNKIT_DECL_STRING_PARAM(code)
-	PHP_RUNKIT_DECL_STRING_PARAM(doc_comment)
-	zend_bool return_ref = 0;
-	char *delta = NULL, *delta_desc;
-	int retval;
-	zend_function *fe = NULL;
-
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
-			PHP_RUNKIT_STRING_SPEC "/" PHP_RUNKIT_STRING_SPEC PHP_RUNKIT_STRING_SPEC "|b"
-			PHP_RUNKIT_STRING_SPEC "!",
-			PHP_RUNKIT_STRING_PARAM(funcname),
-			PHP_RUNKIT_STRING_PARAM(arglist),
-			PHP_RUNKIT_STRING_PARAM(code),
-			&return_ref,
-			PHP_RUNKIT_STRING_PARAM(doc_comment)
-			) == FAILURE) {
-		RETURN_FALSE;
-	}
-
-	/* UTODO */
-	if (php_runkit_fetch_function(PHP_RUNKIT_STRING_TYPE(funcname), funcname, funcname_len, &fe, PHP_RUNKIT_FETCH_FUNCTION_REMOVE TSRMLS_CC) == FAILURE) {
-		RETURN_FALSE;
-	}
-
-	PHP_RUNKIT_MAKE_LOWERCASE_COPY(funcname);
-	if (funcname_lower == NULL) {
-		PHP_RUNKIT_NOT_ENOUGH_MEMORY_ERROR;
-		RETURN_FALSE;
-	}
-
-	php_runkit_remove_function_from_reflection_objects(fe TSRMLS_CC);
-
-	if (doc_comment == NULL && fe && fe->type == ZEND_USER_FUNCTION && fe->op_array.doc_comment) {
-		doc_comment_len = fe->op_array.doc_comment_len;
-		doc_comment = estrndup(fe->op_array.doc_comment, fe->op_array.doc_comment_len);
-	} else if (doc_comment) {
-		doc_comment = estrndup(doc_comment, doc_comment_len);
-	}
-
-	if (zend_hash_del(EG(function_table), funcname_lower, funcname_lower_len + 1) == FAILURE) {
-		efree(funcname_lower);
-		if (doc_comment) {
-			efree(doc_comment);
-		}
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to remove old function definition for %s()", funcname);
-		RETURN_FALSE;
-	}
-
-#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
-	php_runkit_clear_all_functions_runtime_cache(TSRMLS_C);
-#endif
-
-	spprintf(&delta, 0, "function %s%s(%s){%s}", return_ref ? "&" : "", funcname, arglist, code);
-
-	if (!delta) {
-		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Not enough memory");
-		efree(funcname_lower);
-		if (doc_comment) {
-			efree(doc_comment);
-		}
-		RETURN_FALSE;
-	}
-
-	delta_desc = zend_make_compiled_string_description("runkit created function" TSRMLS_CC);
-	retval = zend_eval_string(delta, NULL, delta_desc TSRMLS_CC);
-	efree(delta_desc);
-	efree(delta);
-
-	if (zend_hash_find(EG(function_table), funcname_lower, funcname_lower_len + 1, (void*)&fe) == FAILURE ||
-		!fe) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to locate newly added function");
-		efree(funcname_lower);
-		if (doc_comment) {
-			efree(doc_comment);
-		}
-		RETURN_FALSE;
-	}
-
-	efree(funcname_lower);
-
-	if (fe->op_array.doc_comment) {
-		efree((void *)fe->op_array.doc_comment);
-	}
-	fe->op_array.doc_comment = doc_comment;
-	fe->op_array.doc_comment_len = doc_comment_len;
-
-	RETURN_BOOL(retval == SUCCESS);
+	return php_runkit_function_add_or_update(INTERNAL_FUNCTION_PARAM_PASSTHRU, HASH_UPDATE);
 }
 /* }}} */
 

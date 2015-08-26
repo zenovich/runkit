@@ -288,25 +288,50 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 	const char *classname, *methodname, *arguments, *phpcode, *doc_comment=NULL;
 	int classname_len, methodname_len, arguments_len, phpcode_len, doc_comment_len=0;
 	zend_class_entry *ce, *ancestor_class = NULL;
-	zend_function func, *fe, *orig_fe = NULL;
+	zend_function func, *fe, *source_fe = NULL, *orig_fe = NULL;
 	PHP_RUNKIT_DECL_STRING_PARAM(methodname_lower)
 	long argc = ZEND_NUM_ARGS();
 	long flags = ZEND_ACC_PUBLIC;
+	zval ***args;
+	long opt_arg_pos = 3;
+	zend_bool remove_temp = 0;
 
-	if (zend_parse_parameters(argc TSRMLS_CC, "ssss|ls!",
-	                          &classname, &classname_len,
-	                          &methodname, &methodname_len,
-	                          &arguments, &arguments_len,
-	                          &phpcode, &phpcode_len,
-				  &flags,
-				  &doc_comment, &doc_comment_len) == FAILURE) {
+	if (argc < 2 || zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, 2 TSRMLS_CC, "ss",
+				     &classname, &classname_len,
+				     &methodname, &methodname_len) == FAILURE || !classname_len || !methodname_len) {
+		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Class name and method name should not be empty");
 		RETURN_FALSE;
 	}
 
-	if (!classname_len || !methodname_len) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Empty parameter given");
+	if (argc < 3) {
+		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Method body should be provided");
 		RETURN_FALSE;
 	}
+
+	if (!php_runkit_parse_args_to_zvals(argc, &args TSRMLS_CC)) {
+		RETURN_FALSE;
+	}
+
+	if (!php_runkit_parse_function_arg(argc, args, 2, &source_fe, &arguments, &arguments_len, &phpcode, &phpcode_len, &opt_arg_pos, "Method" TSRMLS_CC)) {
+		efree(args);
+		RETURN_FALSE;
+	}
+
+	if (argc > opt_arg_pos) {
+		if (Z_TYPE_PP(args[opt_arg_pos]) == IS_NULL || Z_TYPE_PP(args[opt_arg_pos]) == IS_LONG) {
+			convert_to_long_ex(args[opt_arg_pos]);
+			flags = Z_LVAL_PP(args[opt_arg_pos]);
+			if (flags & PHP_RUNKIT_ACC_RETURN_REFERENCE && source_fe) {
+				php_error_docref(NULL TSRMLS_CC, E_WARNING, "RUNKIT_ACC_RETURN_REFERENCE flag is not applicable for closures, use & in closure definition instead");
+			}
+		} else {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Flags should be a long integer or NULL");
+		}
+	}
+
+	php_runkit_parse_doc_comment_arg(argc, args, opt_arg_pos + 1, &doc_comment, &doc_comment_len TSRMLS_CC);
+
+	efree(args);
 
 	PHP_RUNKIT_MAKE_LOWERCASE_COPY(methodname);
 	if (methodname_lower == NULL) {
@@ -335,17 +360,21 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 		ancestor_class = ce;
 	}
 
-	if (php_runkit_generate_lambda_method(arguments, arguments_len, phpcode, phpcode_len, &fe,
-	                                      (flags & PHP_RUNKIT_ACC_RETURN_REFERENCE) == PHP_RUNKIT_ACC_RETURN_REFERENCE
-	                                      TSRMLS_CC) == FAILURE) {
-		efree(methodname_lower);
-		RETURN_FALSE;
+	if (!source_fe) {
+		if (php_runkit_generate_lambda_method(arguments, arguments_len, phpcode, phpcode_len, &source_fe,
+						     (flags & PHP_RUNKIT_ACC_RETURN_REFERENCE) == PHP_RUNKIT_ACC_RETURN_REFERENCE
+						     TSRMLS_CC) == FAILURE) {
+			efree(methodname_lower);
+			RETURN_FALSE;
+		}
+		remove_temp = 1;
 	}
 
-	func = *fe;
+	func = *source_fe;
 	PHP_RUNKIT_FUNCTION_ADD_REF(&func);
 	efree((void*)func.common.function_name);
 	func.common.function_name = estrndup(methodname, methodname_len);
+
 	if (flags & ZEND_ACC_PRIVATE) {
 		func.common.fn_flags &= ~ZEND_ACC_PPP_MASK;
 		func.common.fn_flags |= ZEND_ACC_PRIVATE;
@@ -363,7 +392,8 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 		func.common.fn_flags |= ZEND_ACC_ALLOW_STATIC;
 	}
 
-	if (doc_comment == NULL && orig_fe && orig_fe->type == ZEND_USER_FUNCTION && orig_fe->op_array.doc_comment) {
+	if (doc_comment == NULL && source_fe->op_array.doc_comment == NULL &&
+	   orig_fe && orig_fe->type == ZEND_USER_FUNCTION && orig_fe->op_array.doc_comment) {
 		doc_comment = orig_fe->op_array.doc_comment;
 		doc_comment_len = orig_fe->op_array.doc_comment_len;
 	}
@@ -380,13 +410,13 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 	if (zend_hash_add_or_update(&ce->function_table, methodname_lower, methodname_lower_len + 1, &func, sizeof(zend_function), NULL, add_or_update) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to add method to class");
 		efree(methodname_lower);
-		if (zend_hash_del(EG(function_table), RUNKIT_TEMP_FUNCNAME, sizeof(RUNKIT_TEMP_FUNCNAME)) == FAILURE) {
+		if (remove_temp && zend_hash_del(EG(function_table), RUNKIT_TEMP_FUNCNAME, sizeof(RUNKIT_TEMP_FUNCNAME)) == FAILURE) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to remove temporary function entry");
 		}
 		RETURN_FALSE;
 	}
 
-	if (zend_hash_del(EG(function_table), RUNKIT_TEMP_FUNCNAME, sizeof(RUNKIT_TEMP_FUNCNAME)) == FAILURE) {
+	if (remove_temp && zend_hash_del(EG(function_table), RUNKIT_TEMP_FUNCNAME, sizeof(RUNKIT_TEMP_FUNCNAME)) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to remove temporary function entry");
 		efree(methodname_lower);
 		RETURN_FALSE;
@@ -468,18 +498,20 @@ static int php_runkit_method_copy(const char *dclass, int dclass_len, const char
    ************** */
 
 /* {{{ proto bool runkit_method_add(string classname, string methodname, string args, string code[, long flags[, string doc_comment]])
-	Add a method to an already defined class */
+       proto bool runkit_method_add(string classname, string methodname, closure code[, long flags[, string doc_comment]])
+       Add a method to an already defined class */
 PHP_FUNCTION(runkit_method_add)
 {
-	php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAM_PASSTHRU, HASH_ADD);
+	return php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAM_PASSTHRU, HASH_ADD);
 }
 /* }}} */
 
 /* {{{ proto bool runkit_method_redefine(string classname, string methodname, string args, string code[, long flags[, string doc_comment]])
-	Redefine an already defined class method */
+       proto bool runkit_method_redefine(string classname, string methodname, closure code[, long flags[, string doc_comment]])
+       Redefine an already defined class method */
 PHP_FUNCTION(runkit_method_redefine)
 {
-	php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAM_PASSTHRU, HASH_UPDATE);
+	return php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAM_PASSTHRU, HASH_UPDATE);
 }
 /* }}} */
 

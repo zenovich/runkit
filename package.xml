@@ -31,6 +31,8 @@ Execute code in restricted environment (sandboxing).
      New features:
          + PHP 5.4, 5.5, and 5.6 are now fully supported
          - PHP 4.x is not supported anymore
+         + Closures are now accepted by runkit_function_add, runkit_function_redefine, runkit_method_add, and runkit_method_redefine
+           This feature works in PHP 5.3 and above.
          + Introduced new function "runkit_default_property_remove" (Thanks to Juhan Kundla)
          + Ability to add non-scalar default properties was added
          + Magic methods __isset, __unset, __callStatic, serialize, unserialize, debugInfo and __toString are now supported.
@@ -123,9 +125,15 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_function_redefine_and_revert.phpt" role="test" />
     <file name="runkit_function_add.phpt" role="test" />
     <file name="runkit_function_add_and_doc_comment.phpt" role="test" />
+    <file name="runkit_function_add_closure.phpt" role="test" />
+    <file name="runkit_function_add_closure_and_doc_comment.phpt" role="test" />
+    <file name="runkit_function_add_closure_and_doc_comment_from_closure.phpt" role="test" />
     <file name="runkit_function_copy.phpt" role="test" />
     <file name="runkit_function_redefine.phpt" role="test" />
     <file name="runkit_function_redefine_and_doc_comment.phpt" role="test" />
+    <file name="runkit_function_redefine_closure.phpt" role="test" />
+    <file name="runkit_function_redefine_closure_and_doc_comment.phpt" role="test" />
+    <file name="runkit_function_redefine_closure_and_doc_comment_from_closure.phpt" role="test" />
     <file name="runkit_function_redefine_from_anonymous.phpt" role="test" />
     <file name="runkit_function_remove.phpt" role="test" />
     <file name="runkit_function_remove_and_reflection_parameter.phpt" role="test" />
@@ -168,6 +176,10 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_lint.phpt" role="test" />
     <file name="runkit_method_add.phpt" role="test" />
     <file name="runkit_method_add_and_doc_comment.phpt" role="test" />
+    <file name="runkit_method_add_closure.phpt" role="test" />
+    <file name="runkit_method_add_closure_and_doc_comment.phpt" role="test" />
+    <file name="runkit_method_add_closure_and_doc_comment_from_closure.phpt" role="test" />
+    <file name="runkit_method_add_closure_and_flags.phpt" role="test" />
     <file name="runkit_method_copy.phpt" role="test" />
     <file name="runkit_method_copy_and_doc_comment.phpt" role="test" />
     <file name="runkit_method_copy_uninit_read.phpt" role="test" />
@@ -175,6 +187,8 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_method_redefine_and_doc_comment.phpt" role="test" />
     <file name="runkit_method_redefine_and_reflection.phpt" role="test" />
     <file name="runkit_method_redefine_and_reflection_with_inheritance.phpt" role="test" />
+    <file name="runkit_method_redefine_closure_and_doc_comment.phpt" role="test" />
+    <file name="runkit_method_redefine_closure_and_doc_comment_from_closure.phpt" role="test" />
     <file name="runkit_method_redefine_protected.phpt" role="test" />
     <file name="runkit_method_redefine_update_proto.phpt" role="test" />
     <file name="runkit_method_redefine_update_proto2.phpt" role="test" />
