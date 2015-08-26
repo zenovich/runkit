@@ -407,6 +407,7 @@ static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int ad
 
 	if (zend_hash_add_or_update(&ce->function_table, methodname_lower, methodname_lower_len + 1, &func, sizeof(zend_function), NULL, add_or_update) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to add method to class");
+		zend_function_dtor(&func);
 		efree(methodname_lower);
 		if (remove_temp && zend_hash_del(EG(function_table), RUNKIT_TEMP_FUNCNAME, sizeof(RUNKIT_TEMP_FUNCNAME)) == FAILURE) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to remove temporary function entry");
