@@ -177,6 +177,7 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_method_add.phpt" role="test" />
     <file name="runkit_method_add_and_doc_comment.phpt" role="test" />
     <file name="runkit_method_add_closure.phpt" role="test" />
+    <file name="runkit_method_add_closure2.phpt" role="test" />
     <file name="runkit_method_add_closure_and_doc_comment.phpt" role="test" />
     <file name="runkit_method_add_closure_and_doc_comment_from_closure.phpt" role="test" />
     <file name="runkit_method_add_closure_and_flags.phpt" role="test" />
