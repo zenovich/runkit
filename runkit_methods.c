@@ -285,8 +285,8 @@ int php_runkit_clean_children_methods(RUNKIT_53_TSRMLS_ARG(zend_class_entry *ce)
  */
 static void php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int add_or_update)
 {
-	const char *classname, *methodname, *arguments, *phpcode, *doc_comment=NULL;
-	int classname_len, methodname_len, arguments_len, phpcode_len, doc_comment_len=0;
+	const char *classname, *methodname, *arguments = NULL, *phpcode = NULL, *doc_comment = NULL;
+	int classname_len, methodname_len, arguments_len = 0, phpcode_len = 0, doc_comment_len = 0;
 	zend_class_entry *ce, *ancestor_class = NULL;
 	zend_function func, *fe, *source_fe = NULL, *orig_fe = NULL;
 	PHP_RUNKIT_DECL_STRING_PARAM(methodname_lower)
