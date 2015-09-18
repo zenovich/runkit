@@ -342,6 +342,12 @@ static inline void php_runkit_modify_function_doc_comment(zend_function *fe, con
 	} \
 }
 
+#define PHP_RUNKIT_FREE_INTERNAL_FUNCTION_NAME(fe) \
+	if ((fe)->type == ZEND_INTERNAL_FUNCTION && (fe)->internal_function.function_name) { \
+		efree((char *) (fe)->internal_function.function_name); \
+		(fe)->internal_function.function_name = NULL; \
+	}
+
 #endif /* PHP_RUNKIT_MANIPULATION */
 
 #ifdef PHP_RUNKIT_SANDBOX

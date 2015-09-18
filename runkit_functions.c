@@ -143,9 +143,7 @@ static inline void php_runkit_add_to_misplaced_internal_functions(zend_function 
 static inline void php_runkit_destroy_misplaced_internal_function(zend_function *fe, const char *fname_lower, int fname_lower_len TSRMLS_DC) {
 	if (fe->type == ZEND_INTERNAL_FUNCTION && RUNKIT_G(misplaced_internal_functions) &&
 	    zend_hash_exists(RUNKIT_G(misplaced_internal_functions), (char *) fname_lower, fname_lower_len + 1)) {
-		if (fe->internal_function.function_name) {
-			efree((char *) fe->internal_function.function_name);
-		}
+		PHP_RUNKIT_FREE_INTERNAL_FUNCTION_NAME(fe);
 		zend_hash_del(RUNKIT_G(misplaced_internal_functions), (char *) fname_lower, fname_lower_len + 1);
 	}
 }
@@ -481,9 +479,8 @@ int php_runkit_destroy_misplaced_functions(void *pDest TSRMLS_DC)
 		return ZEND_HASH_APPLY_REMOVE;
 	}
 
-	if (zend_hash_find(EG(function_table), hash_key->arKey, hash_key->nKeyLength, (void **) &fe) == SUCCESS &&
-	    fe->type == ZEND_INTERNAL_FUNCTION && fe->internal_function.function_name) {
-		efree((char *) fe->internal_function.function_name);
+	if (zend_hash_find(EG(function_table), hash_key->arKey, hash_key->nKeyLength, (void **) &fe) == SUCCESS) {
+		PHP_RUNKIT_FREE_INTERNAL_FUNCTION_NAME(fe);
 	}
 
 #if PHP_MAJOR_VERSION >= 6
@@ -767,6 +764,7 @@ PHP_FUNCTION(runkit_function_rename)
 		efree(dfunc_lower);
 		efree(sfunc_lower);
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error removing reference to old function name %s()", sfunc);
+		PHP_RUNKIT_FREE_INTERNAL_FUNCTION_NAME(&func);
 		zend_function_dtor(&func);
 		RETURN_FALSE;
 	}
@@ -775,6 +773,7 @@ PHP_FUNCTION(runkit_function_rename)
 	if (zend_hash_add(EG(function_table), dfunc_lower, dfunc_lower_len + 1, &func, sizeof(zend_function), NULL) == FAILURE) {
 		efree(dfunc_lower);
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to add reference to new function name %s()", dfunc);
+		PHP_RUNKIT_FREE_INTERNAL_FUNCTION_NAME(&func);
 		zend_function_dtor(&func);
 		RETURN_FALSE;
 	}
@@ -828,6 +827,7 @@ PHP_FUNCTION(runkit_function_copy)
 		efree(dfunc_lower);
 		efree(sfunc_lower);
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to add refernce to new function name %s()", dfunc);
+		PHP_RUNKIT_FREE_INTERNAL_FUNCTION_NAME(&fe);
 		zend_function_dtor(&fe);
 		RETURN_FALSE;
 	}
