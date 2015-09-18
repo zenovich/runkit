@@ -120,6 +120,37 @@ static int php_runkit_fetch_function(int fname_type, const char *fname, int fnam
 }
 /* }}} */
 
+/* {{{ php_runkit_add_to_misplaced_internal_functions */
+static inline void php_runkit_add_to_misplaced_internal_functions(zend_function *fe, const char *name_lower, int name_lower_len TSRMLS_DC) {
+	if (fe->type == ZEND_INTERNAL_FUNCTION &&
+	    (!RUNKIT_G(misplaced_internal_functions) ||
+	     !zend_hash_exists(RUNKIT_G(misplaced_internal_functions), (char *) name_lower, name_lower_len + 1))
+	) {
+		zend_hash_key hash_key;
+
+		hash_key.nKeyLength = PHP_RUNKIT_STRING_LEN(name_lower, 1);
+		PHP_RUNKIT_HASH_KEY(&hash_key) = estrndup(name_lower, PHP_RUNKIT_HASH_KEYLEN(&hash_key));
+		if (!RUNKIT_G(misplaced_internal_functions)) {
+			ALLOC_HASHTABLE(RUNKIT_G(misplaced_internal_functions));
+			zend_hash_init(RUNKIT_G(misplaced_internal_functions), 4, NULL, php_runkit_hash_key_dtor, 0);
+		}
+		zend_hash_add(RUNKIT_G(misplaced_internal_functions), (char *) name_lower, name_lower_len + 1, (void*)&hash_key, sizeof(zend_hash_key), NULL);
+	}
+}
+/* }}} */
+
+/* {{{ php_runkit_destroy_misplaced_internal_function */
+static inline void php_runkit_destroy_misplaced_internal_function(zend_function *fe, const char *fname_lower, int fname_lower_len TSRMLS_DC) {
+	if (fe->type == ZEND_INTERNAL_FUNCTION && RUNKIT_G(misplaced_internal_functions) &&
+	    zend_hash_exists(RUNKIT_G(misplaced_internal_functions), (char *) fname_lower, fname_lower_len + 1)) {
+		if (fe->internal_function.function_name) {
+			efree((char *) fe->internal_function.function_name);
+		}
+		zend_hash_del(RUNKIT_G(misplaced_internal_functions), (char *) fname_lower, fname_lower_len + 1);
+	}
+}
+/* }}} */
+
 /* {{{ php_runkit_function_copy_ctor
 	Duplicate structures in an op_array where necessary to make an outright duplicate */
 void php_runkit_function_copy_ctor(zend_function *fe, const char *newname, int newname_len TSRMLS_DC)
@@ -282,26 +313,26 @@ void php_runkit_function_copy_ctor(zend_function *fe, const char *newname, int n
 		fe->op_array.doc_comment = estrndup(fe->op_array.doc_comment, fe->op_array.doc_comment_len);
 		fe->op_array.try_catch_array = (zend_try_catch_element*)estrndup((char*)fe->op_array.try_catch_array, sizeof(zend_try_catch_element) * fe->op_array.last_try_catch);
 		fe->op_array.brk_cont_array = (zend_brk_cont_element*)estrndup((char*)fe->op_array.brk_cont_array, sizeof(zend_brk_cont_element) * fe->op_array.last_brk_cont);
+
+		if (fe->common.arg_info) {
+			zend_arg_info *tmpArginfo;
+
+			tmpArginfo = safe_emalloc(sizeof(zend_arg_info), fe->common.num_args, 0);
+			for(i = 0; i < fe->common.num_args; i++) {
+				tmpArginfo[i] = fe->common.arg_info[i];
+				tmpArginfo[i].name = estrndup(tmpArginfo[i].name, tmpArginfo[i].name_len);
+				if (tmpArginfo[i].class_name) {
+					tmpArginfo[i].class_name = estrndup(tmpArginfo[i].class_name, tmpArginfo[i].class_name_len);
+				}
+			}
+			fe->common.arg_info = tmpArginfo;
+		}
 	}
 
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION >= 6)
 	fe->common.fn_flags &= ~ZEND_ACC_DONE_PASS_TWO;
 #endif
 	fe->common.prototype = fe;
-
-	if (fe->common.arg_info) {
-		zend_arg_info *tmpArginfo;
-
-		tmpArginfo = safe_emalloc(sizeof(zend_arg_info), fe->common.num_args, 0);
-		for(i = 0; i < fe->common.num_args; i++) {
-			tmpArginfo[i] = fe->common.arg_info[i];
-			tmpArginfo[i].name = estrndup(tmpArginfo[i].name, tmpArginfo[i].name_len);
-			if (tmpArginfo[i].class_name) {
-				tmpArginfo[i].class_name = estrndup(tmpArginfo[i].class_name, tmpArginfo[i].class_name_len);
-			}
-		}
-		fe->common.arg_info = tmpArginfo;
-	}
 }
 /* }}}} */
 
@@ -444,9 +475,15 @@ int php_runkit_generate_lambda_method(const char *arguments, int arguments_len, 
 int php_runkit_destroy_misplaced_functions(void *pDest TSRMLS_DC)
 {
 	zend_hash_key *hash_key = (zend_hash_key *) pDest;
+	zend_function *fe = NULL;
 	if (!hash_key->nKeyLength) {
 		/* Nonsense, skip it */
 		return ZEND_HASH_APPLY_REMOVE;
+	}
+
+	if (zend_hash_find(EG(function_table), hash_key->arKey, hash_key->nKeyLength, (void **) &fe) == SUCCESS &&
+	    fe->type == ZEND_INTERNAL_FUNCTION && fe->internal_function.function_name) {
+		efree((char *) fe->internal_function.function_name);
 	}
 
 #if PHP_MAJOR_VERSION >= 6
@@ -588,10 +625,12 @@ static void php_runkit_function_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int 
 
 	if (add_or_update == HASH_UPDATE) {
 		php_runkit_remove_function_from_reflection_objects(orig_fe TSRMLS_CC);
+		php_runkit_destroy_misplaced_internal_function(orig_fe, funcname_lower, funcname_lower_len TSRMLS_CC);
 
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 		php_runkit_clear_all_functions_runtime_cache(TSRMLS_C);
 #endif
+
 	}
 
 	if (zend_hash_add_or_update(EG(function_table), funcname_lower, funcname_lower_len + 1, &func, sizeof(zend_function), NULL, add_or_update) == FAILURE) {
@@ -659,6 +698,7 @@ PHP_FUNCTION(runkit_function_remove)
 	}
 
 	php_runkit_remove_function_from_reflection_objects(fe TSRMLS_CC);
+	php_runkit_destroy_misplaced_internal_function(fe, fname_lower, fname_lower_len TSRMLS_CC);
 
 	result = (zend_hash_del(EG(function_table), fname_lower, fname_lower_len + 1) == SUCCESS);
 	efree(fname_lower);
@@ -718,11 +758,12 @@ PHP_FUNCTION(runkit_function_rename)
 	}
 
 	func = *sfe;
-	PHP_RUNKIT_FUNCTION_ADD_REF(&func);
+	php_runkit_function_copy_ctor(&func, dfunc, dfunc_len TSRMLS_CC);
 
 	php_runkit_remove_function_from_reflection_objects(sfe TSRMLS_CC);
+	php_runkit_destroy_misplaced_internal_function(sfe, sfunc_lower, sfunc_lower_len TSRMLS_CC);
 
-	if (zend_hash_del(EG(function_table), sfunc_lower, sfunc_len + 1) == FAILURE) {
+	if (zend_hash_del(EG(function_table), sfunc_lower, sfunc_lower_len + 1) == FAILURE) {
 		efree(dfunc_lower);
 		efree(sfunc_lower);
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error removing reference to old function name %s()", sfunc);
@@ -731,29 +772,14 @@ PHP_FUNCTION(runkit_function_rename)
 	}
 	efree(sfunc_lower);
 
-	if (func.type == ZEND_USER_FUNCTION) {
-		efree((void*) func.common.function_name);
-		func.common.function_name = estrndup(dfunc, dfunc_len);
-	}
-
 	if (zend_hash_add(EG(function_table), dfunc_lower, dfunc_lower_len + 1, &func, sizeof(zend_function), NULL) == FAILURE) {
 		efree(dfunc_lower);
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to add reference to new function name %s()", dfunc);
-		zend_function_dtor(sfe);
+		zend_function_dtor(&func);
 		RETURN_FALSE;
 	}
 
-	if (func.type == ZEND_INTERNAL_FUNCTION) {
-		zend_hash_key hash_key;
-
-		if (!RUNKIT_G(misplaced_internal_functions)) {
-			ALLOC_HASHTABLE(RUNKIT_G(misplaced_internal_functions));
-			zend_hash_init(RUNKIT_G(misplaced_internal_functions), 4, NULL, php_runkit_hash_key_dtor, 0);
-		}
-		hash_key.nKeyLength = dfunc_lower_len + 1;
-		PHP_RUNKIT_HASH_KEY(&hash_key) = estrndup(dfunc_lower, PHP_RUNKIT_HASH_KEYLEN(&hash_key));
-		zend_hash_next_index_insert(RUNKIT_G(misplaced_internal_functions), (void*)&hash_key, sizeof(zend_hash_key), NULL);
-	}
+	php_runkit_add_to_misplaced_internal_functions(&func, dfunc_lower, dfunc_lower_len TSRMLS_CC);
 
 	efree(dfunc_lower);
 
@@ -794,19 +820,9 @@ PHP_FUNCTION(runkit_function_copy)
 	}
 
 	fe = *sfe;
-	if (fe.type == ZEND_USER_FUNCTION) {
-		php_runkit_function_copy_ctor(&fe, dfunc, dfunc_len TSRMLS_CC);
-	} else {
-		zend_hash_key hash_key;
+	php_runkit_function_copy_ctor(&fe, dfunc, dfunc_len TSRMLS_CC);
 
-		hash_key.nKeyLength = PHP_RUNKIT_STRING_LEN(dfunc, 1);
-		PHP_RUNKIT_HASH_KEY(&hash_key) = estrndup(dfunc_lower, PHP_RUNKIT_HASH_KEYLEN(&hash_key));
-		if (!RUNKIT_G(misplaced_internal_functions)) {
-			ALLOC_HASHTABLE(RUNKIT_G(misplaced_internal_functions));
-			zend_hash_init(RUNKIT_G(misplaced_internal_functions), 4, NULL, php_runkit_hash_key_dtor, 0);
-		}
-		zend_hash_next_index_insert(RUNKIT_G(misplaced_internal_functions), (void*)&hash_key, sizeof(zend_hash_key), NULL);
-	}
+	php_runkit_add_to_misplaced_internal_functions(&fe, dfunc_lower, dfunc_lower_len TSRMLS_CC);
 
 	if (zend_hash_add(EG(function_table), dfunc_lower, dfunc_len + 1, &fe, sizeof(zend_function), NULL) == FAILURE) {
 		efree(dfunc_lower);
