@@ -70,7 +70,7 @@ Execute code in restricted environment (sandboxing).
          * Side effect of redefining, adding and removing class constant (Issue #25) was eliminated
          * Adding of non-lowercase default properties was fixed (removed lowercasing)
          * Skip the leading slash in class names
-         * Copying of functions was reworked
+         * Copying, redefining, and renaming of functions were reworked
          * Converting of input parameters (class names &amp; function names) to lowecase was eliminated
          * runkit_method_redefine function now sets the 'prototype' field for the method
            and its descendants (Thanks to Anthony Dovgal)
