@@ -63,7 +63,7 @@ Execute code in restricted environment (sandboxing).
          * Crash after using runkit_class_adopt when inherited methods access properties of the parent class (issue #59)
          * Crash on calling renamed private/protected method (issue #64)
          * Crash when copied function contains finally (issue #77) (Thanks to Antony Dovgal)
-         * Cross-platform paths parsing in sandbox settings
+         * Lists of directories in open_basedir sandbox setting are now supported
 
      Fixes:
          * All ways of adding and removing magic methods and old-style constructors
