@@ -28,6 +28,6 @@ Child::foo();
 Parent::foo
 Child1::foo
 
-Notice: runkit_import(): %child::foo() already exists, not importing in %s/runkit_import_methods.php on line %d
+Notice: runkit_import(): %child::foo() already exists, not importing in %srunkit_import_methods.php on line %d
 Child1::foo
 Child2::foo

@@ -1,7 +1,7 @@
 --TEST--
 user-defined functions should remain after runkit's shutdown
 --SKIPIF--
-<?php if(!extension_loaded("runkit") || !RUNKIT_FEATURE_MANIPULATION) print "skip";
+<?php if(!extension_loaded("runkit") || !RUNKIT_FEATURE_MANIPULATION || !function_exists('session_start')) print "skip";
 ?>
 --INI--
 error_reporting=E_ALL
