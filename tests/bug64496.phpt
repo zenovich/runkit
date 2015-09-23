@@ -9,14 +9,14 @@ Bug #64496 - Runkit_Sandbox override of open_basedir when parent uses multiple p
 $tmp = realpath(sys_get_temp_dir());
 $dir = realpath(dirname(__FILE__));
 $parent = realpath(dirname(dirname(dirname(__FILE__))));
-ini_set('open_basedir', sys_get_temp_dir() . ':' . dirname(dirname(__FILE__)));
+ini_set('open_basedir', sys_get_temp_dir() . PATH_SEPARATOR . dirname(dirname(__FILE__)));
 
 foreach(array(
-  "$tmp:$dir",
-  "$dir:$tmp",
+  $tmp . PATH_SEPARATOR . $dir,
+  $dir . PATH_SEPARATOR . $tmp,
   $dir,
   $tmp,
-  '/bogus-does-not-exist-runkit-test-dir',
+  DIRECTORY_SEPARATOR . 'bogus-does-not-exist-runkit-test-dir',
   $parent,
 ) as $idx => $path) {
   $s = new Runkit_Sandbox(array(

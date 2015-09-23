@@ -95,7 +95,7 @@ static HashTable *php_runkit_sandbox_parse_multipath(const char *paths TSRMLS_DC
 
 	ALLOC_HASHTABLE(ht);
 	zend_hash_init(ht, 4, NULL, NULL, 0);
-	for (s = pathcopy; (colon = strchr(s, ':')); s = colon + 1) {
+	for (s = pathcopy; (colon = strchr(s, ZEND_PATHS_SEPARATOR)); s = colon + 1) {
 		if (colon > s) {
 			*colon = 0;
 			VCWD_REALPATH(s, tmppath);
@@ -141,7 +141,7 @@ static char *php_runkit_sandbox_implode_stringht(HashTable *ht TSRMLS_DC) {
 	    SUCCESS == zend_hash_get_current_data_ex(ht, (void**)&str, &pos);
 	    zend_hash_move_forward_ex(ht, &pos)) {
 		if (s.len) {
-			smart_str_appendc(&s, ':');
+			smart_str_appendc(&s, ZEND_PATHS_SEPARATOR);
 		}
 		smart_str_appends(&s, str);
 	}
@@ -190,7 +190,7 @@ static char *php_runkit_sandbox_tighten_paths(HashTable *oldht, HashTable *newht
 			int oldstr_len = strlen(oldstr);
 			if ((oldstr_len <= newstr_len) &&
 			    !strncmp(oldstr, newstr, oldstr_len) &&
-			    ((oldstr_len == newstr_len) || (newstr[oldstr_len] == '/'))) {
+			    ((oldstr_len == newstr_len) || (newstr[oldstr_len] == DEFAULT_SLASH))) {
 				goto newstr_ok;
 			}
 		}
