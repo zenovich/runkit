@@ -1239,7 +1239,7 @@ static void php_runkit_sandbox_sapi_register_server_variables(zval *track_vars_a
 {
 	if (!RUNKIT_G(current_sandbox)) {
 		/* Not in a sandbox use SAPI's actual handler */
-		return php_runkit_sandbox_original_sapi.register_server_variables(track_vars_array TSRMLS_CC);
+		php_runkit_sandbox_original_sapi.register_server_variables(track_vars_array TSRMLS_CC);
 	}
 
 	/* Do nothing */

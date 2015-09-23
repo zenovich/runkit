@@ -795,7 +795,7 @@ PHP_FUNCTION(runkit_function_rename)
  */
 PHP_FUNCTION(runkit_function_redefine)
 {
-	return php_runkit_function_add_or_update(INTERNAL_FUNCTION_PARAM_PASSTHRU, HASH_UPDATE);
+	php_runkit_function_add_or_update(INTERNAL_FUNCTION_PARAM_PASSTHRU, HASH_UPDATE);
 }
 /* }}} */
 

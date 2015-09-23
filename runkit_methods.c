@@ -520,7 +520,7 @@ static int php_runkit_method_copy(const char *dclass, int dclass_len, const char
        Add a method to an already defined class */
 PHP_FUNCTION(runkit_method_add)
 {
-	return php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAM_PASSTHRU, HASH_ADD);
+	php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAM_PASSTHRU, HASH_ADD);
 }
 /* }}} */
 
@@ -529,7 +529,7 @@ PHP_FUNCTION(runkit_method_add)
        Redefine an already defined class method */
 PHP_FUNCTION(runkit_method_redefine)
 {
-	return php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAM_PASSTHRU, HASH_UPDATE);
+	php_runkit_method_add_or_update(INTERNAL_FUNCTION_PARAM_PASSTHRU, HASH_UPDATE);
 }
 /* }}} */
 
