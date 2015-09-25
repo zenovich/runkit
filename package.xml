@@ -4,7 +4,7 @@ http://pear.php.net/dtd/tasks-1.0.xsd
 http://pear.php.net/dtd/package-2.0
 http://pear.php.net/dtd/package-2.0.xsd">
  <name>runkit</name>
- <uri>http://github.com/zenovich/runkit/</uri>
+ <channel>zenovich.github.io/pear</channel>
  <summary>For all those things you.... probably shouldn&apos;t have been doing anyway....</summary>
  <description>Replace, rename, and remove user defined functions and classes.
 Define customized superglobal variables for general purpose use.
@@ -89,6 +89,7 @@ Execute code in restricted environment (sandboxing).
          * runkit_method_add, runkit_method_copy, and runkit_method_rename now override derived methods (issue #62)
 
      Build system improvements:
+         * PEAR Channel zenovich.github.io/pear was introduced for releasing new packages
          * Declarations after statement were restricted during compiling
          * Warnings now will be treated as errors
          * All tests now succeed under valgrind
