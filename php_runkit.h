@@ -38,7 +38,7 @@
 
 #include "Zend/zend_interfaces.h"
 
-#define PHP_RUNKIT_VERSION					"1.0.4-dev"
+#define PHP_RUNKIT_VERSION					"1.0.4"
 #define PHP_RUNKIT_SANDBOX_CLASSNAME		"Runkit_Sandbox"
 #define PHP_RUNKIT_SANDBOX_PARENT_CLASSNAME	"Runkit_Sandbox_Parent"
 
