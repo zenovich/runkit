@@ -23,8 +23,8 @@ Execute code in restricted environment (sandboxing).
     <api>1.0.4</api>
    </version>
    <stability>
-    <release>stable</release>
-    <api>stable</api>
+    <release>snapshot</release>
+    <api>snapshot</api>
    </stability>
    <license uri="http://www.opensource.org/licenses/BSD-3-Clause">BSD License (3 Clause)</license>
    <notes>
