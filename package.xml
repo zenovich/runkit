@@ -123,6 +123,7 @@ Execute code in restricted environment (sandboxing).
     <file name="runkit_constant_remove.phpt" role="test" />
     <file name="runkit_constant_remove_from_class.phpt" role="test" />
     <file name="runkit_constants_manipulations_and_cache.phpt" role="test" />
+    <file name="runkit_finally.phpt" role="test" />
     <file name="runkit_function_redefine_and_reflection.phpt" role="test" />
     <file name="runkit_function_redefine_and_revert.phpt" role="test" />
     <file name="runkit_function_add.phpt" role="test" />
