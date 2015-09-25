@@ -17,9 +17,9 @@ Execute code in restricted environment (sandboxing).
   <active>yes</active>
  </lead>
 
-   <date>2015-01-17</date>
+   <date>2015-09-25</date>
    <version>
-    <release>1.0.4</release>
+    <release>1.0.5</release>
     <api>1.0.4</api>
    </version>
    <stability>
@@ -27,74 +27,7 @@ Execute code in restricted environment (sandboxing).
     <api>stable</api>
    </stability>
    <license uri="http://www.opensource.org/licenses/BSD-3-Clause">BSD License (3 Clause)</license>
-   <notes>
-     New features:
-         + PHP 5.4, 5.5, and 5.6 are now fully supported
-         - PHP 4.x is not supported anymore
-         + Closures are now accepted by runkit_function_add, runkit_function_redefine, runkit_method_add, and runkit_method_redefine
-           This feature works in PHP 5.3 and above.
-         + Introduced new function "runkit_default_property_remove" (Thanks to Juhan Kundla)
-         + Ability to add non-scalar default properties was added
-         + Magic methods __isset, __unset, __callStatic, serialize, unserialize, debugInfo and __toString are now supported.
-         + Functions runkit_class_adopt &amp; runkit_class_emancipate now change class-hierarchy (issue #13)
-         + Adding and redefining functions and methods, which return references, were fully implemented
-           New optional argument 'return_ref' of functions runkit_function_add and runkit_function_redefine was introduced
-           New constant RUNKIT_ACC_RETURN_REFERENCE was introduced for use with functions runkit_method_add and runkit_method_redefine
-         + Properties adding, removing, and importing were reworked for proper inheritance (including objects in PHP5+)
-         + A new constant RUNKIT_OVERRIDE_OBJECTS was introduced. Use it by bitwise adding to the flags parameter
-           of functions runkit_default_property_add and runkit_import to add (and remove) properties of existing objects.
-           This feature works in PHP 5.x and above and it is switched off by default.
-         + New (the third one) parameter remove_from_objects of boolean type was introduced
-           in runkit_default_property_remove function. Pass the TRUE value to remove property from existing objects.
-           This feature works in PHP 5.x and above. The default value for this parameter is FALSE.
-         + Namespaces are fully supported by constants manipulation functions (Thanks to Antony Dovgal)
-         + Allow disabling of allow_url_include in a Runkit_Sandbox (PHP >= 5.2) (Thanks to Sara Golemon)
-         + New optional argument 'doc_comment' of functions runkit_method_add, runkit_method_redefine, runkit_function_add,
-           and runkit_function_redefine was introduced to specify doc_comments.
-         + Preserve doc_comments on copying and redefining functions and methods.
-
-     Critical fixes:
-         * Highly probable crashes on using Reflection objects after modifying removing or renaming of functions, methods, and properties,
-           for which those Reflection objects have been instantiated, were eliminated
-         * Crash on sandbox creation when register_globals is switched on was fixed
-         * Building and working with PHP4 were fixed
-         * Crash on syntax error in source file importing with runkit_import was fixed
-         * The possible crash on manipulating constants having length less than two characters was eliminated
-         * Crash after using runkit_class_adopt when inherited methods access properties of the parent class (issue #59)
-         * Crash on calling renamed private/protected method (issue #64)
-         * Crash when copied function contains finally (issue #77) (Thanks to Antony Dovgal)
-         * Lists of directories in open_basedir sandbox setting are now supported
-
-     Fixes:
-         * All ways of adding and removing magic methods and old-style constructors
-           were reworked and corrected (Thanks to Anthony Dovgal for issues #35, #57, and #79).
-         * Side effect of redefining, adding and removing class constant (Issue #25) was eliminated
-         * Adding of non-lowercase default properties was fixed (removed lowercasing)
-         * Skip the leading slash in class names
-         * Copying, redefining, and renaming of functions were reworked
-         * Converting of input parameters (class names &amp; function names) to lowecase was eliminated
-         * runkit_method_redefine function now sets the 'prototype' field for the method
-           and its descendants (Thanks to Anthony Dovgal)
-         * Freeing already freed memory on importing of a non-existent file was eliminated
-         * A test for correctness of runkit.superglobals feature was added
-         * Tests for correctness of inheritance of properties were added
-         * Tests for correctness of adding static properties were added
-         * Bug 57649 (https://bugs.php.net/bug.php?id=57649) has been fixed without apathy ;)
-           Thanks to Sara Golemon for tests.
-         * Importing class extending another class was fixed (Issue #48) (thanks to mido0258)
-         * User-defined functions should remain after Runkit's shutdown
-           (thanks to Sara Golemon for code and to https://github.com/cobrafast for test)
-         * Restoring of misplaced internal functions was corrected (issue #63)
-         * Delete temporary function on errors of adding/redefining methods
-         * runkit_method_add, runkit_method_copy, and runkit_method_rename now override derived methods (issue #62)
-
-     Build system improvements:
-         * PEAR Channel zenovich.github.io/pear was introduced for releasing new packages
-         * Declarations after statement were restricted during compiling
-         * Warnings now will be treated as errors
-         * All tests now succeed under valgrind
-         * A compilation bug (with gcc 4.3+), caused by wrong definition of internal function,
-           was fixed (Thanks to Reeze Xia)
+   <notes>...
    </notes>
 
  <contents>
@@ -340,6 +273,88 @@ Execute code in restricted environment (sandboxing).
  <extsrcrelease />
 
  <changelog>
+  <release>
+   <date>2015-09-25</date>
+   <version>
+    <release>1.0.4</release>
+    <api>1.0.4</api>
+   </version>
+   <stability>
+    <release>stable</release>
+    <api>stable</api>
+   </stability>
+   <license uri="http://www.opensource.org/licenses/BSD-3-Clause">BSD License (3 Clause)</license>
+   <notes>
+     New features:
+         + PHP 5.4, 5.5, and 5.6 are now fully supported
+         - PHP 4.x is not supported anymore
+         + Closures are now accepted by runkit_function_add, runkit_function_redefine, runkit_method_add, and runkit_method_redefine
+           This feature works in PHP 5.3 and above.
+         + Introduced new function "runkit_default_property_remove" (Thanks to Juhan Kundla)
+         + Ability to add non-scalar default properties was added
+         + Magic methods __isset, __unset, __callStatic, serialize, unserialize, debugInfo and __toString are now supported.
+         + Functions runkit_class_adopt &amp; runkit_class_emancipate now change class-hierarchy (issue #13)
+         + Adding and redefining functions and methods, which return references, were fully implemented
+           New optional argument 'return_ref' of functions runkit_function_add and runkit_function_redefine was introduced
+           New constant RUNKIT_ACC_RETURN_REFERENCE was introduced for use with functions runkit_method_add and runkit_method_redefine
+         + Properties adding, removing, and importing were reworked for proper inheritance (including objects in PHP5+)
+         + A new constant RUNKIT_OVERRIDE_OBJECTS was introduced. Use it by bitwise adding to the flags parameter
+           of functions runkit_default_property_add and runkit_import to add (and remove) properties of existing objects.
+           This feature works in PHP 5.x and above and it is switched off by default.
+         + New (the third one) parameter remove_from_objects of boolean type was introduced
+           in runkit_default_property_remove function. Pass the TRUE value to remove property from existing objects.
+           This feature works in PHP 5.x and above. The default value for this parameter is FALSE.
+         + Namespaces are fully supported by constants manipulation functions (Thanks to Antony Dovgal)
+         + Allow disabling of allow_url_include in a Runkit_Sandbox (PHP >= 5.2) (Thanks to Sara Golemon)
+         + New optional argument 'doc_comment' of functions runkit_method_add, runkit_method_redefine, runkit_function_add,
+           and runkit_function_redefine was introduced to specify doc_comments.
+         + Preserve doc_comments on copying and redefining functions and methods.
+
+     Critical fixes:
+         * Highly probable crashes on using Reflection objects after modifying removing or renaming of functions, methods, and properties,
+           for which those Reflection objects have been instantiated, were eliminated
+         * Crash on sandbox creation when register_globals is switched on was fixed
+         * Building and working with PHP4 were fixed
+         * Crash on syntax error in source file importing with runkit_import was fixed
+         * The possible crash on manipulating constants having length less than two characters was eliminated
+         * Crash after using runkit_class_adopt when inherited methods access properties of the parent class (issue #59)
+         * Crash on calling renamed private/protected method (issue #64)
+         * Crash when copied function contains finally (issue #77) (Thanks to Antony Dovgal)
+         * Lists of directories in open_basedir sandbox setting are now supported
+
+     Fixes:
+         * All ways of adding and removing magic methods and old-style constructors
+           were reworked and corrected (Thanks to Anthony Dovgal for issues #35, #57, and #79).
+         * Side effect of redefining, adding and removing class constant (Issue #25) was eliminated
+         * Adding of non-lowercase default properties was fixed (removed lowercasing)
+         * Skip the leading slash in class names
+         * Copying, redefining, and renaming of functions were reworked
+         * Converting of input parameters (class names &amp; function names) to lowecase was eliminated
+         * runkit_method_redefine function now sets the 'prototype' field for the method
+           and its descendants (Thanks to Anthony Dovgal)
+         * Freeing already freed memory on importing of a non-existent file was eliminated
+         * A test for correctness of runkit.superglobals feature was added
+         * Tests for correctness of inheritance of properties were added
+         * Tests for correctness of adding static properties were added
+         * Bug 57649 (https://bugs.php.net/bug.php?id=57649) has been fixed without apathy ;)
+           Thanks to Sara Golemon for tests.
+         * Importing class extending another class was fixed (Issue #48) (thanks to mido0258)
+         * User-defined functions should remain after Runkit's shutdown
+           (thanks to Sara Golemon for code and to https://github.com/cobrafast for test)
+         * Restoring of misplaced internal functions was corrected (issue #63)
+         * Delete temporary function on errors of adding/redefining methods
+         * runkit_method_add, runkit_method_copy, and runkit_method_rename now override derived methods (issue #62)
+
+     Build system improvements:
+         * PEAR Channel zenovich.github.io/pear was introduced for releasing new packages
+         * Declarations after statement were restricted during compiling
+         * Warnings now will be treated as errors
+         * All tests now succeed under valgrind
+         * A compilation bug (with gcc 4.3+), caused by wrong definition of internal function,
+           was fixed (Thanks to Reeze Xia)
+   </notes>
+  </release>
+
   <release>
    <date>2012-01-02</date>
    <version>
