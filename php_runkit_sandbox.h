@@ -1,3 +1,21 @@
+/*
+  +----------------------------------------------------------------------+
+  | PHP Version 5                                                        |
+  +----------------------------------------------------------------------+
+  | (c) 2008-2015 Dmitry Zenovich                                        |
+  +----------------------------------------------------------------------+
+  | This source file is subject to the new BSD license,                  |
+  | that is bundled with this package in the file LICENSE, and is        |
+  | available through the world-wide-web at the following url:           |
+  | http://www.opensource.org/licenses/BSD-3-Clause                      |
+  | If you did not receive a copy of the license and are unable to       |
+  | obtain it through the world-wide-web, please send a note to          |
+  | dzenovich@gmail.com so we can mail you a copy immediately.           |
+  +----------------------------------------------------------------------+
+  | Author: Dmitry Zenovich <dzenovich@gmail.com>                        |
+  +----------------------------------------------------------------------+
+*/
+
 #ifndef PHP_RUNKIT_SANDBOX_H
 #define PHP_RUNKIT_SANDBOX_H
 
