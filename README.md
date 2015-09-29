@@ -98,7 +98,7 @@ safe_mode			safe_mode may only be turned on for a Runkit_Sandbox interpreter usi
 
 open_basedir		Like safe_mode, you can only use this setting to make things more restrictive.
 
-allow_url_fopen		In keeping with safe_mode, this can only be turned off (more restrictive than global environment)
+allow_url_fopen, allow_url_include	In keeping with safe_mode, these can only be turned off (more restrictive than global environment)
 
 disable_functions	Any function names specified in this coma-delimited list will be disabled IN ADDITION TO already disabled functions.
 
@@ -121,7 +121,13 @@ Then just rebuild using the --enable-maintainer-zts option specified above.
 
 runkit_lint() and runkit_lint_file() also exist as a simpler approach to verifying the syntactic legality of passed code within an isolated environment.
 
-## BUILDING AND INSTALLING IN UNIX
+## BUILDING AND INSTALLING LATEST RELEASE WITH PECL IN UNIX
+```
+pear channel-discover zenovich.github.io/pear
+pecl install zenovich/runkit
+```
+
+## BUILDING AND INSTALLING CURRENT DEVELOPMENT VERSION IN UNIX
 ```
 git clone https://github.com/zenovich/runkit.git
 cd runkit
