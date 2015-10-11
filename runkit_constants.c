@@ -33,10 +33,7 @@ static int php_runkit_fetch_const(char *cname, int cname_len, zend_constant **co
 #if RUNKIT_ABOVE53
 	char *separator;
 
-	if (cname_len > 0 && cname[0] == '\\') {
-		++cname;
-		--cname_len;
-	}
+	PHP_RUNKIT_NORMALIZE_NAMESPACE(cname);
 
 	separator = (char *) zend_memrchr(cname, '\\', cname_len);
 	if (separator) {
@@ -182,10 +179,7 @@ static int php_runkit_constant_add(char *classname, int classname_len, char *con
 		zend_constant c;
 
 #if RUNKIT_ABOVE53
-		if (constname_len > 0 && constname[0] == '\\') {
-			++constname;
-			--constname_len;
-		}
+		PHP_RUNKIT_NORMALIZE_NAMESPACE(constname);
 #endif
 
 		/* Traditional global constant */

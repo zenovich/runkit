@@ -264,7 +264,7 @@ int php_runkit_fetch_interface(const char *classname, int classname_len, zend_cl
 
 /* Ignore leading "\" for namespaced functions and classes. */
 #define PHP_RUNKIT_NORMALIZE_NAMESPACE(name) \
-	if (name[0] == '\\') { \
+	if (name##_len > 0 && name[0] == '\\') { \
 		name++; \
 		name##_len--; \
 	}
