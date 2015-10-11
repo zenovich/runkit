@@ -262,6 +262,13 @@ int php_runkit_fetch_interface(const char *classname, int classname_len, zend_cl
 #define PHP_RUNKIT_HASH_KEYLEN(hash_key)		((hash_key)->nKeyLength)
 #endif /* Version Agnosticism */
 
+/* Ignore leading "\" for namespaced functions and classes. */
+#define PHP_RUNKIT_NORMALIZE_NAMESPACE(name) \
+	if (name##_len > 0 && name[0] == '\\') { \
+		name++; \
+		name##_len--; \
+	}
+
 #define PHP_RUNKIT_MAKE_LOWERCASE_COPY(name) \
 	name##_lower = estrndup(name, name##_len); \
 	name##_lower_len = name##_len; \

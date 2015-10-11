@@ -27,7 +27,9 @@ Execute code in restricted environment (sandboxing).
     <api>stable</api>
    </stability>
    <license uri="http://www.opensource.org/licenses/BSD-3-Clause">BSD License (3 Clause)</license>
-   <notes>...
+   <notes>
+	   Fixes:
+	       * Leading backslashes are now allowed in function manipulation functions (Thanks to Tyson Andre)
    </notes>
 
  <contents>
@@ -188,6 +190,7 @@ Execute code in restricted environment (sandboxing).
     <file name="bug4519.inc" role="test" />
     <file name="bug4519.phpt" role="test" />
     <file name="namespaces.phpt" role="test" />
+    <file name="namespaces_functions.phpt" role="test" />
     <file name="runkit_default_property_add.phpt" role="test" />
     <file name="runkit_default_property_add_and_remove_for_class_with_dynamic_properties.phpt" role="test" />
     <file name="runkit_default_property_add_to_subclasses.phpt" role="test" />

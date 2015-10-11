@@ -61,6 +61,7 @@ static int php_runkit_fetch_function(int fname_type, const char *fname, int fnam
 	zend_function *fe;
 	PHP_RUNKIT_DECL_STRING_PARAM(fname_lower)
 
+	PHP_RUNKIT_NORMALIZE_NAMESPACE(fname);
 	PHP_RUNKIT_MAKE_LOWERCASE_COPY(fname);
 	if (fname_lower == NULL) {
 		PHP_RUNKIT_NOT_ENOUGH_MEMORY_ERROR;
@@ -585,6 +586,7 @@ static void php_runkit_function_add_or_update(INTERNAL_FUNCTION_PARAMETERS, int 
 	}
 
 	/* UTODO */
+	PHP_RUNKIT_NORMALIZE_NAMESPACE(funcname);
 	PHP_RUNKIT_MAKE_LOWERCASE_COPY(funcname);
 	if (funcname_lower == NULL) {
 		PHP_RUNKIT_NOT_ENOUGH_MEMORY_ERROR;
@@ -688,6 +690,7 @@ PHP_FUNCTION(runkit_function_remove)
 		RETURN_FALSE;
 	}
 
+	PHP_RUNKIT_NORMALIZE_NAMESPACE(fname);
 	PHP_RUNKIT_MAKE_LOWERCASE_COPY(fname);
 	if (fname_lower == NULL) {
 		PHP_RUNKIT_NOT_ENOUGH_MEMORY_ERROR;
@@ -722,6 +725,7 @@ PHP_FUNCTION(runkit_function_remove)
 	} \
 	\
 	/* UTODO */ \
+	PHP_RUNKIT_NORMALIZE_NAMESPACE(dfunc) \
 	PHP_RUNKIT_MAKE_LOWERCASE_COPY(dfunc); \
 	if (dfunc_lower == NULL) { \
 		PHP_RUNKIT_NOT_ENOUGH_MEMORY_ERROR; \
@@ -747,6 +751,7 @@ PHP_FUNCTION(runkit_function_rename)
 		RETURN_FALSE;
 	}
 
+	PHP_RUNKIT_NORMALIZE_NAMESPACE(sfunc);
 	PHP_RUNKIT_MAKE_LOWERCASE_COPY(sfunc);
 	if (sfunc_lower == NULL) {
 		efree(dfunc_lower);
@@ -811,6 +816,7 @@ PHP_FUNCTION(runkit_function_copy)
 		RETURN_FALSE;
 	}
 
+	PHP_RUNKIT_NORMALIZE_NAMESPACE(sfunc);
 	PHP_RUNKIT_MAKE_LOWERCASE_COPY(sfunc);
 	if (sfunc_lower == NULL) {
 		efree(dfunc_lower);
