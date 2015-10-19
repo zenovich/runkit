@@ -4,7 +4,7 @@ http://pear.php.net/dtd/tasks-1.0.xsd
 http://pear.php.net/dtd/package-2.0
 http://pear.php.net/dtd/package-2.0.xsd">
  <name>runkit</name>
- <channel>zenovich.github.io/pear</channel>
+ <channel>pecl.php.net</channel>
  <summary>For all those things you.... probably shouldn&apos;t have been doing anyway....</summary>
  <description>Replace, rename, and remove user defined functions and classes.
 Define customized superglobal variables for general purpose use.
@@ -12,9 +12,15 @@ Execute code in restricted environment (sandboxing).
  </description>
  <lead>
   <name>Dmitry Zenovich</name>
-  <user></user>
+  <user>dzenovich</user>
   <email>dzenovich@gmail.com</email>
   <active>yes</active>
+ </lead>
+ <lead>
+  <name>Sara Golemon</name>
+  <user>pollita</user>
+  <email>pollita@php.net</email>
+  <active>no</active>
  </lead>
 
    <date>2015-09-25</date>
