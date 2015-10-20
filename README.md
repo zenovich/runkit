@@ -120,8 +120,7 @@ runkit_lint() and runkit_lint_file() also exist as a simpler approach to verifyi
 
 ## BUILDING AND INSTALLING LATEST RELEASE WITH PECL IN UNIX
 ```
-pear channel-discover zenovich.github.io/pear
-pecl install zenovich/runkit
+pecl install runkit
 ```
 
 ## BUILDING AND INSTALLING CURRENT DEVELOPMENT VERSION IN UNIX
