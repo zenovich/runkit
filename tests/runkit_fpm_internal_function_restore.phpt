@@ -18,6 +18,8 @@ fpm_test(array($code, $code, $code), "-d extension=modules/runkit.so -d runkit.i
 ?>
 Done
 --EXPECTF--
+[%s] NOTICE: fpm is running, pid %d
+[%s] NOTICE: ready to handle connections
 Test Start
 A B
 C D

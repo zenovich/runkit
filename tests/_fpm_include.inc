@@ -46,7 +46,7 @@ function run_fpm($config, &$out = false, $extra_args = '') /* {{{ */
      * shell in php (why?!?) we need a little shell trickery, so that we can
      * actually kill php-fpm */
     //echo file_get_contents('../tmp-php.ini');
-    $fpm = proc_open('killit () { kill $child; }; trap killit TERM; '.get_fpm_path().'-n -O -y '.$cfg." ".$extra_args.' 2>&1 & child=$!; wait', $desc, $pipes);
+    $fpm = proc_open('killit () { kill $child; }; trap killit TERM; '.get_fpm_path().' -n -O -y '.$cfg." ".$extra_args.' 2>&1 & child=$!; wait', $desc, $pipes);
     register_shutdown_function('_fpm_shutdown_function', $fpm, $cfg);
     if ($out !== false) {
         $out = $pipes[1];
@@ -118,7 +118,6 @@ function fpm_test($code, $extra_args) {
 [global]
 error_log = $logfile
 daemonize = no
-log_level = warning
 [unconfined]
 listen = 127.0.0.1:$port
 pm = dynamic
@@ -133,6 +132,7 @@ EOT;
 	}
 	$fpm = run_fpm($cfg, $tail, $extra_args);
 	if (is_resource($fpm)) {
+		fpm_display_log($tail, 2);
 		foreach ($code as $code_str) {
 			file_put_contents($srcfile, $code_str);
 			try {
