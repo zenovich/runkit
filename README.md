@@ -1,7 +1,7 @@
 Runkit extension for PHP
 ========================
 
-For all those things you.... probably shouldn't have been doing anyway....
+For all those things you.... probably shouldn't have been doing anyway.... but surely do!
 
 ---------------------
 Feel free to support Dmitry Zenovich via PayPal (dzenovich@gmail.com) if Runkit serves you.
