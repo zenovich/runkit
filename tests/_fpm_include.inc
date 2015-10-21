@@ -46,7 +46,7 @@ function run_fpm($config, &$out = false, $extra_args = '') /* {{{ */
      * shell in php (why?!?) we need a little shell trickery, so that we can
      * actually kill php-fpm */
     //echo file_get_contents('../tmp-php.ini');
-    $fpm = proc_open('killit () { kill $child; }; trap killit TERM; '.get_fpm_path().' -O -y '.$cfg." ".$extra_args.' 2>&1 & child=$!; wait', $desc, $pipes);
+    $fpm = proc_open('killit () { kill $child; }; trap killit TERM; '.get_fpm_path().' -n -O -y '.$cfg." ".$extra_args.' 2>&1 & child=$!; wait', $desc, $pipes);
     register_shutdown_function('_fpm_shutdown_function', $fpm, $cfg);
     if ($out !== false) {
         $out = $pipes[1];
@@ -144,7 +144,6 @@ EOT;
 			}
 		}
 		proc_terminate($fpm);
-		echo stream_get_contents($tail);
 		fclose($tail);
 		proc_close($fpm);
 	}

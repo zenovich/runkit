@@ -14,7 +14,7 @@ echo _chop('A B '), "\n";
 echo __chop('C D '), "\n";
 echo "Test End\n";
 EOT;
-fpm_test(array($code, $code, $code), "-d extension_dir=modules/ -d extension=runkit.so -d runkit.internal_override=1");
+fpm_test(array($code, $code, $code), "-d extension=modules/runkit.so -d runkit.internal_override=1");
 ?>
 Done
 --EXPECTF--
@@ -38,8 +38,6 @@ C D
 Test End
 
 Request ok
-[%s] NOTICE: Terminating ...
-[%s] NOTICE: exiting, bye-bye!
 Done
 --CLEAN--
 <?php
