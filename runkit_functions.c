@@ -480,7 +480,7 @@ int php_runkit_destroy_misplaced_functions(void *pDest TSRMLS_DC)
 		return ZEND_HASH_APPLY_REMOVE;
 	}
 
-	if (zend_hash_find(EG(function_table), hash_key->arKey, hash_key->nKeyLength, (void **) &fe) == SUCCESS) {
+	if (zend_hash_find(EG(function_table), hash_key->arKey, hash_key->nKeyLength, (void *) &fe) == SUCCESS) {
 		PHP_RUNKIT_FREE_INTERNAL_FUNCTION_NAME(fe);
 	}
 

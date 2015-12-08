@@ -138,7 +138,7 @@ static char *php_runkit_sandbox_implode_stringht(HashTable *ht TSRMLS_DC) {
 	char *str;
 
 	for(zend_hash_internal_pointer_reset_ex(ht, &pos);
-	    SUCCESS == zend_hash_get_current_data_ex(ht, (void**)&str, &pos);
+	    SUCCESS == zend_hash_get_current_data_ex(ht, (void*)&str, &pos);
 	    zend_hash_move_forward_ex(ht, &pos)) {
 		if (s.len) {
 			smart_str_appendc(&s, ZEND_PATHS_SEPARATOR);
@@ -178,14 +178,14 @@ static char *php_runkit_sandbox_tighten_paths(HashTable *oldht, HashTable *newht
 	}
 
 	for(zend_hash_internal_pointer_reset_ex(newht, &newpos);
-	    SUCCESS == zend_hash_get_current_data_ex(newht, (void**)&newstr, &newpos);
+	    SUCCESS == zend_hash_get_current_data_ex(newht, (void*)&newstr, &newpos);
 	    zend_hash_move_forward_ex(newht, &newpos)) {
 		HashPosition oldpos;
 		char *oldstr;
 		int newstr_len = strlen(newstr);
 
 		for(zend_hash_internal_pointer_reset_ex(oldht, &oldpos);
-		    SUCCESS == zend_hash_get_current_data_ex(oldht, (void**)&oldstr, &oldpos);
+		    SUCCESS == zend_hash_get_current_data_ex(oldht, (void*)&oldstr, &oldpos);
 		    zend_hash_move_forward_ex(oldht, &oldpos)) {
 			int oldstr_len = strlen(oldstr);
 			if ((oldstr_len <= newstr_len) &&
@@ -443,7 +443,7 @@ child_open_basedir_set:
 #ifdef ZEND_ENGINE_2_2
 	/* May only turn off */
 	if (allow_url_include &&
-	    (zend_hash_find(options, "allow_url_include", sizeof("allow_url_include"), (void**)&tmpzval) == SUCCESS) &&
+	    (zend_hash_find(options, "allow_url_include", sizeof("allow_url_include"), (void*)&tmpzval) == SUCCESS) &&
 	    !zend_is_true(*tmpzval)) {
 		zend_alter_ini_entry("allow_url_include", sizeof("allow_url_include"), "0", 1, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
 	}

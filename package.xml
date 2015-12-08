@@ -36,6 +36,7 @@ Execute code in restricted environment (sandboxing).
    <notes>
       Fixes:
           * Leading backslashes are now allowed in function manipulation functions (Thanks to Tyson Andre)
+          * Compilation warnings about type-punning were eliminated
    </notes>
 
  <contents>
