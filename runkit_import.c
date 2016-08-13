@@ -322,6 +322,20 @@ static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry
 
 	zend_property_info *property_info_ptr;
 
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+	int properties_count = ce->default_properties_count;
+	int i;
+
+	zend_property_info **sorted_properties = emalloc(sizeof(zend_property_info*)*properties_count);
+	char **sorted_keys = emalloc(sizeof(char*)*properties_count);
+	int *sorted_keys_len = emalloc(sizeof(int)*properties_count);
+	zval **sorted_p = emalloc(sizeof(zval*)*properties_count);
+
+	for(i=0; i<properties_count; i++){
+		sorted_properties[i] = NULL;
+	}
+#endif
+
 	zend_hash_internal_pointer_reset_ex(&ce->properties_info, &pos);
 	while (zend_hash_get_current_data_ex(&ce->properties_info, (void*) &property_info_ptr, &pos) == SUCCESS &&
 	       property_info_ptr) {
@@ -336,6 +350,53 @@ static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry
 					goto import_st54_prop_skip;
 				}
 			}
+
+			if(property_info_ptr->flags & ZEND_ACC_CHANGED){
+
+				zend_class_entry *parent;
+				zend_property_info *property_info_parent;
+
+				parent = ce->parent;
+
+				for(;parent != 0;){
+
+					if(zend_hash_find(&parent->properties_info,key,key_len,(void*)&property_info_parent) == SUCCESS){
+						if((property_info_parent->flags & ZEND_ACC_PRIVATE) && property_info_parent->ce == parent){
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4)
+							p = &ce->default_properties_table[property_info_parent->offset];
+#else
+							if (zend_hash_quick_find(&ce->default_properties, property_info_parent->name, property_info_parent->name_length + 1, property_info_parent->h, (void*) &p) != SUCCESS) {
+								php_error_docref(NULL TSRMLS_CC, E_WARNING,
+											"Cannot import broken default property %s->%s", ce->name, key);
+								goto import_st54_prop_skip;
+							}
+#endif // (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+							sorted_keys[property_info_parent->offset] = key;
+							sorted_keys_len[property_info_parent->offset] = key_len;
+							sorted_p[property_info_parent->offset] = *p;
+							sorted_properties[property_info_parent->offset] = property_info_parent;
+#else
+							php_runkit_def_prop_add_int(
+								dce,
+								key,
+								key_len - 1,
+								*p,
+								property_info_parent->flags,
+								property_info_parent->doc_comment,
+								property_info_parent->doc_comment_len,
+								property_info_parent->ce,
+								override,
+								remove_from_objects TSRMLS_CC
+							);
+#endif
+						}
+					}
+					parent = parent->parent;
+				}
+			}
+
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4)
 			p = &ce->default_properties_table[property_info_ptr->offset];
 #else
@@ -346,10 +407,31 @@ static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry
 			}
 #endif // (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
 
+			if(ce == property_info_ptr->ce){
+				property_info_ptr->ce = dce;
+			}
+
 			php_runkit_zval_resolve_class_constant(p, dce TSRMLS_CC);
-			php_runkit_def_prop_add_int(dce, key, key_len - 1, *p,
-			                            property_info_ptr->flags, property_info_ptr->doc_comment,
-			                            property_info_ptr->doc_comment_len, dce, override, remove_from_objects TSRMLS_CC);
+
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+			sorted_keys[property_info_ptr->offset] = key;
+			sorted_keys_len[property_info_ptr->offset] = key_len;
+			sorted_p[property_info_ptr->offset] = *p;
+			sorted_properties[property_info_ptr->offset] = property_info_ptr;
+#else
+			php_runkit_def_prop_add_int(
+				dce,
+				key,
+				key_len - 1,
+				*p,
+				property_info_ptr->flags,
+				property_info_ptr->doc_comment,
+				property_info_ptr->doc_comment_len,
+				property_info_ptr->ce,
+				override,
+				remove_from_objects TSRMLS_CC
+			);
+#endif
 		}
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 4)
 		else {
@@ -359,6 +441,33 @@ static int php_runkit_import_class_props(zend_class_entry *dce, zend_class_entry
 import_st54_prop_skip:
 		zend_hash_move_forward_ex(&ce->properties_info, &pos);
 	}
+
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4) || (PHP_MAJOR_VERSION > 5)
+	for(i=0; i<properties_count; i=i+1)
+	{
+		if(sorted_properties[i] == NULL){
+			continue;
+		}
+
+		php_runkit_def_prop_add_int(
+			dce,
+			sorted_keys[i],
+			sorted_keys_len[i] - 1,
+			sorted_p[i],
+			sorted_properties[i]->flags,
+			sorted_properties[i]->doc_comment,
+			sorted_properties[i]->doc_comment_len,
+			sorted_properties[i]->ce,
+			override,
+			remove_from_objects TSRMLS_CC
+		);
+	}
+
+	efree(sorted_keys);
+	efree(sorted_keys_len);
+	efree(sorted_p);
+	efree(sorted_properties);
+#endif
 
 	return SUCCESS;
 }
