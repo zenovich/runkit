@@ -292,7 +292,7 @@ int php_runkit_def_prop_add_int(zend_class_entry *ce, const char *propname, int 
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot find just added property's info");
 			return FAILURE;
 		}
-		if (visibility & ZEND_ACC_PRIVATE) {
+		if (visibility & (ZEND_ACC_PRIVATE | ZEND_ACC_SHADOW)) {
 			char *newkey;
 			int newkey_len;
 			char *oldkey;
