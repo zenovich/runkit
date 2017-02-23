@@ -223,7 +223,7 @@ static int php_runkit_constant_add(char *classname, int classname_len, char *con
  */
 PHP_FUNCTION(runkit_constant_redefine)
 {
-	char *classname = NULL, *constname;
+	char *classname = NULL, *constname, *constname_copy, *constname_copy_orig;
 	int classname_len = 0, constname_len;
 	zval *value;
 
@@ -231,10 +231,13 @@ PHP_FUNCTION(runkit_constant_redefine)
 		RETURN_FALSE;
 	}
 
-	PHP_RUNKIT_SPLIT_PN(classname, classname_len, constname, constname_len);
+	constname_copy = estrndup(constname, constname_len);
+	constname_copy_orig = constname_copy;
+	PHP_RUNKIT_SPLIT_PN(classname, classname_len, constname_copy, constname_len);
 
-	php_runkit_constant_remove(classname, classname_len, constname, constname_len TSRMLS_CC);
-	RETURN_BOOL(php_runkit_constant_add(classname, classname_len, constname, constname_len, value TSRMLS_CC) == SUCCESS);
+	php_runkit_constant_remove(classname, classname_len, constname_copy, constname_len TSRMLS_CC);
+	RETVAL_BOOL(php_runkit_constant_add(classname, classname_len, constname_copy, constname_len, value TSRMLS_CC) == SUCCESS);
+	efree(constname_copy_orig);
 }
 /* }}} */
 
@@ -242,16 +245,19 @@ PHP_FUNCTION(runkit_constant_redefine)
  */
 PHP_FUNCTION(runkit_constant_remove)
 {
-	char *classname = NULL, *constname;
+	char *classname = NULL, *constname, *constname_copy, *constname_copy_orig;
 	int classname_len = 0, constname_len;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &constname, &constname_len) == FAILURE) {
 		RETURN_FALSE;
 	}
 
-	PHP_RUNKIT_SPLIT_PN(classname, classname_len, constname, constname_len);
+	constname_copy = estrndup(constname, constname_len);
+	constname_copy_orig = constname_copy;
+	PHP_RUNKIT_SPLIT_PN(classname, classname_len, constname_copy, constname_len);
 
-	RETURN_BOOL(php_runkit_constant_remove(classname, classname_len, constname, constname_len TSRMLS_CC)==SUCCESS);
+	RETVAL_BOOL(php_runkit_constant_remove(classname, classname_len, constname_copy, constname_len TSRMLS_CC)==SUCCESS);
+	efree(constname_copy_orig);
 }
 /* }}} */
 
@@ -260,7 +266,7 @@ PHP_FUNCTION(runkit_constant_remove)
  */
 PHP_FUNCTION(runkit_constant_add)
 {
-	char *classname = NULL, *constname;
+	char *classname = NULL, *constname, *constname_copy, *constname_copy_orig;
 	int classname_len = 0, constname_len;
 	zval *value;
 
@@ -268,9 +274,12 @@ PHP_FUNCTION(runkit_constant_add)
 		RETURN_FALSE;
 	}
 
-	PHP_RUNKIT_SPLIT_PN(classname, classname_len, constname, constname_len);
+	constname_copy = estrndup(constname, constname_len);
+	constname_copy_orig = constname_copy;
+	PHP_RUNKIT_SPLIT_PN(classname, classname_len, constname_copy, constname_len);
 
-	RETURN_BOOL(php_runkit_constant_add(classname, classname_len, constname, constname_len, value TSRMLS_CC) == SUCCESS);
+	RETVAL_BOOL(php_runkit_constant_add(classname, classname_len, constname_copy, constname_len, value TSRMLS_CC) == SUCCESS);
+	efree(constname_copy_orig);
 }
 /* }}} */
 #endif /* PHP_RUNKIT_MANIPULATION */
